@@ -95,8 +95,10 @@ func _run() -> void:
         GameState.stage = 4
         var censor := Censor.new()
         game.world.add_child(censor)
-        censor.global_position = game.player.global_position + Vector2(330.0, -8.0)
-        await _wait(1.6)
+        censor.global_position = game.player.global_position + Vector2(430.0, -8.0)
+        await _wait(0.9)
+        _reset_player(1600, 840)
+        game.player.facing = 1
         await _snap("04_censor")
         censor.queue_free()
         GameState.consistency = 100
@@ -170,5 +172,15 @@ func _run() -> void:
         game.player.facing = -1
         await _wait(0.7)
         await _snap("15_machines")
+
+        # --- 16 · MEASURER OREN (act3, the queue) + 17 · NULL CHILDREN (act4)
+        await _room("act3", Vector2(760, 840))
+        game.player.facing = 1
+        await _wait(0.9)
+        await _snap("16_measurer_oren")
+        await _room("act4", Vector2(600, 940))
+        game.player.facing = 1
+        await _wait(0.9)
+        await _snap("17_null_children")
 
         get_tree().quit()

@@ -232,18 +232,23 @@ CHARACTERS = {
     },
     "censor": {
         "height": 128,
+        # VP-3: +2 programmatic micro-motion frames (see gen_anim_frames.py —
+        # the AI edit redraws overshot the pose deltas, IoU 0.5).
         "anims": {"idle": ["censor_base"]},
     },
     "penitent": {
         "height": 100,
+        # VP-3: +1 synth ghost-flicker frame.
         "anims": {"idle": ["penitent_base"]},
     },
     "oren": {
         "height": 76,
+        # VP-3: +1 synth micro-bow frame.
         "anims": {"idle": ["oren_base"]},
     },
     "null_children": {
         "height": 56,
+        # VP-3: +1 synth slice-glitch frame (base + AI variant stay).
         "anims": {"idle": ["nullchild_base", "nullchild_b"]},
     },
 }
@@ -426,6 +431,13 @@ def main():
             img = quantize_rgba(img)
             img.save(os.path.join(envdir, tex + ".png"))
             print("  wrote", tex + ".png")
+
+    # Visual Pass 3 — programmatic micro-motion frames (cel transforms of the
+    # painted bases). Idempotent; must run AFTER the character frames exist.
+    if not only or only in ("censor", "penitent", "oren", "null_children", "anim", "all"):
+        print("[anim synth]")
+        import gen_anim_frames
+        gen_anim_frames.main()
     print("PIPELINE DONE")
 
 if __name__ == "__main__":
