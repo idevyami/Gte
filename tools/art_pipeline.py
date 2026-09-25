@@ -19,7 +19,7 @@ Steps per character frame:
   6. QA sheets  — contact sheets on the game's panel color for VLM review
 
 Idempotent: re-run any time; missing raws are reported, never fatal.
-Usage: python3 tools/art_pipeline.py [character|props|env]
+Usage: python3 tools/art_pipeline.py [character|props|env|decor|all]
 """
 import sys, os
 import numpy as np
@@ -127,6 +127,13 @@ def cutout(img, thresh=16, erode=0):
             if sizes[i - 1] >= 30 and (comp & region).any():
                 fg |= comp
 
+    # enclosed pockets (between limbs, under hems, behind props) are background
+    # the border flood cannot reach — carve them out when they match the bg color
+    holes = ndi.binary_fill_holes(fg) & ~fg
+    if holes.any():
+        hole_bg = np.sqrt(((arr - np.array(bcol)) ** 2).sum(axis=2)) < (thresh + 18)
+        fg = fg & ~(holes & hole_bg)
+
     alpha = (fg * 255).astype(np.uint8)
     aimg = Image.fromarray(alpha).filter(ImageFilter.GaussianBlur(0.7))
     a = np.asarray(aimg).astype(np.int32)
@@ -210,16 +217,16 @@ CHARACTERS = {
         "height": 88,
         "grade": {"brighten": 1.08},
         "anims": {
-            "idle": ["hollow_base"],
+            "idle": ["hollow_base", "hollow_idle_b"],
             "telegraph": ["hollow_telegraph"],
-            "lunge": ["hollow_lunge"],
+            "lunge": ["hollow_lunge", "hollow_lunge_b"],
         },
     },
     "believers": {
         "height": 70,
         "anims": {
             "kneel": ["believer_kneel"],
-            "walk": ["believer_stand"],
+            "walk": ["believer_stand", "believer_walk_b", "believer_walk_c", "believer_walk_b"],
             "strike": ["believer_strike"],
         },
     },
@@ -237,7 +244,7 @@ CHARACTERS = {
     },
     "null_children": {
         "height": 56,
-        "anims": {"idle": ["nullchild_base"]},
+        "anims": {"idle": ["nullchild_base", "nullchild_b"]},
     },
 }
 
@@ -246,6 +253,35 @@ PROPS = {
     "anchor": ("prop_anchor", 110, 30),
     "terminal": ("prop_terminal", 120, 30),
 }
+
+# Visual Pass 2 — painted decor. Cutout sprites at game scale; the column is
+# additionally split into capital / shaft / base strips so rooms can draw any
+# height (380..520) by stretching only the plain shaft. The mural keeps its
+# painted plaster (full-rect texture, no cutout — it is a wall panel).
+DECOR = {
+    "decor_machine": ("decor_machine", 180, 30, 1.18, 1.06),
+    "decor_banner": ("decor_banner", 170, 30, 1.06, 1.06),
+    "decor_statue": ("decor_statue", 96, 30, 1.14, 1.06),
+    "decor_arch": ("decor_arch", 300, 30, 1.06, 1.06),
+    "decor_censer": ("decor_censer", 100, 30, 1.1, 1.06),
+    "decor_bones": ("decor_bones", 44, 30, 1.08, 1.06),
+}
+
+
+def process_column_strips(raw_path, outdir):
+    """Full-height processed column, then split into capital / shaft / base strips."""
+    full = process_frame(raw_path, 560, thresh=30, brighten=1.1, contrast=1.06)
+    if full is None:
+        print("  missing/bad raw: column")
+        return
+    full.save(os.path.join(outdir, "decor_column.png"))
+    w, h = full.size
+    full.crop((0, 0, w, int(h * 0.17))).save(os.path.join(outdir, "decor_column_cap.png"))
+    full.crop((0, int(h * 0.89), w, h)).save(os.path.join(outdir, "decor_column_base.png"))
+    # shaft band: centered 40%..58% — safely between capital and base
+    full.crop((int(w * 0.30), int(h * 0.40), int(w * 0.70), int(h * 0.58))).save(
+        os.path.join(outdir, "decor_column_shaft.png"))
+    print("  wrote decor_column + cap/shaft/base strips")
 
 FONTS = os.path.join(ROOT, "art", "fonts", "plexmono-regular.ttf")
 
@@ -333,6 +369,46 @@ def main():
                 qa_groups.append((prop, [(0, f)]))
         if qa_groups:
             build_qa_sheet(qa_groups, os.path.join(RAW, "qa_props.png"))
+
+    if not only or only in ("decor", "all"):
+        print("[decor]")
+        propdir = os.path.join(ROOT, "art", "props")
+        os.makedirs(propdir, exist_ok=True)
+        qa_groups = []
+        for prop, (raw_name, h, th, br, ct) in DECOR.items():
+            p = os.path.join(RAW, raw_name + ".png")
+            if not os.path.isfile(p):
+                print("  missing raw:", raw_name)
+                continue
+            f = process_frame(p, h, thresh=th, brighten=br, contrast=ct)
+            if f is not None:
+                f.save(os.path.join(propdir, prop + ".png"))
+                qa_groups.append((prop, [(0, f)]))
+        # column: strips
+        p = os.path.join(RAW, "decor_column.png")
+        if os.path.isfile(p):
+            process_column_strips(p, propdir)
+            full = Image.open(os.path.join(propdir, "decor_column.png"))
+            for nm, sl in (("decor_column_cap", (0, 0, full.width, int(full.height * 0.17))),
+                           ("decor_column_shaft", (int(full.width * 0.3), int(full.height * 0.4),
+                                                   int(full.width * 0.7), int(full.height * 0.58))),
+                           ("decor_column_base", (0, int(full.height * 0.89), full.width, full.height))):
+                qa_groups.append((nm, [(0, full.crop(sl))]))
+        # mural: full-rect wall texture (no cutout — plaster is part of the art).
+        # Brightened hard: it is a PAINTING and must read through the room grade.
+        p = os.path.join(RAW, "decor_mural.png")
+        if os.path.isfile(p):
+            img = Image.open(p).convert("RGB")
+            img = img.resize((440, int(440 * img.height / img.width)), Image.LANCZOS)
+            img = ImageEnhance.Brightness(img).enhance(1.38)
+            img = ImageEnhance.Color(img).enhance(0.9)
+            img = ImageEnhance.Contrast(img).enhance(1.1)
+            img = quantize_rgba(img)
+            img.save(os.path.join(propdir, "decor_mural.png"))
+            qa_groups.append(("decor_mural", [(0, img)]))
+            print("  wrote decor_mural (full-rect)")
+        if qa_groups:
+            build_qa_sheet(qa_groups, os.path.join(RAW, "qa_decor.png"))
 
     if not only or only in ("env", "all"):
         print("[environment textures]")

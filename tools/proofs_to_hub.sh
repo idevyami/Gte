@@ -15,6 +15,7 @@ names = [
     "01_player_gameplay", "02_hollow", "03_believers", "04_censor",
     "05_martyr_p1", "06_martyr_p2", "07_martyr_p3", "08_penitent",
     "09_city_of_ash", "10_chapel", "11_archive", "12_engine_sanctum",
+    "13_colonnade", "14_sanctuary", "15_machines",
 ]
 for n in names:
     p = os.path.join(src, n + ".png")

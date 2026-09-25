@@ -153,4 +153,22 @@ func _run() -> void:
         await _wait(0.6)
         await _snap("10_chapel")
 
+        # --- 13 · PAINTED COLUMNS (act4 colonnade, 520-tall pairs)
+        await _room("act4", Vector2(560, 940))
+        game.player.facing = -1
+        await _wait(0.6)
+        await _snap("13_colonnade")
+
+        # --- 14 · CHAPEL SANCTUARY (censer + mural + statue, painted)
+        await _room("act5", Vector2(1250, 840))
+        game.player.facing = -1
+        await _wait(0.9)
+        await _snap("14_sanctuary")
+
+        # --- 15 · ENGINE MACHINES (painted reliquary engines, live gauges)
+        await _room("act6", Vector2(560, 840))
+        game.player.facing = -1
+        await _wait(0.7)
+        await _snap("15_machines")
+
         get_tree().quit()
