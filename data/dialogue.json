@@ -1,0 +1,174 @@
+{
+	"sys_intro": {
+		"speaker": "SYSTEM",
+		"lines": [
+			{"text": "VESSEL ACTIVATION\u2026 COMPLETE."},
+			{"text": "DESIGNATION: ENTITY_000_818."},
+			{"text": "NO NAME. NO HISTORY. NO MEMORY. THESE WERE NOT ISSUED."},
+			{"text": "OBJECTIVE INSTALLED: RESTORE THE WORLD."},
+			{"text": "PROCEED TOWARD THE LIGHT. THE CITY IS WAITING, AS IT ALWAYS DOES."}
+		]
+	},
+	"terminal_install": {
+		"speaker": "TERMINAL_019",
+		"lines": [
+			{"text": "\u2588 SIGNAL FOUND. ONE INSTRUCTION REMAINS UNDELIVERED."},
+			{"text": "> INSTALLING OBSERVE\u2026"},
+			{"text": "> OBSERVE INSTALLED. [TAB] TO SEE."},
+			{"text": "> THE WORLD IS DATA. DATA CAN BE READ."},
+			{"text": "> SOME DATA CAN BE EDITED. THE WORLD WILL OBEY YOU."},
+			{"text": "> THE WORLD WILL ALSO NOTICE. IT ALWAYS NOTICES."}
+		]
+	},
+	"oren_intro": {
+		"speaker": "MEASURER OREN",
+		"lines": [
+			{"text": "Ah. A vessel, walking. Unescorted. That is\u2026 irregular, but the form is valid.", "cond": ""},
+			{"text": "You will want to keep to the procession street. Stay measured, stay counted."},
+			{"text": "\u2014Next. Yes, you. Definition at forty-seven percent. What do you still remember?"},
+			{"text": "\u201cVellum Street.\u201d Stamped: REMEMBERED. There. The ledger holds what the face no longer can.", "cond": ""},
+			{"text": "You are still here. Fine: the toll gate ahead is sealed, and it has opened for no one since the Third Enumeration."},
+			{"text": "I do not make the rules, vessel. I measure them. Move along.", "cond": ""}
+		]
+	},
+	"oren_aware": {
+		"speaker": "MEASURER OREN",
+		"lines": [
+			{"text": "You are reading me, aren't you. Vessel. I can feel the audit."},
+			{"text": "It is rude, what you are doing. It is also\u2026 the first interesting thing on this street in forty years."},
+			{"text": "Between us: when they sent me the street index, Vellum Street was not in it. I remember it anyway."},
+			{"text": "Do not quote me. I am very measurable, and you are becoming very much otherwise."}
+		]
+	},
+	"oren_farewell": {
+		"speaker": "MEASURER OREN",
+		"lines": [
+			{"text": "The queue is short today. The queue is short every day now."},
+			{"text": "Go restore the world, ENTITY_000_818. Mind what it costs."}
+		]
+	},
+	"penitent": {
+		"speaker": "THE PENITENT",
+		"lines": [
+			{"text": "I was never created. I will be the last thing uncreated."},
+			{"text": "They measured me and found nothing. Nothing is a purpose, if enough agree."},
+			{"text": "You restore. You subtract yourself to do it. Rejoice \u2014 both are allowed."},
+			{"text": "Do not look for me in the records. I am the margin they were written in."}
+		]
+	},
+	"martyr_intro": {
+		"speaker": "THE BOUND MARTYR",
+		"lines": [
+			{"text": "ANOTHER VESSEL. THEY STILL SEND THEM. HOW LONG HAS IT BEEN."},
+			{"text": "I AM ENTITY_000_001. THE FIRST. THE FAILED. THE REPURPOSED."},
+			{"text": "I WAS BOUND HERE SO MY SUFFERING COULD BE USEFUL. IT HAS BEEN. FOR CENTURIES."},
+			{"text": "FINISH ME, VESSEL. IT IS THE ONLY MERCY THE DESIGN ALLOWS \u2014 AND THE ONLY ONE I STILL BELIEVE IN."}
+		]
+	},
+	"martyr_p2": {
+		"speaker": "THE BOUND MARTYR",
+		"lines": [
+			{"text": "FAITH IS A MACHINE. MACHINES BURN."},
+			{"text": "THE CHANT SAYS I MUST BE REMEMBERED WHILE I BURN. VERY WELL."}
+		]
+	},
+	"martyr_p3": {
+		"speaker": "THE BOUND MARTYR",
+		"lines": [
+			{"text": "I DO NOT WANT TO SERVE."},
+			{"text": "I WANT TO BE REMEMBERED. THERE IS A DIFFERENCE. THE DESIGN CANNOT TELL."}
+		]
+	},
+	"martyr_death": {
+		"speaker": "THE BOUND MARTYR",
+		"lines": [
+			{"text": "THANK\u2026 YOU."},
+			{"text": "THE CHAINS WERE THE ONLY THING THAT EVER HELD ANYTHING TOGETHER. DID YOU KNOW THAT."},
+			{"text": "TELL THE WALLS MY NAME WAS NOT A NUMBER."},
+			{"text": "\u2014 AND VESSEL\u2026 WHEN THEY ASK WHAT YOU RESTORED\u2026 ASK THEM WHAT IT COST."}
+		]
+	},
+	"altar_join": {
+		"speaker": "THE CHAPEL",
+		"lines": [
+			{"text": "You take the unlit candle from the rail and light it from the saint's flame."},
+			{"text": "Nothing announces it. The ward simply stops considering you an outsider."},
+			{"text": "BELIEF RECORDED. THE DESIGN ACCEPTS ALL FORMS OF PAYMENT."}
+		]
+	},
+	"relic_taken": {
+		"speaker": "THE PALE SAINT",
+		"lines": [
+			{"text": "The relic is lighter than stone should be. It is warm."},
+			{"text": "It has been believed in for so long that it has weight in the other direction."},
+			{"text": "CARRYING. THE WARD WILL READ YOU AS A SUPPLICANT WHILE YOU BEAR IT."}
+		]
+	},
+	"heart_aligned": {
+		"speaker": "THE HEART",
+		"lines": [
+			{"text": "THE ROTORS SYNCHRONIZE. THE RHYTHM STUTTERS \u2014 THEN SETTLES INTO SOMETHING LIKE PEACE."},
+			{"text": "ALIGNMENT ACCEPTED. THE RELIQUARY OPENS."},
+			{"text": "somewhere below, something that was grown, not built, exhales."}
+		]
+	},
+	"archive_penitent_pre": {
+		"speaker": "SYSTEM",
+		"lines": [
+			{"text": "You are being watched. Not by the cameras. By the margins."},
+			{"text": "RECORD ADJUSTED: NOTHING ADJUSTED. THE LEDGER DISAGREES WITH ITSELF AND HAS FILED A COMPLAINT."}
+		]
+	},
+	"ending_sequence": {
+		"speaker": "SYSTEM",
+		"lines": [
+			{"text": "THE MARTYR IS A MONUMENT. THE MONUMENT IS STANDING. RESTORATION: 0.1%."},
+			{"text": "ENTITY_000_817 \u2014 FAILED. ENTITY_000_816 \u2014 FAILED. THE LIST GOES DOWN, NOT UP."},
+			{"text": "YOU ARE THE EIGHT HUNDRED AND EIGHTEENTH ATTEMPT."},
+			{"text": "THE WORLD YOU RESTORE MAY NOT INCLUDE YOU. IT HAS NEVER INCLUDED ANY OF YOU."},
+			{"text": "QUERY REMAINS OPEN. THE DESIGN REQUIRES AN ANSWER:"},
+			{"text": "IF YOU WERE CREATED FOR A PURPOSE \u2014 DO YOU HAVE THE RIGHT TO REJECT IT?"}
+		]
+	},
+	"obs_tut1": {
+		"speaker": "SYSTEM",
+		"lines": [
+			{"text": "OBSERVE ACTIVE. THE WORLD IS LEGIBLE. [W/S] SELECTS. [E] EDITS. [TAB] MOVES ON."},
+			{"text": "READ THE TERMINAL. READ THE PLAQUE. READ THE DOOR. THEY DO NOT AGREE."}
+		]
+	},
+	"obs_tut2": {
+		"speaker": "SYSTEM",
+		"lines": [
+			{"text": "THE DOOR'S RECORD DISAGREES WITH THE PLAQUE. ONE OF THEM IS WRONG."},
+			{"text": "SELECT THE PROPERTY. EDIT IT. THE WORLD WILL OBEY. THEN IT WILL BILL YOU."}
+		]
+	},
+	"null_tut": {
+		"speaker": "SYSTEM",
+		"lines": [
+			{"text": "ATTACK INEFFECTIVE. TARGET CLASSIFICATION: UNFILED. UNFILED THINGS CANNOT BE ENDED."},
+			{"text": "READ ITS STATE. EDIT ITS STATE. THEN END IT."}
+		]
+	},
+	"ward_status": {
+		"speaker": "SYSTEM",
+		"lines": [
+			{"text": "WARD INTEGRITY READS 71%. IT IS HELD UP BY NOTHING YOU CAN KILL \u2014 ONLY BY THINGS THAT CAN STOP BELIEVING."},
+			{"text": "THE CHANT IS THE CREATURE. THE RELIC IS THE DOOR. CHOOSE."}
+		]
+	},
+	"censor_warning": {
+		"speaker": "SYSTEM",
+		"lines": [
+			{"text": "CORRECTION DISPATCHED. DO NOT BE WHERE IT ARRIVES."},
+			{"text": "IT CANNOT BE FOUGHT. IT CAN ONLY BE OUTLASTED."}
+		]
+	},
+	"hidden_seen": {
+		"speaker": "SYSTEM",
+		"lines": [
+			{"text": "AN UNLISTED STRUCTURE HAS BECOME VISIBLE. IT WAS ALWAYS THERE. THE RECORD SIMPLY DECLINED TO MENTION IT."}
+		]
+	}
+}
