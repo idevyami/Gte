@@ -296,20 +296,30 @@ func _statue(pos: Vector2, s: float) -> void:
         draw_rect(Rect2(pos.x - 20, pos.y - 66, 40, 7), stone.darkened(0.08))
 
 func _chain(pos: Vector2, h: float) -> void:
-        var links := maxi(3, int(h / 18.0))
+        var links := maxi(3, int(h / 22.0))
         for i in links:
-                var y := pos.y + i * 18.0
-                var sway := sin(i * 0.7 + pos.x * 0.01) * 2.0
-                draw_arc(Vector2(pos.x + sway, y), 4.0, 0, TAU, 8, E0.ASH, 2.0)
-        draw_circle(Vector2(pos.x, pos.y + links * 18.0 + 6.0), 6.0, E0.DIRTY_STONE)
+                var y := pos.y + i * 22.0
+                var sway := sin(i * 0.7 + pos.x * 0.01) * 2.4
+                draw_arc(Vector2(pos.x + sway, y), 5.5, 0, TAU, 8, E0.ASH, 3.0)
+        # heavy chains double up
+        if h > 200.0:
+                for i in links:
+                        var y := pos.y + i * 22.0 + 11.0
+                        var sway := sin(i * 0.7 + pos.x * 0.01 + 1.5) * 2.4
+                        draw_arc(Vector2(pos.x + 12.0 + sway, y), 5.5, 0, TAU, 8, Color(E0.ASH.r, E0.ASH.g, E0.ASH.b, 0.85), 3.0)
+        draw_circle(Vector2(pos.x, pos.y + links * 22.0 + 8.0), 7.5, E0.DIRTY_STONE)
+        draw_circle(Vector2(pos.x, pos.y + links * 22.0 + 8.0), 3.0, E0.VOID)
 
 func _cage(pos: Vector2, h: float) -> void:
         _chain(pos, h)
-        var top := pos.y + h + 10.0
-        draw_rect(Rect2(pos.x - 14, top, 28, 3), E0.ASH)
-        for i in 4:
-                draw_line(Vector2(pos.x - 14 + i * 9.3, top), Vector2(pos.x - 14 + i * 9.3, top + 26), E0.ASH, 1.5)
-        draw_rect(Rect2(pos.x - 14, top + 26, 28, 3), E0.ASH)
+        var top := pos.y + h + 12.0
+        draw_rect(Rect2(pos.x - 22, top, 44, 4), E0.ASH)
+        for i in 5:
+                draw_line(Vector2(pos.x - 22 + i * 11.0, top), Vector2(pos.x - 22 + i * 11.0 + sin(i * 1.3) * 2.0, top + 38), E0.ASH, 2.0)
+        draw_rect(Rect2(pos.x - 22, top + 38, 44, 4), E0.ASH)
+        # something barely inside
+        draw_circle(Vector2(pos.x, top + 24.0), 5.0, Color(E0.DIRTY_STONE.r, E0.DIRTY_STONE.g, E0.DIRTY_STONE.b, 0.8))
+        draw_line(Vector2(pos.x - 5.0, top + 30.0), Vector2(pos.x + 5.0, top + 36.0), Color(E0.PARCH.r, E0.PARCH.g, E0.PARCH.b, 0.6), 1.5)
 
 func _censer(pos: Vector2, h: float) -> void:
         var swing := sin(Time.get_ticks_msec() * 0.0012 + pos.x * 0.02) * 0.18
@@ -347,15 +357,20 @@ func _cable(pos: Vector2, w: float, h: float, s: float) -> void:
                 draw_line(pts[i], pts[i + 1], E0.ASH, 2.0)
 
 func _bell(pos: Vector2, s: float) -> void:
-        draw_rect(Rect2(pos.x - 26, pos.y, 52, 6), E0.DIRTY_STONE)
-        draw_line(Vector2(pos.x, pos.y), Vector2(pos.x, pos.y + 16), E0.ASH, 2.0)
-        var swing := sin(Time.get_ticks_msec() * 0.001 + s * 6.0) * 0.06
+        draw_rect(Rect2(pos.x - 36, pos.y, 72, 8), E0.DIRTY_STONE)
+        draw_rect(Rect2(pos.x - 36, pos.y + 8, 72, 2), E0.VOID)
+        draw_line(Vector2(pos.x, pos.y + 8), Vector2(pos.x, pos.y + 30), E0.ASH, 2.5)
+        var swing := sin(Time.get_ticks_msec() * 0.001 + s * 6.0) * 0.05
         var dir := Vector2(sin(swing), cos(swing))
-        var top := Vector2(pos.x, pos.y + 16)
+        var top := Vector2(pos.x, pos.y + 30)
         draw_colored_polygon(PackedVector2Array([
-                top + dir * 4.0 + Vector2(-14, 0), top + dir * 4.0 + Vector2(14, 0),
-                top + dir * 26.0 + Vector2(9, 0), top + dir * 26.0 + Vector2(-9, 0),
-        ]), E0.ASH.lightened(0.05))
+                top + dir * 6.0 + Vector2(-22, 0), top + dir * 6.0 + Vector2(22, 0),
+                top + dir * 20.0 + Vector2(26, 6), top + dir * 20.0 + Vector2(-26, 6),
+                top + dir * 52.0 + Vector2(14, 0), top + dir * 52.0 + Vector2(-14, 0),
+        ]), E0.ASH.lightened(0.06))
+        # rim shadow + clapper
+        draw_line(top + dir * 52.0 + Vector2(-14, 0), top + dir * 52.0 + Vector2(14, 0), E0.VOID, 2.0)
+        draw_circle(top + dir * 58.0, 4.5, E0.DIRTY_STONE)
 
 func _mural(pos: Vector2, w: float, h: float) -> void:
         draw_rect(Rect2(pos.x, pos.y - h, w, h), E0.VIOLET.darkened(0.45))

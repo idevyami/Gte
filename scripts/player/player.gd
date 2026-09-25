@@ -35,6 +35,11 @@ var _roll_press := 0.0
 var rig: PlayerRig
 var sprite: PlayerSprite
 var interact_pose_t := 0.0
+var land_squash := 0.0        # 0..1 landing squash, decays; the sprite reads it
+var _was_on_floor := true
+var _fall_peak := 0.0
+var _step_side := 0
+var _roll_puff_t := 0.0
 var _shape: CollisionShape2D
 var _stand_extents := Vector2(11, 24)
 var _roll_extents := Vector2(11, 9)
@@ -70,12 +75,14 @@ func _ready() -> void:
 func _physics_process(delta: float) -> void:
         if not controllable:
                 move_and_slide()
+                land_squash = maxf(0.0, land_squash - delta * 5.0)
                 rig.sync_state(delta)
                 if sprite:
                         sprite.sync_state(delta)
                 return
         _tick_timers(delta)
         _apply_gravity(delta)
+        _handle_landing()
         _handle_movement(delta)
         _handle_jump()
         _handle_roll(delta)
@@ -84,6 +91,28 @@ func _physics_process(delta: float) -> void:
         rig.sync_state(delta)
         if sprite:
                 sprite.sync_state(delta)
+
+func _handle_landing() -> void:
+        ## dust on touchdown + a squash the sprite renders; heavier falls
+        ## land louder.
+        if not is_on_floor():
+                _was_on_floor = false
+                _fall_peak = maxf(_fall_peak, absf(velocity.y))
+                return
+        if _was_on_floor:
+                return
+        _was_on_floor = true
+        var impact := _fall_peak
+        _fall_peak = 0.0
+        if impact > 240.0:
+                var strength := clampf((impact - 240.0) / 640.0, 0.0, 1.0)
+                land_squash = 0.55 + 0.45 * strength
+                FX.burst(global_position + Vector2(0, -2), "dust", 0.0, 8 + int(8 * strength))
+                if strength > 0.55:
+                        FX.shake(2.0 + 2.0 * strength, 0.14)
+                        AudioManager.play_sfx("sfx_land", -6.0)
+                else:
+                        AudioManager.play_sfx("sfx_land", -12.0)
 
 func play_interact() -> void:
         ## Called by Game when the interact key lands on something.
@@ -104,6 +133,11 @@ func _tick_timers(delta: float) -> void:
                 if _step_accum > 34.0:
                         _step_accum = 0.0
                         AudioManager.play_sfx("sfx_step", -10.0)
+                        # every other footfall kicks a small puff
+                        _step_side = 1 - _step_side
+                        if _step_side == 1:
+                                FX.burst(global_position + Vector2(-facing * 8.0, -2), "dust", PI if facing > 0 else 0.0, 4)
+        land_squash = maxf(0.0, land_squash - delta * 5.0)
 
 func _apply_gravity(delta: float) -> void:
         if not is_on_floor():
@@ -149,6 +183,11 @@ func _handle_roll(delta: float) -> void:
                 if _roll_t <= 0.0:
                         _rolling = false
                         _set_shape(_stand_extents)
+                else:
+                        _roll_puff_t -= delta
+                        if _roll_puff_t <= 0.0:
+                                _roll_puff_t = 0.09
+                                FX.burst(global_position + Vector2(-_roll_dir * 12.0, -2), "dust", PI if _roll_dir > 0 else 0.0, 3)
                 return
         if input_locked:
                 return
@@ -160,6 +199,8 @@ func _handle_roll(delta: float) -> void:
                 _roll_dir = facing if absf(velocity.x) < 20.0 else (1 if velocity.x > 0 else -1)
                 _iframes = maxf(_iframes, E0.P_ROLL_TIME + 0.06)
                 _set_shape(_roll_extents)
+                _roll_puff_t = 0.0
+                FX.burst(global_position + Vector2(-_roll_dir * 14.0, -2), "dust", PI if _roll_dir > 0 else 0.0, 7)
                 AudioManager.play_sfx("sfx_roll", -8.0)
 
 func _set_shape(extents: Vector2) -> void:
@@ -242,6 +283,7 @@ func _do_hit(chain_idx: int) -> void:
         if any:
                 FX.hitstop(0.05 if chain_idx < 2 else 0.09)
                 FX.shake(2.0 if chain_idx < 2 else 4.0, 0.12)
+                FX.burst(global_position + Vector2(facing * 36.0, -12), "spark" if chain_idx == 2 else "ash", 0.0, 7)
                 AudioManager.play_sfx("sfx_hit_light" if chain_idx < 2 else "sfx_hit_heavy", -4.0)
 
 # ------------------------------------------------------------------ damage
@@ -253,6 +295,7 @@ func take_damage(dmg: int, from_pos: Vector2) -> void:
         _hurt_flash = 0.3
         AudioManager.play_sfx("sfx_hurt", -3.0)
         FX.shake(5.0, 0.25)
+        FX.burst(global_position + Vector2(0, -26), "ash", 0.0, 12)
         var dir := -1 if from_pos.x > global_position.x else 1
         velocity = Vector2(dir * 240.0, -260.0)
         EventBus.player_health_changed.emit(hp, max_hp)

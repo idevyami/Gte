@@ -80,6 +80,8 @@ func _act(delta: float) -> void:
                                 state = RECOVER
                                 state_t = 0.0
                                 FX.shake(5.0, 0.3)
+                                FX.burst(global_position + Vector2(-dash_dir * 30.0, -8), "spark", 0.0, 12)
+                                FX.burst(global_position + Vector2(-dash_dir * 30.0, -6), "dust", 0.0, 8)
                                 AudioManager.play_sfx("sfx_boss_impact", -4.0)
                 LEAP_WINDUP:
                         velocity.x = 0.0
@@ -96,6 +98,9 @@ func _act(delta: float) -> void:
                                 state = RECOVER
                                 state_t = 0.0
                                 FX.shake(10.0, 0.5)
+                                FX.burst(global_position + Vector2(0, -4), "dust", 0.0, 16)
+                                FX.burst(global_position + Vector2(0, -20), "ash", 0.0, 14)
+                                FX.burst(global_position + Vector2(0, -10), "ember", 0.0, 5)
                                 AudioManager.play_sfx("sfx_boss_impact", 0.0)
                 RECOVER:
                         velocity.x = move_toward(velocity.x, 0.0, 400.0 * delta)
@@ -221,8 +226,11 @@ func _enter_phase2() -> void:
         AudioManager.play_sfx("sfx_boss_roar", 0.0)
         FX.shake(8.0, 0.6)
         FX.tear_pulse(0.9)
+        FX.burst(global_position + Vector2(0, -70), "ash", 0.0, 22)
+        FX.burst(global_position + Vector2(0, -70), "ember", 0.0, 9)
         var game := get_tree().get_first_node_in_group("game")
         if game:
+                game.cinema.phase_card(2)
                 game.start_dialogue("martyr_p2")
 
 func _enter_phase3() -> void:
@@ -236,8 +244,12 @@ func _enter_phase3() -> void:
         AudioManager.play_sfx("sfx_boss_chain", 2.0)
         AudioManager.play_sfx("sfx_boss_roar", 2.0)
         FX.shake(12.0, 0.8)
+        FX.tear_pulse(1.2)
+        FX.burst(global_position + Vector2(0, -70), "ash", 0.0, 26)
+        FX.burst(global_position + Vector2(0, -70), "spark", 0.0, 16)
         var game := get_tree().get_first_node_in_group("game")
         if game:
+                game.cinema.phase_card(3)
                 game.start_dialogue("martyr_p3")
 
 func _fervor_update(delta: float) -> void:

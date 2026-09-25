@@ -14,6 +14,7 @@ var lights: Lights
 
 var ui_layer: CanvasLayer
 var hud: HUD
+var cinema: Cinema
 var dialogue_box: DialogueBox
 var system_log: SystemLog
 var observe_panel: ObservePanel
@@ -42,6 +43,7 @@ var ward: WardBarrier = null
 var rotors: Array = []
 var penitent: NPC = null
 var monument: EntityNode = null
+var ambient: AmbientFX = null
 var hidden_platform: CollisionShape2D = null
 var hidden_platform_visual: Node2D = null
 var hidden_revealed := false
@@ -58,9 +60,11 @@ func _ready() -> void:
         add_to_group("game")
         _load_dialogues()
         _build_ui()
-        world = Node2D.new()
+        var world_root := Node2D.new()
+        world = world_root
         world.name = "World"
         add_child(world)
+        FX.set_burst_world(world)
         EventBus.player_died.connect(_on_player_died)
         EventBus.property_modified.connect(_on_property_modified)
         EventBus.dialogue_finished.connect(_on_dialogue_finished)
@@ -99,6 +103,8 @@ func _build_ui() -> void:
         end_screen = EndScreen.new()
         end_screen.return_to_title.connect(_quit_to_title)
         ui_layer.add_child(end_screen)
+        cinema = Cinema.new()
+        ui_layer.add_child(cinema)
 
 # ------------------------------------------------------------------ lifecycle
 func set_active(v: bool) -> void:
@@ -200,6 +206,9 @@ func load_room(id: String) -> void:
         lights = Lights.new()
         lights.setup(room_data.get("lights", []))
         world.add_child(lights)
+        ambient = AmbientFX.new()
+        ambient.setup(id, room_size, camera)
+        world.add_child(ambient)
 
         # --- entities
         for d in room_data.get("doors", []):
@@ -240,8 +249,16 @@ func load_room(id: String) -> void:
         AudioManager.play_music(String(room_data.get("music", "")))
         var amb: Dictionary = room_data.get("ambient", {})
         AudioManager.play_ambient(String(amb.get("id", "")), float(amb.get("vol", 0.4)))
-        for msg in room_data.get("system_on_enter", []):
-                system_message(String(msg))
+        # entry presentation: cinematic title card first; system lines and the
+        # objective wait their turn so the card plays clean
+        cinema.room_card(room_title, int(room_data.get("act", 0)))
+        var entered_room := id
+        get_tree().create_timer(3.3, true, false, true).timeout.connect(func() -> void:
+                if room_id != entered_room or not active:
+                        return
+                hud.flash_objective()
+                for msg in room_data.get("system_on_enter", []):
+                        system_message(String(msg)))
         EventBus.room_entered.emit(id)
         hud.set_boss(boss)
 
@@ -695,6 +712,7 @@ func _hunted(delta: float, allow := -1.0) -> void:
                 GameState.censor_active = censor
                 system_message("THE CENSOR HAS ENTERED THE RECORD.", "danger")
                 AudioManager.play_sfx("sfx_censor", 4.0)
+                FX.burst(censor.position + Vector2(0, -60), "glitch", 0.0, 22)
         if plan["correction"]:
                 var c := Correction.new()
                 var ang := randf() * TAU
@@ -723,6 +741,10 @@ func _boss_intro() -> void:
         if boss == null or boss.intro_done:
                 return
         player.input_locked = true
+        # the record names what it is about to lose — card plays over the
+        # martyr's introduction dialogue (non-blocking)
+        cinema.boss_card()
+        FX.burst(boss.global_position + Vector2(0, -80), "ash", 0.0, 20)
         start_dialogue("martyr_intro")
 
 func _on_boss_defeated(_entity_id: String) -> void:
@@ -732,6 +754,10 @@ func on_boss_defeated() -> void:
         hud.set_boss(null)
         AudioManager.set_combat_layer(false)
         AudioManager.play_music("aftermath")
+        cinema.record_card("The Record Is Amended", "ENTITY_000_001 \u00b7 FAILED \u00b7 REPURPOSED \u00b7 THE INSCRIPTION IS HIS")
+        if boss:
+                FX.burst(boss.global_position + Vector2(0, -60), "gold", 0.0, 22)
+                FX.burst(boss.global_position + Vector2(0, -60), "ash", 0.0, 26)
         # the monument persists — it is the story of this room now
         monument = EntityNode.new()
         monument.setup("MONUMENT", "MONUMENT", "monument")
@@ -746,6 +772,7 @@ func _penitent_appear() -> void:
         if penitent == null or not is_instance_valid(penitent):
                 return
         penitent.visible_prop(true)
+        FX.burst(penitent.global_position + Vector2(0, -50), "glitch", 0.0, 14)
         AudioManager.play_sfx("sfx_reveal", -8.0)
         start_dialogue("penitent")
 
@@ -769,7 +796,10 @@ func _finish_game() -> void:
 
 # ------------------------------------------------------------------ anchors / save / death
 func save_at_anchor(anchor: Anchor) -> bool:
-        return GameState.save_game(room_id, player.global_position, player.hp, anchor.instance_key)
+        var ok := GameState.save_game(room_id, player.global_position, player.hp, anchor.instance_key)
+        if ok:
+                FX.burst(anchor.global_position + Vector2(0, -46), "gold", 0.0, 16)
+        return ok
 
 func _restart_from_anchor() -> void:
         _restore_after_death()
@@ -784,6 +814,8 @@ func _on_player_died() -> void:
 func _handle_death() -> void:
         state = "dead"
         player.input_locked = true
+        cinema.death_card()
+        FX.burst(player.global_position + Vector2(0, -30), "ash", 0.0, 24)
         await get_tree().create_timer(2.4, true, false, true).timeout
         FX.fade_out(0.5)
         await get_tree().create_timer(0.6, true, false, true).timeout

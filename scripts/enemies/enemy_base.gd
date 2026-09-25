@@ -147,6 +147,7 @@ func take_hit(dmg: int, from_pos: Vector2, _heavy: bool) -> void:
         hurt_flash = 0.18
         var dir := -1 if from_pos.x > global_position.x else 1
         velocity = Vector2(dir * 180.0, -120.0)
+        FX.burst(global_position + Vector2(0, -26), "glitch" if data.type == "OUTSIDER" else "ash", 0.0, 9)
         _on_hurt()
         if hp <= 0:
                 _die()
@@ -162,7 +163,11 @@ func _die() -> void:
         death_t = 0.0
         GameState.stats["dissipated"] += 1
         velocity = Vector2.ZERO
-        AudioManager.play_sfx("sfx_null_warp" if data.type == "OUTSIDER" else "sfx_death", -8.0)
+        var outsider := data.type == "OUTSIDER"
+        FX.burst(global_position + Vector2(0, -26), "glitch" if outsider else "ash", 0.0, 18)
+        if not outsider:
+                FX.burst(global_position + Vector2(0, -30), "dust", 0.0, 6)
+        AudioManager.play_sfx("sfx_null_warp" if outsider else "sfx_death", -8.0)
 
 func is_dead() -> bool:
         return dead

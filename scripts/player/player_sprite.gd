@@ -16,14 +16,23 @@ class ContactShadow:
         var _pts: PackedVector2Array = []
         func _init() -> void:
                 z_index = -2
-                for i in 12:
-                        var a := TAU * i / 12.0
-                        _pts.append(Vector2(0, 2) + Vector2(cos(a) * radius, sin(a) * radius * 0.26))
+                _rebuild(radius)
+        func _rebuild(r: float) -> void:
+                _pts = PackedVector2Array()
+                for i in 14:
+                        var a := TAU * i / 14.0
+                        _pts.append(Vector2(0, 2) + Vector2(cos(a) * r, sin(a) * r * 0.3))
         func _draw() -> void:
                 var owner_alpha := 1.0
                 if target:
                         owner_alpha = target.modulate.a
-                draw_colored_polygon(_pts, Color(0.03, 0.03, 0.035, 0.38 * owner_alpha))
+                # core + halo: reads as real contact, not a smudge
+                draw_colored_polygon(_pts, Color(0.02, 0.02, 0.025, 0.5 * owner_alpha))
+                var halo := PackedVector2Array()
+                for i in 14:
+                        var a := TAU * i / 14.0
+                        halo.append(Vector2(0, 2) + Vector2(cos(a) * radius * 1.45, sin(a) * radius * 0.42))
+                draw_colored_polygon(halo, Color(0.02, 0.02, 0.025, 0.22 * owner_alpha))
 
 func attach(p_player: Player) -> void:
         player = p_player
@@ -39,12 +48,18 @@ func sync_state(delta: float) -> void:
         visible = sprites_on
         if _shadow:
                 _shadow.visible = sprites_on
-                var r := 15.0 if player.is_on_floor() else 11.0
+                var r := 16.0 if player.is_on_floor() else 12.0
                 _shadow.radius = lerpf(_shadow.radius, r, delta * 10.0)
+                _shadow._rebuild(_shadow.radius)
                 _shadow.queue_redraw()
         if player.rig:
                 player.rig.visible = not sprites_on
         flip_h = player.facing < 0
+        # landing squash: scale.x out, scale.y in, spring back
+        var sq: float = clampf(player.land_squash, 0.0, 1.0)
+        var sk := 1.0 + 0.16 * sq
+        var sh := 1.0 - 0.22 * sq
+        scale = Vector2(sk, sh)
 
         # damage / iframe shimmer (same rules the rig used)
         var m := Color(1.0, 1.0, 1.0, 1.0)

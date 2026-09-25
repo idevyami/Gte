@@ -11,9 +11,12 @@ func _ready() -> void:
         _run.call_deferred()
 
 func _snap(name: String) -> void:
-        # gameplay shot: no accumulated system chatter — the world stays quiet
+        # gameplay shot: no accumulated system chatter — the world stays quiet.
+        # clear + FORCE a redraw (the log skips redraws when idle) + settle frames
         if game and game.system_log:
                 game.system_log.entries.clear()
+                game.system_log.queue_redraw()
+        await get_tree().process_frame
         await get_tree().process_frame
         var img := get_viewport().get_texture().get_image()
         img.save_png("res://screenshots/" + name + ".png")
@@ -182,5 +185,34 @@ func _run() -> void:
         game.player.facing = 1
         await _wait(0.9)
         await _snap("17_null_children")
+
+        # --- 18 · ROOM ENTRY CARD (cinematic title card on chapel entry)
+        await _room("act5", Vector2(900, 840))
+        # re-fire the card by faking a fresh entry
+        game.hud._obj_t = 0.0
+        game.cinema.room_card(game.room_title, int(game.room_data.get("act", 0)))
+        await _wait(1.1)
+        await _snap("18_room_card")
+
+        # --- 19 · BOSS INTRO (letterbox + title card over the arena)
+        await _room("act8", Vector2(620, 814))
+        game.player.input_locked = true
+        game.cinema.boss_card()
+        FX.burst(game.boss.global_position + Vector2(0, -80), "ash", 0.0, 20)
+        await _wait(1.15)
+        await _snap("19_boss_intro")
+        game.player.input_locked = false
+
+        # --- 20 · LIVING ATMOSPHERE (chapel wide: ash + motes + floor mist + dressing)
+        await _room("act5", Vector2(430, 840))
+        game.player.facing = 1
+        game.player.input_locked = false
+        # let the entry card, deferred system lines and objective all finish
+        await _wait(8.6)
+        Input.action_press("move_right")
+        await _wait(1.4)
+        Input.action_release("move_right")
+        await _wait(0.4)
+        await _snap("20_atmosphere")
 
         get_tree().quit()
