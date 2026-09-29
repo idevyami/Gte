@@ -236,4 +236,28 @@ func _run() -> void:
         opts.close()
         game.player.input_locked = false
 
+        # --- 23 · THE RECORD (pause codex — every entity OBSERVE has read)
+        GameState.observe_installed = true
+        var pm: PauseMenu = game.pause_menu
+        for spot in [Vector2(500, 814), Vector2(960, 814), Vector2(1650, 814), Vector2(2300, 814)]:
+                game.player.global_position = spot
+                game.player.velocity = Vector2.ZERO
+                await _wait(0.25)
+                game.observe_enter()
+                await _wait(0.4)
+                game.observe_cycle()
+                await _wait(0.3)
+                game.observe_exit()
+                await _wait(0.2)
+        game.player.global_position = Vector2(430, 814)
+        game.player.facing = 1
+        game.player.velocity = Vector2.ZERO
+        await _wait(0.5)
+        pm.open()
+        pm.screen = 1
+        pm.tab = PauseMenu.TAB_RECORDS
+        await _wait(0.6)
+        await _snap("23_records")
+        pm.close()
+
         get_tree().quit()

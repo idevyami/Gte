@@ -88,6 +88,16 @@ func shake(amount: float, duration := 0.25) -> void:
         _shake_dur = maxf(_shake_dur, duration)
         _shake_time = 0.0
 
+func rumble(strength: float, duration := 0.18) -> void:
+        ## Gamepad rumble, scaled by the options setting (0 kills it).
+        ## Safe everywhere: no connected pads (headless included) — no-op.
+        var scale: float = clampf(float(GameState.settings.get("vibration", 1.0)), 0.0, 1.0)
+        var s := clampf(strength, 0.0, 1.0) * scale
+        if s <= 0.01:
+                return
+        for pad in Input.get_connected_joypads():
+                Input.start_joy_vibration(pad, s * 0.55, s, duration)
+
 func get_shake_offset() -> Vector2:
         return _shake_offset
 

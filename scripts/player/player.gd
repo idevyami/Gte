@@ -108,6 +108,7 @@ func _handle_landing() -> void:
                 var strength := clampf((impact - 240.0) / 640.0, 0.0, 1.0)
                 land_squash = 0.55 + 0.45 * strength
                 FX.burst(global_position + Vector2(0, -2), "dust", 0.0, 8 + int(8 * strength))
+                FX.rumble(0.22 + 0.5 * strength, 0.1 + 0.12 * strength)
                 if strength > 0.55:
                         FX.shake(2.0 + 2.0 * strength, 0.14)
                         AudioManager.play_sfx("sfx_land", -6.0)
@@ -201,6 +202,7 @@ func _handle_roll(delta: float) -> void:
                 _set_shape(_roll_extents)
                 _roll_puff_t = 0.0
                 FX.burst(global_position + Vector2(-_roll_dir * 14.0, -2), "dust", PI if _roll_dir > 0 else 0.0, 7)
+                FX.rumble(0.16, 0.09)
                 AudioManager.play_sfx("sfx_roll", -8.0)
 
 func _set_shape(extents: Vector2) -> void:
@@ -283,6 +285,7 @@ func _do_hit(chain_idx: int) -> void:
         if any:
                 FX.hitstop(0.05 if chain_idx < 2 else 0.09)
                 FX.shake(2.0 if chain_idx < 2 else 4.0, 0.12)
+                FX.rumble(0.32 if chain_idx < 2 else 0.58, 0.11)
                 FX.burst(global_position + Vector2(facing * 36.0, -12), "spark" if chain_idx == 2 else "ash", 0.0, 7)
                 AudioManager.play_sfx("sfx_hit_light" if chain_idx < 2 else "sfx_hit_heavy", -4.0)
 
@@ -295,6 +298,7 @@ func take_damage(dmg: int, from_pos: Vector2) -> void:
         _hurt_flash = 0.3
         AudioManager.play_sfx("sfx_hurt", -3.0)
         FX.shake(5.0, 0.25)
+        FX.rumble(0.68, 0.24)
         FX.burst(global_position + Vector2(0, -26), "ash", 0.0, 12)
         var dir := -1 if from_pos.x > global_position.x else 1
         velocity = Vector2(dir * 240.0, -260.0)
@@ -311,6 +315,7 @@ func die() -> void:
         AudioManager.play_death_sting()
         rig.play_death()
         FX.shake(6.0, 0.5)
+        FX.rumble(1.0, 0.5)
 
 func heal(amount: int) -> void:
         hp = mini(max_hp, hp + amount)

@@ -129,6 +129,9 @@ func _draw() -> void:
                 var ctl := "A/D MOVE · SPACE JUMP · SHIFT ROLL · J ATTACK · TAB OBSERVE · E MODIFY · F INTERACT · ESC PAUSE"
                 var cw := E0.mono.get_string_size(ctl, HORIZONTAL_ALIGNMENT_LEFT, -1, 10).x
                 draw_string(E0.mono, Vector2((vp.x - cw) * 0.5, vp.y - 46.0), ctl, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Color(E0.DIM.r, E0.DIM.g, E0.DIM.b, 0.7))
+                var pad := "GAMEPAD · STICK OR D-PAD MOVE · A JUMP/INTERACT · X ATTACK · B ROLL · Y OBSERVE · RB MODIFY · START PAUSE"
+                var pw := E0.mono.get_string_size(pad, HORIZONTAL_ALIGNMENT_LEFT, -1, 10).x
+                draw_string(E0.mono, Vector2((vp.x - pw) * 0.5, vp.y - 62.0), pad, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Color(E0.DIM.r, E0.DIM.g, E0.DIM.b, 0.55))
 
 func hide_screen() -> void:
         visible = false

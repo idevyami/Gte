@@ -16,6 +16,8 @@ var run_started_at: int = 0
 var debug_no_sprites: bool = false
 ## UI coordination: the global options overlay owns all input while open
 var options_open := false
+## OBSERVE codex — def-level records of everything the vessel has read
+var observed: Dictionary = {}
 
 # Flags worth naming (anything else is free-form):
 const F_RELIQ_CARRIED := "relic_carried"
@@ -41,6 +43,7 @@ var stats := {
         "dissipated": 0,         # enemies destroyed
         "anchors": 0,            # anchor communions
         "fragments": 0,
+        "observed": 0,           # unique entities read through OBSERVE
 }
 
 # --- HUNTED spawn pacing ------------------------------------------------------
@@ -58,6 +61,7 @@ var settings := {
         "ambient": 1.0,
         "sfx": 1.0,
         "shake": 1.0,          # screen-shake scale, 0..1.5
+        "vibration": 1.0,      # gamepad rumble scale, 0..1
         "blips": true,         # dialogue typewriter ticks
         "art_mode": "painted", # painted | procedural
 }
@@ -109,9 +113,10 @@ func _reset_run() -> void:
         current_room = ""
         flags = {}
         fragments = []
+        observed = {}
         one_shots = {}
         property_overrides = {}
-        stats = {"edits": 0, "spent": 0, "deaths": 0, "dissipated": 0, "anchors": 0, "fragments": 0}
+        stats = {"edits": 0, "spent": 0, "deaths": 0, "dissipated": 0, "anchors": 0, "fragments": 0, "observed": 0}
         run_started_at = Time.get_ticks_msec()
         correction_timer = 0.0
         censor_timer = 0.0
@@ -134,15 +139,26 @@ func _setup_input_map() -> void:
         _add_key("interact", [KEY_F, KEY_ENTER])
         _add_key("pause", [KEY_ESCAPE])
         _add_mouse("attack", MOUSE_BUTTON_LEFT)
-        # Gamepad: A/confirm = jump/interact, X = attack, B = roll, Y = observe.
+        # Gamepad: A/confirm = jump/interact, X = attack, B = roll, Y = observe,
+        # RB = modify, START = pause. D-pad mirrors the left stick; stick Y
+        # drives menu / OBSERVE-property cycling.
         _pad("jump", JOY_BUTTON_A)
         _pad("interact", JOY_BUTTON_A)
         _pad("attack", JOY_BUTTON_X)
         _pad("roll", JOY_BUTTON_B)
         _pad("observe", JOY_BUTTON_Y)
+        _pad("modify", JOY_BUTTON_RIGHT_SHOULDER)
         _pad("pause", JOY_BUTTON_START)
-        _pad_axis("move_left", JOY_AXIS_LEFT_X, -1.0)
-        _pad_axis("move_right", JOY_AXIS_LEFT_X, 1.0)
+        _pad("move_left", JOY_BUTTON_DPAD_LEFT)
+        _pad("move_right", JOY_BUTTON_DPAD_RIGHT)
+        _pad("move_up", JOY_BUTTON_DPAD_UP)
+        _pad("move_down", JOY_BUTTON_DPAD_DOWN)
+        # axis thresholds at 0.55 — full-deflection (±1.0) events never fire on
+        # worn sticks; 0.55 is the responsive middle of the deadzone law
+        _pad_axis("move_left", JOY_AXIS_LEFT_X, -0.55)
+        _pad_axis("move_right", JOY_AXIS_LEFT_X, 0.55)
+        _pad_axis("move_up", JOY_AXIS_LEFT_Y, -0.55)
+        _pad_axis("move_down", JOY_AXIS_LEFT_Y, 0.55)
 
 func _add_key(action: String, keys: Array) -> void:
         if not InputMap.has_action(action):
@@ -244,6 +260,43 @@ func _on_fragment_found(fragment_id: String) -> void:
 func has_fragment(fragment_id: String) -> bool:
         return fragments.has(fragment_id)
 
+# ------------------------------------------------------------------ observed codex
+func mark_observed(node) -> bool:
+        ## Record a live OBSERVE target into the codex. Dedupe by record key:
+        ## named instances are individual records; unnamed types (e.g. every
+        ## Hollow) collapse to one row. Returns true on first read only.
+        if node == null or not is_instance_valid(node):
+                return false
+        return mark_observed_data(node.data)
+
+func mark_observed_data(data: EntityData) -> bool:
+        if data == null or data.key.is_empty():
+                return false
+        if observed.has(data.key):
+                return false
+        observed[data.key] = {
+                "display": data.display,
+                "id": data.id_number,
+                "type": data.type,
+                "memory": data.memory,
+        }
+        stats["observed"] = observed.size()
+        return true
+
+func observed_rows() -> Array:
+        ## Ordered codex rows (insertion order is the order the city was read).
+        var rows: Array = []
+        for key in observed.keys():
+                var rec: Dictionary = observed[key]
+                rows.append({
+                        "key": key,
+                        "display": String(rec.get("display", key)),
+                        "id": String(rec.get("id", "")),
+                        "type": String(rec.get("type", "UNKNOWN")),
+                        "memory": String(rec.get("memory", "")),
+                })
+        return rows
+
 # ------------------------------------------------------------------ save / load
 func has_save() -> bool:
         return FileAccess.file_exists(SAVE_PATH)
@@ -259,6 +312,7 @@ func save_game(room_id: String, player_pos: Vector2, hp: int, anchor_id: String)
                 "boss_defeated": boss_defeated,
                 "flags": flags,
                 "fragments": fragments,
+                "observed": observed,
                 "one_shots": one_shots,
                 "stats": stats,
                 "anchor": anchor_id,
@@ -311,7 +365,10 @@ func apply_save(data: Dictionary) -> void:
         for frag in data.get("fragments", []):
                 fragments.append(String(frag))
         one_shots = data.get("one_shots", {})
+        observed = data.get("observed", {})
         stats = data.get("stats", stats)
+        if not stats.has("observed"):
+                stats["observed"] = observed.size()
         _communed = data.get("communed", [])
         property_overrides = data.get("overrides", {})
         EntityDB.import_overrides(property_overrides)

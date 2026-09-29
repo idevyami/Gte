@@ -40,6 +40,7 @@ func _run() -> void:
         await _boss()
         await _ending()
         await _options_and_settings()
+        await _gamepad_and_codex()
         print("=== %d checks, %d failures ===" % [checks, fails])
         get_tree().quit(1 if fails > 0 else 0)
 
@@ -400,11 +401,20 @@ func _options_and_settings() -> void:
         opts.idx = 0
         opts._adjust(-1)
         ok(absf(float(GameState.settings["master"]) - 0.9) < 0.001, "slider adjust changes setting")
-        opts.idx = 6
-        opts._cycle(opts._rows[6])
+        var art_row := 0
+        for i in opts._rows.size():
+                if String(opts._rows[i].get("key", "")) == "art_mode":
+                        art_row = i
+        opts.idx = art_row
+        opts._cycle(opts._rows[art_row])
         ok(GameState.debug_no_sprites, "artwork toggle switches to procedural")
-        opts._cycle(opts._rows[6])
+        opts._cycle(opts._rows[art_row])
         ok(not GameState.debug_no_sprites, "artwork toggle back to painted")
+        var vib_row := 0
+        for i in opts._rows.size():
+                if String(opts._rows[i].get("key", "")) == "vibration":
+                        vib_row = i
+        ok(vib_row > 0, "vibration slider row exists")
         Input.action_press("pause")
         await get_tree().process_frame
         Input.action_release("pause")
@@ -440,3 +450,76 @@ func _options_and_settings() -> void:
                 game.dialogue_box.advance()
                 await _frames(1)
         GameState.set_setting("blips", true)
+
+
+# ------------------------------------------------------------------ gamepad & codex
+func _gamepad_and_codex() -> void:
+        print("[GAMEPAD & RECORDS]")
+        # every core action is reachable from a gamepad
+        var pad_mod := false
+        for ev in InputMap.action_get_events("modify"):
+                if ev is InputEventJoypadButton:
+                        pad_mod = true
+        ok(pad_mod, "modify bound to a gamepad button (RB)")
+        var pad_up := false
+        for ev in InputMap.action_get_events("move_up"):
+                if ev is InputEventJoypadButton or ev is InputEventJoypadMotion:
+                        pad_up = true
+        ok(pad_up, "menu navigation (move_up) bound to pad")
+        # stick thresholds are responsive, not full-deflection
+        var sane_axis := true
+        for ev in InputMap.action_get_events("move_left"):
+                if ev is InputEventJoypadMotion and absf(ev.axis_value) >= 0.99:
+                        sane_axis = false
+        ok(sane_axis, "stick axis threshold below full deflection")
+        # rumble is safe with and without pads, and honours the setting
+        GameState.set_setting("vibration", 0.0)
+        FX.rumble(1.0, 0.2)
+        GameState.set_setting("vibration", 1.0)
+        FX.rumble(1.0, 0.2)
+        ok(true, "rumble callable headless (no pads -> no-op)")
+        GameState.set_setting("vibration", 0.3)
+        ok(absf(float(GameState.settings["vibration"]) - 0.3) < 0.001, "vibration setting round-trips")
+        GameState.set_setting("vibration", 1.0)
+        # the run observed things through OBSERVE — the codex has them
+        ok(GameState.observed.size() >= 3, "observe targets entered the codex during play")
+        ok(int(GameState.stats.get("observed", 0)) == GameState.observed.size(), "observed stat tracks codex size")
+        var has_door := false
+        for r in GameState.observed_rows():
+                if String(r["key"]) == "DOOR_029":
+                        has_door = true
+        ok(has_door, "codex row carries definition key + memory")
+        # dedupe: same def twice records once
+        var again := GameState.mark_observed_data(EntityDB.mint("DOOR_029"))
+        ok(not again, "codex dedupes by record key")
+        # save/load preserves the codex
+        GameState.save_game(game.room_id, game.player.global_position, game.player.hp, "smoke_anchor")
+        var saved_size: int = GameState.observed.size()
+        GameState.observed = {}
+        GameState.apply_save(GameState.load_game())
+        ok(GameState.observed.size() == saved_size, "codex survives save/load")
+        # pause menu: RECORDS entry, tab switch, scroll clamp
+        var pm: PauseMenu = game.pause_menu
+        var has_records := false
+        for m in pm.menu:
+                if String(m["action"]) == "records":
+                        has_records = true
+        ok(has_records, "pause menu exposes RECORDS")
+        pm.open()
+        await _frames(3)
+        pm.screen = 1
+        pm.tab = PauseMenu.TAB_MEMORY
+        Input.action_press("move_right")
+        await get_tree().process_frame
+        Input.action_release("move_right")
+        await _frames(2)
+        ok(pm.tab == PauseMenu.TAB_RECORDS, "left/right switches codex tabs")
+        # scroll clamps when rows exceed the page
+        for key in ["PLAQUE_029", "ANCHOR", "HYMNAL", "CENSUS_STONE", "STATUE_FACELESS", "ASH_BOWL", "BELL_ROPE"]:
+                GameState.mark_observed_data(EntityDB.mint(key, "TEST_SCROLL_" + key))
+        pm.records_scroll = 999
+        pm.clamp_records_scroll()
+        ok(pm.records_scroll < 999, "records scroll clamps to page")
+        pm.screen = 0
+        pm.close()
+        ok(not get_tree().paused, "pause codex closes clean")

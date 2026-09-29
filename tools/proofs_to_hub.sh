@@ -1,5 +1,5 @@
 #!/bin/bash
-# Convert the 17 visual-proof PNGs (in-engine renders) to web-friendly JPEGs
+# Convert the visual-proof PNGs (in-engine renders) to web-friendly JPEGs
 # for the delivery hub gallery.
 set -e
 SRC=/home/z/entity000/screenshots
@@ -19,6 +19,7 @@ names = [
     "16_measurer_oren", "17_null_children",
     "18_room_card", "19_boss_intro", "20_atmosphere",
     "21_depth", "22_options",
+    "23_records",
 ]
 for n in names:
     p = os.path.join(src, n + ".png")

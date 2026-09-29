@@ -1,5 +1,6 @@
-## PauseMenu — RESUME / MEMORY (the fragment index) / RESTART FROM ANCHOR /
-## QUIT TO TITLE. The memory index is real: only found fragments are listed.
+## PauseMenu — RESUME / RECORDS (the codex: fragments + observed entities) /
+## OPTIONS / RESTART FROM ANCHOR / QUIT TO TITLE. The codex is real: only
+## found fragments and actually-observed entities are listed.
 class_name PauseMenu
 extends Control
 
@@ -8,9 +9,14 @@ signal restart_requested
 signal quit_to_title_requested
 signal options_requested
 
+const TAB_MEMORY := 0
+const TAB_RECORDS := 1
+
 var idx := 0
 var menu := []
-var show_memory := false
+var screen := 0            # 0 menu · 1 codex · 2 options handoff (never drawn)
+var tab := TAB_MEMORY
+var records_scroll := 0
 var anim_t := 0.0
 
 func _ready() -> void:
@@ -21,7 +27,7 @@ func _ready() -> void:
 func _rebuild() -> void:
         menu = [
                 {"label": "RESUME", "action": "resume"},
-                {"label": "MEMORY", "action": "memory"},
+                {"label": "RECORDS", "action": "records"},
                 {"label": "OPTIONS", "action": "options"},
                 {"label": "RESTART FROM ANCHOR", "action": "restart"},
                 {"label": "QUIT TO TITLE", "action": "quit"},
@@ -30,7 +36,9 @@ func _rebuild() -> void:
 func open() -> void:
         visible = true
         idx = 0
-        show_memory = false
+        screen = 0
+        tab = TAB_MEMORY
+        records_scroll = 0
         get_tree().paused = true
 
 func close() -> void:
@@ -45,12 +53,19 @@ func _process(delta: float) -> void:
                 queue_redraw()
                 return
         if Input.is_action_just_pressed("pause"):
-                if show_memory:
-                        show_memory = false
+                if screen == 1:
+                        screen = 0
                 else:
                         close()
                         resume_requested.emit()
                 return
+        if screen == 1:
+                _codex_input()
+        else:
+                _menu_input()
+        queue_redraw()
+
+func _menu_input() -> void:
         if Input.is_action_just_pressed("move_up"):
                 idx = (idx - 1 + menu.size()) % menu.size()
                 AudioManager.play_sfx("sfx_ui_move", -8.0)
@@ -59,19 +74,51 @@ func _process(delta: float) -> void:
                 AudioManager.play_sfx("sfx_ui_move", -8.0)
         if Input.is_action_just_pressed("interact") or Input.is_action_just_pressed("jump"):
                 _confirm()
-        queue_redraw()
+
+func _codex_input() -> void:
+        var rows := GameState.observed_rows()
+        var visible_rows := _records_visible_rows()
+        if Input.is_action_just_pressed("interact") or Input.is_action_just_pressed("jump"):
+                AudioManager.play_sfx("sfx_ui_confirm", -6.0)
+                screen = 0
+                return
+        if Input.is_action_just_pressed("move_left") or Input.is_action_just_pressed("move_right"):
+                var dir := -1 if Input.is_action_just_pressed("move_left") else 1
+                tab = wrapi(tab + dir, 0, 2)
+                records_scroll = 0
+                AudioManager.play_sfx("sfx_ui_move", -8.0)
+                return
+        if tab == TAB_RECORDS and rows.size() > visible_rows:
+                if Input.is_action_just_pressed("move_up"):
+                        records_scroll = maxi(0, records_scroll - 1)
+                        AudioManager.play_sfx("sfx_ui_move", -12.0)
+                if Input.is_action_just_pressed("move_down"):
+                        records_scroll = mini(rows.size() - visible_rows, records_scroll + 1)
+                        AudioManager.play_sfx("sfx_ui_move", -12.0)
+
+func _records_visible_rows() -> int:
+        ## Rows that fit between the header block and the footer hints.
+        var vp := get_viewport_rect().size
+        var top := 200.0
+        var bottom := vp.y - 96.0
+        return maxi(1, int((bottom - top) / 66.0))
+
+func clamp_records_scroll() -> void:
+        var rows := GameState.observed_rows()
+        var visible_rows := _records_visible_rows()
+        records_scroll = clampi(records_scroll, 0, maxi(0, rows.size() - visible_rows))
 
 func _confirm() -> void:
         AudioManager.play_sfx("sfx_ui_confirm", -4.0)
-        if show_memory:
-                show_memory = false
+        if screen == 1:
+                screen = 0
                 return
         match String(menu[idx]["action"]):
                 "resume":
                         close()
                         resume_requested.emit()
-                "memory":
-                        show_memory = true
+                "records":
+                        screen = 1
                 "options":
                         options_requested.emit()
                 "restart":
@@ -84,8 +131,8 @@ func _confirm() -> void:
 func _draw() -> void:
         var vp := get_viewport_rect().size
         draw_rect(Rect2(Vector2.ZERO, vp), Color(E0.VOID.r, E0.VOID.g, E0.VOID.b, 0.82))
-        if show_memory:
-                _draw_memory(vp)
+        if screen == 1:
+                _draw_codex(vp)
                 return
         if E0.mono_bold:
                 var pt := "PAUSED"
@@ -116,11 +163,46 @@ func _draw() -> void:
                 var hw := E0.mono.get_string_size(hint, HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x
                 draw_string(E0.mono, Vector2((vp.x - hw) * 0.5, vp.y * 0.3 + 26.0), hint, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, E0.CYAN)
 
-func _draw_memory(vp: Vector2) -> void:
+# ------------------------------------------------------------------ codex
+func _draw_codex(vp: Vector2) -> void:
         if E0.mono_bold:
-                draw_string(E0.mono_bold, Vector2(120.0, 90.0), "MEMORY INDEX", HORIZONTAL_ALIGNMENT_LEFT, -1, 20, E0.BONE)
+                draw_string(E0.mono_bold, Vector2(120.0, 84.0), "THE RECORD", HORIZONTAL_ALIGNMENT_LEFT, -1, 20, E0.BONE)
+        # tab bar — MEMORY | RECORDS, gold rule under the active tab
+        var tab_x := 120.0
+        var tabs := [["MEMORY", TAB_MEMORY], ["RECORDS", TAB_RECORDS]]
+        for t in tabs:
+                var label: String = t[0]
+                var tid: int = t[1]
+                var active: bool = tid == tab
+                if E0.mono:
+                        var col := E0.BONE if active else E0.DIM
+                        draw_string(E0.mono, Vector2(tab_x, 114.0), label, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, col)
+                        var lw := E0.mono.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x
+                        if active:
+                                draw_line(Vector2(tab_x, 120.0), Vector2(tab_x + lw, 120.0), E0.GOLD, 1.5)
+                        else:
+                                _diamond(Vector2(tab_x + lw + 10.0, 110.0), 2.0, Color(E0.ASH.r, E0.ASH.g, E0.ASH.b, 0.9))
+                        tab_x += lw + 44.0
+        # counts on the right of the tab bar
         if E0.mono:
-                draw_string(E0.mono, Vector2(120.0, 114.0), "FOUND: %d / 4" % GameState.fragments.size(), HORIZONTAL_ALIGNMENT_LEFT, -1, 12, E0.DIM)
+                var count := ""
+                if tab == TAB_MEMORY:
+                        count = "FOUND: %d / 4" % GameState.fragments.size()
+                else:
+                        count = "OBSERVED: %d" % GameState.observed.size()
+                var cw := E0.mono.get_string_size(count, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
+                draw_string(E0.mono, Vector2(vp.x - 120.0 - cw, 112.0), count, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, E0.DIM)
+        if tab == TAB_MEMORY:
+                _draw_memory(vp)
+        else:
+                _draw_records(vp)
+        # footer hints
+        if E0.mono:
+                var hint := "LEFT/RIGHT SWITCH · UP/DOWN SCROLL · F BACK"
+                var hw := E0.mono.get_string_size(hint, HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x
+                draw_string(E0.mono, Vector2(120.0, vp.y - 48.0), hint, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, E0.DIM)
+
+func _draw_memory(vp: Vector2) -> void:
         var y := 160.0
         var x := 120.0
         var w := vp.x - 240.0
@@ -141,7 +223,44 @@ func _draw_memory(vp: Vector2) -> void:
         # the withheld sixth
         draw_string(E0.mono, Vector2(x, y + 18.0), "A SIXTH FUNDAMENTAL IS WHISPERED TO EXIST.", HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(E0.CRIMSON.r, E0.CRIMSON.g, E0.CRIMSON.b, 0.7))
         draw_string(E0.mono, Vector2(x, y + 36.0), "IT IS NOT WRITTEN ANYWHERE. THAT IS NOT THE SAME AS ABSENT.", HORIZONTAL_ALIGNMENT_LEFT, -1, 11, E0.DIM)
-        draw_string(E0.mono, Vector2(x, vp.y - 60.0), "[F] BACK", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, E0.DIM)
+
+func _draw_records(vp: Vector2) -> void:
+        var rows := GameState.observed_rows()
+        var x := 120.0
+        var w := vp.x - 240.0
+        var y := 200.0
+        if rows.is_empty():
+                draw_string(E0.mono, Vector2(x, y), "NOTHING HAS BEEN OBSERVED YET.", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, E0.DIM)
+                draw_string(E0.mono, Vector2(x, y + 24.0), "THE CITY KEEPS ITS OWN RECORD. TAB READS WHAT IT HAS SHOWN YOU.", HORIZONTAL_ALIGNMENT_LEFT, -1, 11, E0.DIM)
+                return
+        var visible_rows := _records_visible_rows()
+        clamp_records_scroll()
+        var end := mini(rows.size(), records_scroll + visible_rows)
+        for i in range(records_scroll, end):
+                var r: Dictionary = rows[i]
+                draw_rect(Rect2(x, y - 16.0, w, 54.0), Color(E0.SHADOW.r, E0.SHADOW.g, E0.SHADOW.b, 0.8))
+                draw_rect(Rect2(x, y - 16.0, 3.0, 54.0), Color(E0.CYAN.r, E0.CYAN.g, E0.CYAN.b, 0.85))
+                draw_string(E0.mono, Vector2(x + 14.0, y - 2.0), String(r["display"]), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, E0.BONE)
+                var meta := String(r["id"]) + "  ·  " + String(r["type"])
+                var mw := E0.mono.get_string_size(meta, HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x
+                draw_string(E0.mono, Vector2(x + w - mw - 12.0, y - 2.0), meta, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, E0.DIM)
+                var mem := String(r["memory"])
+                if not mem.is_empty():
+                        draw_string(E0.mono, Vector2(x + 14.0, y + 18.0), mem, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, E0.PARCH)
+                y += 66.0
+        # scroll position
+        if rows.size() > visible_rows:
+                if E0.mono:
+                        var scr := "%d – %d / %d" % [records_scroll + 1, end, rows.size()]
+                        var sw := E0.mono.get_string_size(scr, HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x
+                        draw_string(E0.mono, Vector2(vp.x - 120.0 - sw, vp.y - 72.0), scr, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, E0.DIM)
+                # scrollbar
+                var track_y := 200.0
+                var track_h := float(visible_rows) * 66.0
+                var grip_h := track_h * (float(visible_rows) / float(rows.size()))
+                var grip_y := track_y + (track_h - grip_h) * (float(records_scroll) / float(maxi(1, rows.size() - visible_rows)))
+                draw_line(Vector2(vp.x - 108.0, track_y), Vector2(vp.x - 108.0, track_y + track_h), Color(E0.ASH.r, E0.ASH.g, E0.ASH.b, 0.7), 2.0)
+                draw_line(Vector2(vp.x - 108.0, grip_y), Vector2(vp.x - 108.0, grip_y + grip_h), Color(E0.GOLD.r, E0.GOLD.g, E0.GOLD.b, 0.8), 2.0)
 
 func _diamond(c: Vector2, r: float, col: Color) -> void:
         var pts := PackedVector2Array([c + Vector2(0, -r), c + Vector2(r, 0), c + Vector2(0, r), c + Vector2(-r, 0)])

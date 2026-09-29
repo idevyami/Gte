@@ -37,6 +37,7 @@ func _rebuild() -> void:
                 {"kind": "slider", "label": "AMBIENCE", "key": "ambient"},
                 {"kind": "slider", "label": "EFFECTS", "key": "sfx"},
                 {"kind": "slider", "label": "SCREEN SHAKE", "key": "shake"},
+                {"kind": "slider", "label": "VIBRATION", "key": "vibration"},
                 {"kind": "toggle", "label": "DIALOGUE TICKS", "key": "blips", "on": "ON", "off": "OFF"},
                 {"kind": "toggle", "label": "ARTWORK", "key": "art_mode", "on": "PAINTED", "off": "PROCEDURAL"},
                 {"kind": "erase", "label": "ERASE SAVE"},
@@ -196,7 +197,7 @@ func _draw() -> void:
                 var l1 := "A/D OR ARROWS ADJUST · F CONFIRM · ESC BACK"
                 var l1w := E0.mono.get_string_size(l1, HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x
                 draw_string(E0.mono, Vector2(cx - l1w * 0.5, fy), l1, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, E0.DIM)
-                var l2 := "GAMEPAD: STICK MOVE · A CONFIRM · B BACK · START PAUSE"
+                var l2 := "GAMEPAD: STICK/D-PAD MOVE · A CONFIRM · B ROLL · Y OBSERVE · RB MODIFY · START PAUSE"
                 var l2w := E0.mono.get_string_size(l2, HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x
                 draw_string(E0.mono, Vector2(cx - l2w * 0.5, fy + 18.0), l2, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(E0.DIM.r, E0.DIM.g, E0.DIM.b, 0.7))
 

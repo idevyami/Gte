@@ -72,7 +72,18 @@ func _ready() -> void:
         EventBus.dialogue_finished.connect(_on_dialogue_finished)
         EventBus.boss_defeated.connect(_on_boss_defeated)
         EventBus.fragment_found.connect(func(_f): queue_redraw())
+        # external hands (gamepads) arriving / leaving are recorded like
+        # everything else in this city
+        Input.joy_connection_changed.connect(_on_joy_connection)
         process_mode = Node.PROCESS_MODE_ALWAYS
+
+func _on_joy_connection(_device: int, connected: bool) -> void:
+        if not active:
+                return
+        if connected:
+                system_message("AN EXTERNAL HAND HAS TAKEN THE VESSEL.", "quiet")
+        else:
+                system_message("THE EXTERNAL HAND HAS LET GO.", "quiet")
 
 func _load_dialogues() -> void:
         var txt := FileAccess.get_file_as_string("res://data/dialogue.json")
@@ -514,6 +525,7 @@ func observe_enter() -> void:
         observe_active = true
         observe_idx = 0
         observe_prop_idx = 0
+        _mark_observed_current()
         FX.set_observe(true)
         AudioManager.play_sfx("sfx_observe_enter", -4.0)
         EventBus.observe_toggled.emit(true)
@@ -544,8 +556,23 @@ func observe_cycle() -> void:
                 observe_exit()
                 return
         observe_prop_idx = 0
+        _mark_observed_current()
         AudioManager.play_sfx("sfx_ui_move", -6.0)
         EventBus.observe_target_changed.emit(_target_id())
+
+func _mark_observed_current() -> void:
+        ## Whatever the readout lands on enters the codex — first time only.
+        var target = _current_target()
+        if target == null:
+                return
+        if GameState.mark_observed(target):
+                var display := ""
+                if target is EntityNode and target.data:
+                        display = String(target.data.display)
+                elif target is EnemyBase and target.data:
+                        display = String(target.data.display)
+                if not display.is_empty():
+                        system_message(display.to_upper() + " — ENTERED THE RECORD.", "quiet")
 
 func observe_exit() -> void:
         observe_active = false
@@ -589,6 +616,7 @@ func _modify_key() -> void:
         var target = _current_target()
         if target == null:
                 return
+        _mark_observed_current()
         var mods := _modifiable_props(target)
         if mods.is_empty():
                 AudioManager.play_sfx("sfx_ui_deny", -6.0)
@@ -757,6 +785,7 @@ func _boss_intro() -> void:
         # the record names what it is about to lose — card plays over the
         # martyr's introduction dialogue (non-blocking)
         cinema.boss_card()
+        FX.rumble(0.5, 0.4)
         FX.burst(boss.global_position + Vector2(0, -80), "ash", 0.0, 20)
         start_dialogue("martyr_intro")
 
@@ -771,6 +800,7 @@ func on_boss_defeated() -> void:
         if boss:
                 FX.burst(boss.global_position + Vector2(0, -60), "gold", 0.0, 22)
                 FX.burst(boss.global_position + Vector2(0, -60), "ash", 0.0, 26)
+        FX.rumble(0.9, 0.6)
         # the monument persists — it is the story of this room now
         monument = EntityNode.new()
         monument.setup("MONUMENT", "MONUMENT", "monument")
@@ -812,6 +842,7 @@ func save_at_anchor(anchor: Anchor) -> bool:
         var ok := GameState.save_game(room_id, player.global_position, player.hp, anchor.instance_key)
         if ok:
                 FX.burst(anchor.global_position + Vector2(0, -46), "gold", 0.0, 16)
+                FX.rumble(0.38, 0.2)
         return ok
 
 func _restart_from_anchor() -> void:
