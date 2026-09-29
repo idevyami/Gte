@@ -103,6 +103,7 @@ const ROOMS := {
                 ],
                 "lights": [
                         {"pos": Vector2(620, 560), "r": 220, "color": Color(0.3, 0.85, 0.88), "flicker": 0.25},
+                        {"pos": Vector2(1080, 540), "r": 190, "color": Color(0.3, 0.85, 0.88), "flicker": 0.2},
                         {"pos": Vector2(1522, 480), "r": 260, "color": Color(0.85, 0.5, 0.3), "flicker": 0.1},
                         {"pos": Vector2(1850, 520), "r": 240, "color": Color(0.3, 0.85, 0.88), "flicker": 0.15},
                 ],
@@ -308,8 +309,8 @@ const ROOMS := {
                         {"kind": "candles", "pos": Vector2(1450, 840), "w": 60, "s": 0.15},
                 ],
                 "lights": [
-                        {"pos": Vector2(1560, 640), "r": 340, "color": Color(0.9, 0.75, 0.4), "flicker": 0.2},
-                        {"pos": Vector2(1200, 700), "r": 240, "color": Color(0.85, 0.6, 0.3), "flicker": 0.35},
+                        {"pos": Vector2(1560, 640), "r": 340, "color": Color(0.9, 0.75, 0.4), "flicker": 0.2, "cone": 260},
+                        {"pos": Vector2(1200, 700), "r": 240, "color": Color(0.85, 0.6, 0.3), "flicker": 0.35, "cone": 190},
                         {"pos": Vector2(500, 520), "r": 220, "color": Color(0.3, 0.85, 0.88), "flicker": 0.1},
                         {"pos": Vector2(1830, 640), "r": 220, "color": Color(0.75, 0.6, 0.3), "flicker": 0.2},
                 ],
@@ -527,7 +528,7 @@ const ROOMS := {
                 "lights": [
                         {"pos": Vector2(350, 700), "r": 240, "color": Color(0.85, 0.55, 0.25), "flicker": 0.4},
                         {"pos": Vector2(1250, 700), "r": 240, "color": Color(0.85, 0.55, 0.25), "flicker": 0.4},
-                        {"pos": Vector2(900, 620), "r": 380, "color": Color(0.7, 0.3, 0.2), "flicker": 0.2},
+                        {"pos": Vector2(900, 620), "r": 380, "color": Color(0.7, 0.3, 0.2), "flicker": 0.2, "cone": 300},
                         {"pos": Vector2(1050, 700), "r": 200, "color": Color(0.75, 0.6, 0.3), "flicker": 0.3},
                         {"pos": Vector2(580, 260), "r": 200, "color": Color(0.5, 0.42, 0.3), "flicker": 0.5},
                         {"pos": Vector2(1240, 220), "r": 180, "color": Color(0.45, 0.38, 0.28), "flicker": 0.55},
@@ -582,6 +583,8 @@ const ROOMS := {
                 "lights": [
                         {"pos": Vector2(700, 500), "r": 340, "color": Color(0.85, 0.8, 0.65), "flicker": 0.05},
                         {"pos": Vector2(700, 620), "r": 240, "color": Color(0.9, 0.85, 0.7), "flicker": 0.1},
+                        {"pos": Vector2(240, 540), "r": 200, "color": Color(0.55, 0.58, 0.62), "flicker": 0.08},
+                        {"pos": Vector2(1180, 540), "r": 200, "color": Color(0.55, 0.58, 0.62), "flicker": 0.08},
                 ],
                 "props": [
                         {"entity": "MONUMENT", "instance": "MONUMENT", "kind": "monument", "pos": Vector2(700, 660)},

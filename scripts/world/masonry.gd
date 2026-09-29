@@ -12,6 +12,8 @@ var style := "stone"
 var _last_stage := 1
 var _blocks := []      # cached per-rect generated block data
 var _rubble := []     # surface debris: pebbles, bone bits, cracks, stains
+var _grime := []      # large soft wear patches spanning many blocks (anti-tiling)
+var _strata := []     # horizontal sediment bands (anti-tiling)
 var _tex: Texture2D = null
 
 const BLOCK := Vector2(58, 26)
@@ -28,6 +30,8 @@ func setup(p_rects: Array[Rect2], p_seed: int, p_style := "stone") -> void:
 func _generate() -> void:
         _blocks.clear()
         _rubble.clear()
+        _grime.clear()
+        _strata.clear()
         var rng := RandomNumberGenerator.new()
         rng.seed = hash(str(seed_val))
         for rect in rects:
@@ -44,11 +48,40 @@ func _generate() -> void:
                                         "crack": rng.randf() < 0.16,
                                         "row": row,
                                         "uv": Vector2(rng.randf() * 4096.0, rng.randf() * 4096.0),
+                                        # ambient occlusion: deeper rows sit further
+                                        # from the light — the wall reads as volume
+                                        "ao": 1.0 - 0.05 * float(row) / maxf(1.0, float(rows - 1)) * 4.0,
                                 })
                 _blocks.append(blocks)
                 _scatter_rubble(rect, rng)
+                # grime + strata belong to WALLS (tall geometry); floors stay
+                # clean so walk surfaces never read as blotchy tiles
+                if rect.size.y >= 100.0:
+                        _scatter_grime(rect, rng, rows)
         _last_stage = GameState.stage
         queue_redraw()
+
+func _scatter_grime(rect: Rect2, rng: RandomNumberGenerator, rows: int) -> void:
+        ## Large soft wear gradients spanning many blocks — kills the visible
+        ## tile-grid repetition by staining across it, like age actually does.
+        var n := int(maxf(2.0, rect.size.x / 220.0))
+        for i in n:
+                _grime.append({
+                        "pos": Vector2(
+                                rect.position.x + rng.randf() * rect.size.x,
+                                rect.position.y + rng.randf() * rect.size.y),
+                        "rx": rng.randf_range(70.0, 190.0),
+                        "ry": rng.randf_range(24.0, 64.0),
+                        "a": rng.randf_range(0.028, 0.055),
+                })
+        # sediment strata: every few rows a band of slightly denser air
+        for row in range(2, rows, 4):
+                _strata.append({
+                        "y": rect.position.y + float(row) * BLOCK.y,
+                        "x0": rect.position.x,
+                        "w": rect.size.x,
+                        "a": rng.randf_range(0.03, 0.06),
+                })
 
 func _scatter_rubble(rect: Rect2, rng: RandomNumberGenerator) -> void:
         ## Surface dressing along the TOP edge of load-bearing geometry —
@@ -97,8 +130,9 @@ func _draw() -> void:
                                 pos += Vector2((b["jitter"] - 0.86) * 90.0 * (1.0 if int(b["row"]) % 2 == 0 else -1.0), -3.0)
                         if stage >= 5 and b["jitter"] > 0.94:
                                 pos += Vector2(0.0, -10.0)
-                        # material value jitter within the locked range
-                        var k: float = 0.82 + float(b["jitter"]) * 0.4
+                        # material value jitter within the locked range,
+                        # scaled by the row's ambient occlusion
+                        var k: float = (0.82 + float(b["jitter"]) * 0.4) * float(b["ao"])
                         if _tex:
                                 # each block samples its own window of the material tile
                                 var uv: Vector2 = b["uv"]
@@ -113,9 +147,38 @@ func _draw() -> void:
                         if b["crack"]:
                                 var cx: float = pos.x + size.x * (0.3 + float(b["jitter"]) * 0.4)
                                 draw_line(Vector2(cx, pos.y + 2.0), Vector2(cx - 4.0, pos.y + size.y - 2.0), E0.VOID, 1.0)
-                        # top edge catches light
-                        draw_rect(Rect2(pos, Vector2(size.x, 2.0)), Color(0.9, 0.88, 0.82, 0.16))
+                        # top edge catches light — brighter on the topmost row
+                        var top_k := 0.16 if int(b["row"]) == 0 else 0.10
+                        draw_rect(Rect2(pos, Vector2(size.x, 2.0)), Color(0.9, 0.88, 0.82, top_k))
+        _draw_strata()
+        _draw_grime()
         _draw_rubble()
+
+func _draw_strata() -> void:
+        ## Sediment bands: horizontal air-density lines — walls stop being
+        ## texture and become geology.
+        for s in _strata:
+                draw_rect(Rect2(float(s["x0"]), float(s["y"]), float(s["w"]), BLOCK.y),
+                        Color(E0.VOID.r, E0.VOID.g, E0.VOID.b, float(s["a"])))
+
+func _draw_grime() -> void:
+        ## Soft layered ellipses of wear — the anti-tiling pass.
+        for g in _grime:
+                var p: Vector2 = g["pos"]
+                var rx: float = g["rx"]
+                var ry: float = g["ry"]
+                var a: float = g["a"]
+                for k in 3:
+                        var t := float(k) / 3.0
+                        _ellipse(p, rx * (1.0 - t * 0.28), ry * (1.0 - t * 0.28),
+                                Color(E0.VOID.r, E0.VOID.g, E0.VOID.b, a * (1.0 - t * 0.55)))
+
+func _ellipse(c: Vector2, rx: float, ry: float, col: Color) -> void:
+        var pts := PackedVector2Array()
+        for i in 12:
+                var ang := TAU * i / 12.0
+                pts.append(c + Vector2(cos(ang) * rx, sin(ang) * ry))
+        draw_colored_polygon(pts, col)
 
 func _draw_rubble() -> void:
         for r in _rubble:
@@ -144,9 +207,13 @@ func _draw_rubble() -> void:
                                 for i in range(1, jag.size()):
                                         draw_line(jag[i - 1], jag[i], dark, 1.0)
                         "stain":
+                                # flat wide wear patch — reads as age on the
+                                # stone, never as a hole in the ground
                                 for k in 3:
                                         var t := float(k) / 3.0
-                                        draw_circle(pos + Vector2((t - 0.5) * s * 0.5, -1.0 - t), s * (0.5 - t * 0.12), Color(E0.VOID.r, E0.VOID.g, E0.VOID.b, 0.10 - t * 0.02))
+                                        _ellipse(pos + Vector2((t - 0.5) * s * 0.4, -1.5 - t * 0.8),
+                                                s * (0.9 - t * 0.25), s * 0.30,
+                                                Color(E0.VOID.r, E0.VOID.g, E0.VOID.b, 0.05 - t * 0.012))
 
 func rng_line_y(x: float, s: float) -> float:
         ## deterministic pseudo-jag for surface cracks

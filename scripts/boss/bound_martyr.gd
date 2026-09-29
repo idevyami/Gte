@@ -463,6 +463,23 @@ func _draw_body() -> void:
 
 func _draw_overlays(alpha: float, lean: float) -> void:
         ## gameplay-critical overlays shared by painted and procedural bodies.
+        # grounding: the colossal weight meets the floor — a soft dark ellipse
+        # under the stance; without it he floats like a sticker
+        if state != DYING and state != DEAD:
+                var stance_w := 34.0 + absf(velocity.x) * 0.02
+                for i in 3:
+                        var t := float(i) / 3.0
+                        draw_colored_polygon(_ellipse(Vector2(lean * 0.4, -1.0 - t * 2.0), stance_w * (1.0 - t * 0.22), 7.0 * (1.0 - t * 0.25)),
+                                Color(E0.VOID.r, E0.VOID.g, E0.VOID.b, 0.16 * (1.0 - t * 0.4) * alpha))
+        # halo bloom — a light source, not a drawn ring: layered gold circles
+        # breathing behind the crown, shared by painted and procedural bodies
+        var pulse := 0.70 + 0.30 * sin(anim_t * 2.2)
+        var halo_a := (0.5 if phase < 3 else 0.25) * alpha
+        for i in 4:
+                var t := float(i) / 4.0
+                draw_circle(Vector2(lean * 1.6, -108.0), 20.0 + t * 26.0,
+                        Color(E0.GOLD.r, E0.GOLD.g, E0.GOLD.b, 0.028 * (1.0 - t) * halo_a * 4.0 * pulse))
+        draw_arc(Vector2(lean * 1.6, -108), 20.0, PI * 0.9, PI * 2.1, 16, Color(E0.GOLD.r, E0.GOLD.g, E0.GOLD.b, halo_a * alpha), 2.0)
         # belief shield shimmer
         if shielded():
                 var shield_a := 0.10 + 0.06 * sin(anim_t * 3.0)

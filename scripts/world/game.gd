@@ -226,11 +226,18 @@ func load_room(id: String) -> void:
                 mid.setup(String(room_data.get("backdrop", "")), room_size, horizon, room_data.get("fog", E0.VOID), camera)
                 world.add_child(mid)
         lights = Lights.new()
-        lights.setup(room_data.get("lights", []))
+        var light_floor := -1.0
+        if not floors.is_empty():
+                light_floor = (floors[0] as Rect2).position.y
+        lights.setup(room_data.get("lights", []), light_floor)
         world.add_child(lights)
         ambient = AmbientFX.new()
         ambient.setup(id, room_size, camera)
         world.add_child(ambient)
+        # volumetric shafts for the lit rooms (chapel / reliquary / engine / aftermath)
+        var rays := GodRays.new()
+        rays.setup(String(room_data.get("backdrop", "")), room_size, camera)
+        world.add_child(rays)
 
         # --- entities
         for d in room_data.get("doors", []):
