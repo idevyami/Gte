@@ -1,0 +1,850 @@
+{
+	"TERMINAL_019": {
+		"display": "TERMINAL_019",
+		"id_number": "ENTITY_0117",
+		"type": "SYSTEM/TERMINAL",
+		"state": "DORMANT",
+		"purpose": "TO INSTALL SIGHT",
+		"properties": {
+			"integrity": {
+				"value": 38,
+				"type": "number"
+			},
+			"access": {
+				"value": true,
+				"type": "bool"
+			}
+		},
+		"memory": "817 vessels shipped. One returned.",
+		"belief": 0
+	},
+	"DOOR_029": {
+		"display": "DOOR_029",
+		"id_number": "ENTITY_0142",
+		"type": "DOOR",
+		"state": "SEALED",
+		"purpose": "Remain closed.",
+		"properties": {
+			"locked": {
+				"value": true,
+				"type": "bool",
+				"modifiable": true,
+				"cost": 6
+			},
+			"material": {
+				"value": "IRON",
+				"type": "text"
+			},
+			"warded": {
+				"value": false,
+				"type": "bool"
+			}
+		},
+		"memory": "opened 14,207 times. The plaque says zero.",
+		"belief": 0
+	},
+	"PLAQUE_029": {
+		"display": "PLAQUE_029",
+		"id_number": "ENTITY_0151",
+		"type": "RECORD/PLAQUE",
+		"state": "POSTED",
+		"purpose": "TO INSIST",
+		"properties": {
+			"material": {
+				"value": "STONE",
+				"type": "text"
+			},
+			"openings": {
+				"value": 0,
+				"type": "number"
+			}
+		},
+		"memory": "THIS GATE HAS OPENED FOR NO ONE SINCE THE THIRD ENUMERATION.",
+		"belief": 0
+	},
+	"ANCHOR": {
+		"display": "{SELF}",
+		"id_number": "ENTITY_0203",
+		"type": "SHRINE/ANCHOR",
+		"state": "WAITING",
+		"purpose": "TO REMEMBER",
+		"properties": {
+			"communion": {
+				"value": false,
+				"type": "bool"
+			},
+			"vein": {
+				"value": "CYAN",
+				"type": "text"
+			}
+		},
+		"memory": "someone prayed here. the record does not say who.",
+		"belief": 4
+	},
+	"HOLLOW": {
+		"display": "{SELF}",
+		"id_number": "ENTITY_0200",
+		"dynamic_id": true,
+		"type": "ABERRATION",
+		"state": "DRIFTING",
+		"purpose": "TO SEARCH",
+		"properties": {
+			"classification": {
+				"value": "NULL",
+				"type": "text"
+			},
+			"speed": {
+				"value": 90,
+				"type": "number"
+			},
+			"aggression": {
+				"value": "DORMANT",
+				"type": "text"
+			}
+		},
+		"memory": "it had a name once. it does not want it back.",
+		"belief": 0
+	},
+	"NULL_CHILD": {
+		"display": "{SELF}",
+		"id_number": "ENTITY_0500",
+		"dynamic_id": true,
+		"type": "OUTSIDER",
+		"state": "UNFILED",
+		"purpose": "UNASSIGNED",
+		"properties": {
+			"classification": {
+				"value": "UNFILED",
+				"type": "text"
+			},
+			"state": {
+				"value": "UNFILED",
+				"type": "enum",
+				"options": [
+					"UNFILED",
+					"TERMINATED"
+				],
+				"modifiable": true,
+				"cost": 4
+			}
+		},
+		"memory": "I was not issued a purpose.",
+		"belief": 0
+	},
+	"BELIEVER": {
+		"display": "{SELF}",
+		"id_number": "ENTITY_0600",
+		"dynamic_id": true,
+		"type": "COLLECTIVE",
+		"state": "CHANTING",
+		"purpose": "TO SUSTAIN",
+		"properties": {
+			"purpose": {
+				"value": "TO SUSTAIN",
+				"type": "enum",
+				"options": [
+					"TO SUSTAIN",
+					"ABANDON"
+				],
+				"modifiable": true,
+				"cost": 8
+			},
+			"belief": {
+				"value": 30,
+				"type": "number"
+			}
+		},
+		"memory": "we were ten thousand once.",
+		"belief": 30
+	},
+	"CENSOR": {
+		"display": "THE CENSOR",
+		"id_number": "ENTITY_000_000",
+		"type": "CORRECTION",
+		"state": "HUNTING",
+		"purpose": "TO CORRECT",
+		"properties": {
+			"classification": {
+				"value": "SEALED",
+				"type": "text",
+				"hidden_until": "stage<=0"
+			},
+			"composition": {
+				"value": "SEALED",
+				"type": "text",
+				"hidden_until": "stage<=0"
+			},
+			"mercy": {
+				"value": "SEALED",
+				"type": "text",
+				"hidden_until": "stage<=0"
+			}
+		},
+		"memory": "",
+		"belief": 0,
+		"notes": [
+			"it arrives. it does not chase."
+		]
+	},
+	"BOUND_MARTYR": {
+		"display": "THE BOUND MARTYR",
+		"id_number": "ENTITY_000_001",
+		"type": "SAINT/WEAPON",
+		"state": "BOUND",
+		"purpose": "SERVE THE DESIGN",
+		"properties": {
+			"bound": {
+				"value": true,
+				"type": "bool",
+				"hidden_until": "stage<=0"
+			},
+			"suffering": {
+				"value": 100,
+				"type": "number",
+				"hidden_until": "stage<=0"
+			},
+			"belief": {
+				"value": 71,
+				"type": "number"
+			}
+		},
+		"memory": "He gave himself gladly.",
+		"belief": 71
+	},
+	"CENSER_RELIQUARY": {
+		"display": "THE CENSER",
+		"id_number": "ENTITY_000_009",
+		"type": "RELIC/WEAPON",
+		"state": "SACRED",
+		"purpose": "TO SUSTAIN",
+		"properties": {
+			"purpose": {
+				"value": "TO SUSTAIN",
+				"type": "enum",
+				"options": [
+					"TO SUSTAIN",
+					"ABANDON"
+				],
+				"modifiable": true,
+				"cost": 8
+			},
+			"belief": {
+				"value": 64,
+				"type": "number"
+			}
+		},
+		"memory": "the smoke remembers every hymn.",
+		"belief": 64
+	},
+	"PALE_SAINT_RELIC": {
+		"display": "RELIC OF THE PALE SAINT",
+		"id_number": "ENTITY_0308",
+		"type": "RELIC",
+		"state": "DORMANT",
+		"purpose": "TO BE BELIEVED",
+		"properties": {
+			"carried": {
+				"value": false,
+				"type": "bool"
+			},
+			"believed_by": {
+				"value": 88,
+				"type": "number"
+			}
+		},
+		"memory": "carved from the wall of a street that no longer exists.",
+		"belief": 88
+	},
+	"WARD_BARRIER": {
+		"display": "THE WARD",
+		"id_number": "ENTITY_0402",
+		"type": "STRUCTURE/BELIEF",
+		"state": "HELD",
+		"purpose": "TO EXCLUDE",
+		"properties": {
+			"belief": {
+				"value": 100,
+				"type": "number"
+			},
+			"held_by": {
+				"value": 12,
+				"type": "number"
+			}
+		},
+		"memory": "twelve hands hold it up. it was built by none of them.",
+		"belief": 100
+	},
+	"ARCHIVE_WALL": {
+		"display": "THE ARCHIVE",
+		"id_number": "ENTITY_000_000",
+		"type": "ARCHIVE",
+		"state": "INDEXING",
+		"purpose": "TO RECORD FAILURE",
+		"properties": {
+			"records": {
+				"value": 817,
+				"type": "number"
+			},
+			"record_818": {
+				"value": "SEALED",
+				"type": "text",
+				"hidden_until": "stage>=6"
+			}
+		},
+		"memory": "817 failed. the wall does not say failed at what.",
+		"belief": 0,
+		"notes": [
+			"ENTITY_000_001 … FAILED … REPURPOSED",
+			"ENTITY_000_817 … FAILED",
+			"RECORD 818 … CURRENT"
+		]
+	},
+	"LOG_7_11": {
+		"display": "LOG 7-11",
+		"id_number": "ENTITY_0114",
+		"type": "RECORD/LOG",
+		"state": "CORRUPTED",
+		"purpose": "TO TESTIFY",
+		"properties": {
+			"integrity": {
+				"value": 12,
+				"type": "number"
+			}
+		},
+		"memory": "entity_000_001 did not… [UNREADABLE]",
+		"belief": 0
+	},
+	"ROTOR": {
+		"display": "{SELF}",
+		"id_number": "ENTITY_0700",
+		"dynamic_id": true,
+		"type": "MACHINE/ROTOR",
+		"state": "DESYNCED",
+		"purpose": "TO TURN IN SEQUENCE",
+		"properties": {
+			"position": {
+				"value": 0,
+				"type": "number"
+			},
+			"sequence": {
+				"value": "SEE MEMORY",
+				"type": "text"
+			}
+		},
+		"memory": "{SEQ}",
+		"belief": 0
+	},
+	"HEART_OF_THE_DESIGN": {
+		"display": "THE HEART OF THE DESIGN",
+		"id_number": "ENTITY_000_004",
+		"type": "ENGINE",
+		"state": "WORKING",
+		"purpose": "TO SUSTAIN THE DESIGN",
+		"properties": {
+			"rhythm": {
+				"value": 60,
+				"type": "number"
+			},
+			"fuel": {
+				"value": "SEALED",
+				"type": "text",
+				"hidden_until": "stage>=6"
+			}
+		},
+		"memory": "it was not built. it was grown.",
+		"belief": 0
+	},
+	"FRAGMENT_01": {
+		"display": "FRAGMENT 01",
+		"id_number": "ENTITY_0316",
+		"type": "MEMORY/FRAGMENT",
+		"state": "INTEGRITY 100%",
+		"purpose": "TO BE FOUND",
+		"properties": {
+			"integrity": {
+				"value": 100,
+				"type": "number"
+			}
+		},
+		"memory": "“He gave himself gladly.”",
+		"belief": 0
+	},
+	"FRAGMENT_02": {
+		"display": "FRAGMENT 02",
+		"id_number": "ENTITY_0317",
+		"type": "MEMORY/FRAGMENT",
+		"state": "CORRUPTED",
+		"purpose": "TO BE FOUND",
+		"properties": {
+			"integrity": {
+				"value": 12,
+				"type": "number"
+			}
+		},
+		"memory": "entity_000_001 did not… [UNREADABLE]",
+		"belief": 0
+	},
+	"FRAGMENT_03": {
+		"display": "FRAGMENT 03",
+		"id_number": "ENTITY_0318",
+		"type": "MEMORY/FRAGMENT",
+		"state": "INTEGRITY 88%",
+		"purpose": "TO BE FOUND",
+		"properties": {
+			"integrity": {
+				"value": 88,
+				"type": "number"
+			}
+		},
+		"memory": "“Do not tell them what the engine eats.”",
+		"belief": 0
+	},
+	"FRAGMENT_04": {
+		"display": "FRAGMENT 04",
+		"id_number": "ENTITY_0319",
+		"type": "MEMORY/FRAGMENT",
+		"state": "CONTRADICTED",
+		"purpose": "TO BE FOUND",
+		"properties": {
+			"integrity": {
+				"value": 0,
+				"type": "number"
+			}
+		},
+		"memory": "ENTITY_000_818. You are not the first.",
+		"belief": 0
+	},
+	"CONTRADICTION_DOOR": {
+		"display": "DOOR_114",
+		"id_number": "ENTITY_0161",
+		"type": "DOOR",
+		"state": "DISPUTED",
+		"purpose": "TO AGREE WITH ITSELF",
+		"properties": {
+			"accounts": {
+				"value": "DISPUTED",
+				"type": "enum",
+				"options": [
+					"DISPUTED",
+					"RECONCILED"
+				],
+				"modifiable": true,
+				"cost": 5
+			},
+			"openings": {
+				"value": 14207,
+				"type": "number"
+			}
+		},
+		"memory": "plaque: zero. readout: 14,207.",
+		"belief": 0
+	},
+	"CENSUS_STONE": {
+		"display": "CENSUS_STONE_114",
+		"id_number": "ENTITY_0109",
+		"type": "RECORD/CENSUS",
+		"state": "COUNTING",
+		"purpose": "TO COUNT",
+		"properties": {
+			"chambers": {
+				"value": 114,
+				"type": "number"
+			},
+			"counted": {
+				"value": 115,
+				"type": "number"
+			}
+		},
+		"memory": "chamber 114 is counted twice. no one has filed the error.",
+		"belief": 0
+	},
+	"STATUE_FACELESS": {
+		"display": "{SELF}",
+		"id_number": "ENTITY_0800",
+		"dynamic_id": true,
+		"type": "MEMORIAL",
+		"state": "ERODED",
+		"purpose": "TO REMEMBER SOMEONE",
+		"properties": {
+			"face": {
+				"value": "ABSENT",
+				"type": "text"
+			},
+			"material": {
+				"value": "DIRTY STONE",
+				"type": "text"
+			}
+		},
+		"memory": "the name was worn off by hands, not weather.",
+		"belief": 2
+	},
+	"DISCREPANCY_LEDGER": {
+		"display": "DISCREPANCY LEDGER",
+		"id_number": "ENTITY_0322",
+		"type": "RECORD/LEDGER",
+		"state": "DISPUTED",
+		"purpose": "TO RECONCILE",
+		"properties": {
+			"record": {
+				"value": "DISPUTED",
+				"type": "enum",
+				"options": [
+					"DISPUTED",
+					"RECONCILED"
+				],
+				"modifiable": true,
+				"cost": 5
+			},
+			"saints_painted": {
+				"value": 11,
+				"type": "number"
+			},
+			"saints_recorded": {
+				"value": 9,
+				"type": "number"
+			}
+		},
+		"memory": "the mural counts eleven saints. the archive says nine.",
+		"belief": 0
+	},
+	"PENITENT": {
+		"display": "THE PENITENT",
+		"id_number": "ENTITY_000_817",
+		"type": "WITHHELD",
+		"state": "UNKNOWN",
+		"purpose": "—",
+		"properties": {
+			"classification": {
+				"value": "SEALED",
+				"type": "text",
+				"hidden_until": "stage<=0"
+			},
+			"purpose": {
+				"value": "SEALED",
+				"type": "text",
+				"hidden_until": "stage<=0"
+			},
+			"memory": {
+				"value": "SEALED",
+				"type": "text",
+				"hidden_until": "stage<=0"
+			}
+		},
+		"memory": "",
+		"belief": 0,
+		"notes": [
+			"it watches you watch it."
+		]
+	},
+	"TOLL_MACHINE": {
+		"display": "TOLL_MACHINE_03",
+		"id_number": "ENTITY_0177",
+		"type": "MACHINE/TOLL",
+		"state": "COLLECTING",
+		"purpose": "TO COLLECT",
+		"properties": {
+			"state": {
+				"value": "COLLECTING",
+				"type": "enum",
+				"options": [
+					"COLLECTING",
+					"BROKEN"
+				],
+				"modifiable": true,
+				"cost": 8
+			},
+			"owed": {
+				"value": 14000,
+				"type": "number"
+			}
+		},
+		"memory": "it has collected for so long it forgets what is owed.",
+		"belief": 0
+	},
+	"MEASURER_OREN": {
+		"display": "MEASURER OREN",
+		"id_number": "ENTITY_0284",
+		"type": "CLERGY/MEASURER",
+		"state": "PROCESSING",
+		"purpose": "TO MEASURE",
+		"properties": {
+			"queue": {
+				"value": 3,
+				"type": "number"
+			},
+			"patience": {
+				"value": 61,
+				"type": "number"
+			}
+		},
+		"memory": "he remembers vellum street. there is no vellum street.",
+		"belief": 12
+	},
+	"FADING_CITIZEN": {
+		"display": "{SELF}",
+		"id_number": "ENTITY_0900",
+		"dynamic_id": true,
+		"type": "CITIZEN",
+		"state": "FADE 47%",
+		"purpose": "TO BE MEASURED",
+		"properties": {
+			"definition": {
+				"value": 47,
+				"type": "number"
+			},
+			"remembered": {
+				"value": "VELLUM STREET",
+				"type": "text"
+			}
+		},
+		"memory": "the stamp will hold what the face no longer can.",
+		"belief": 1
+	},
+	"HYMNAL": {
+		"display": "THE HYMNAL",
+		"id_number": "ENTITY_0315",
+		"type": "TEXT/HYMNAL",
+		"state": "OPEN",
+		"purpose": "TO PRAISE",
+		"properties": {
+			"pages": {
+				"value": 214,
+				"type": "number"
+			},
+			"ink": {
+				"value": "ASH",
+				"type": "text"
+			}
+		},
+		"memory": "one hymn is written in a hand that was never issued.",
+		"belief": 22
+	},
+	"FIELD_DESK": {
+		"display": "MEASURER FIELD DESK",
+		"id_number": "ENTITY_0290",
+		"type": "RECORD/FIELD",
+		"state": "ABANDONED",
+		"purpose": "TO OBSERVE THE ENGINE",
+		"properties": {
+			"notes": {
+				"value": 31,
+				"type": "number"
+			},
+			"author": {
+				"value": "ENTITY_0291",
+				"type": "text"
+			}
+		},
+		"memory": "“Do not tell them what the engine eats.”",
+		"belief": 0
+	},
+	"MONUMENT": {
+		"display": "THE MONUMENT",
+		"id_number": "ENTITY_000_002",
+		"type": "MEMORIAL",
+		"state": "STANDING",
+		"purpose": "TO REMEMBER HIM",
+		"properties": {
+			"inscription": {
+				"value": "SEALED UNTIL HIS DEATH",
+				"type": "text"
+			}
+		},
+		"memory": "ENTITY_000_001 — FAILED — REPURPOSED",
+		"belief": 71
+	},
+	"PLAYER_RECORD": {
+		"display": "RECORD_STATION_818",
+		"id_number": "ENTITY_000_818",
+		"type": "VESSEL",
+		"state": "CURRENT",
+		"purpose": "RESTORE THE WORLD",
+		"properties": {
+			"attempt": {
+				"value": 818,
+				"type": "number"
+			},
+			"predecessors": {
+				"value": 817,
+				"type": "number"
+			},
+			"memory": {
+				"value": "SEALED",
+				"type": "text",
+				"hidden_until": "stage>=6"
+			}
+		},
+		"memory": "the eight hundred and eighteenth attempt.",
+		"belief": 0
+	},
+	"PLATFORM_HIDDEN": {
+		"display": "UNLISTED STRUCTURE",
+		"id_number": "ENTITY_0999",
+		"type": "STRUCTURE",
+		"state": "UNMANIFEST",
+		"purpose": "—",
+		"properties": {
+			"listed": {
+				"value": false,
+				"type": "bool"
+			}
+		},
+		"memory": "it was never entered into the record. that is why it still exists.",
+		"belief": 0
+	},
+	"BELL_ROPE": {
+		"display": "THE BELL",
+		"id_number": "ENTITY_0660",
+		"type": "INSTRUMENT",
+		"state": "SILENT",
+		"purpose": "TO TOLL",
+		"properties": {
+			"tolls": {
+				"value": 3,
+				"type": "number"
+			},
+			"tongue": {
+				"value": "REMOVED",
+				"type": "text"
+			}
+		},
+		"memory": "it rings anyway, sometimes. no one files the sound.",
+		"belief": 9
+	},
+	"CAGE_RELIC": {
+		"display": "HUNG CAGE",
+		"id_number": "ENTITY_0710",
+		"type": "CONTAINMENT",
+		"state": "OCCUPIED",
+		"purpose": "TO HOLD",
+		"properties": {
+			"occupant": {
+				"value": "A PURPOSE, OWNERLESS",
+				"type": "text"
+			}
+		},
+		"memory": "when a person fades, the purpose outlives them. it waits here.",
+		"belief": 0
+	},
+	"PIPE_ORGAN": {
+		"display": "THE PROCESS ORGAN",
+		"id_number": "ENTITY_0920",
+		"type": "INSTRUMENT/MACHINE",
+		"state": "IDLE",
+		"purpose": "TO COUNT HYMNS",
+		"properties": {
+			"pipes": {
+				"value": 114,
+				"type": "number"
+			},
+			"hymns_counted": {
+				"value": 114000,
+				"type": "number"
+			}
+		},
+		"memory": "it plays the queue numbers. the faithful find it beautiful.",
+		"belief": 14
+	},
+	"LECTERN": {
+		"display": "THE LECTERN",
+		"id_number": "ENTITY_0280",
+		"type": "FURNITURE/SACRED",
+		"state": "IN USE",
+		"purpose": "TO BEAR THE LEDGER",
+		"properties": {
+			"bearing": {
+				"value": "QUEUE 3 OF 9",
+				"type": "text"
+			}
+		},
+		"memory": "the ledger is heavier than the book.",
+		"belief": 6
+	},
+	"BRAZIER": {
+		"display": "BRAZIER",
+		"id_number": "ENTITY_0450",
+		"dynamic_id": true,
+		"type": "VESSEL/FIRE",
+		"state": "BURNING",
+		"purpose": "TO WARM THE QUEUE",
+		"properties": {
+			"fuel": {
+				"value": "UNASKED",
+				"type": "text"
+			}
+		},
+		"memory": "the fire is the only thing here that is not measured.",
+		"belief": 3
+	},
+	"CHAIN_CLUSTER": {
+		"display": "PILLAR CHAINS",
+		"id_number": "ENTITY_0580",
+		"dynamic_id": true,
+		"type": "BINDING",
+		"state": "TAUT",
+		"purpose": "TO BIND THE MARTYR",
+		"properties": {
+			"integrity": {
+				"value": 97,
+				"type": "number"
+			}
+		},
+		"memory": "they were forged to hold something worse. he asked to stay.",
+		"belief": 0
+	},
+	"ASH_BOWL": {
+		"display": "BOWL OF ASH",
+		"id_number": "ENTITY_0410",
+		"dynamic_id": true,
+		"type": "VESSEL/RITUAL",
+		"state": "FULL",
+		"purpose": "TO RECEIVE",
+		"properties": {
+			"contents": {
+				"value": "THE FADED",
+				"type": "text"
+			}
+		},
+		"memory": "what is measured out of a person is kept here.",
+		"belief": 0
+	},
+	"CRADLE_SHELF": {
+		"display": "VESSEL SHELF",
+		"id_number": "ENTITY_0120",
+		"dynamic_id": true,
+		"type": "FURNITURE/CRADLE",
+		"state": "EMPTY",
+		"purpose": "TO HOLD VESSELS",
+		"properties": {
+			"capacity": {
+				"value": 12,
+				"type": "number"
+			},
+			"remaining": {
+				"value": 1,
+				"type": "number"
+			}
+		},
+		"memory": "eleven opened early. one of them is still screaming, quietly, in the wall.",
+		"belief": 0
+	},
+	"CANDLE_ALTAR": {
+		"display": "THE CANDLE RAIL",
+		"id_number": "ENTITY_0330",
+		"type": "RITUAL/ALTAR",
+		"state": "WAITING",
+		"purpose": "TO RECEIVE BELIEF",
+		"properties": {
+			"candles": {
+				"value": 5,
+				"type": "number"
+			},
+			"lit": {
+				"value": false,
+				"type": "bool"
+			}
+		},
+		"memory": "light a candle and the ward stops considering you an outsider.",
+		"belief": 12
+	}
+}

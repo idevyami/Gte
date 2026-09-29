@@ -1,0 +1,36 @@
+; Engine configuration file.
+; ENTITY_000 — vertical slice. Godot 4.4+, GDScript, gl_compatibility.
+config_version=5
+
+[application]
+
+config/name="ENTITY_000"
+config/description="A vertical slice. If you were created for a purpose, do you have the right to reject it?"
+run/main_scene="res://main.tscn"
+config/features=PackedStringArray("4.4")
+config/icon="res://icon.svg"
+
+[autoload]
+
+EventBus="*res://scripts/autoloads/event_bus.gd"
+GameState="*res://scripts/autoloads/game_state.gd"
+EntityDB="*res://scripts/autoloads/entity_db.gd"
+AudioManager="*res://scripts/autoloads/audio_manager.gd"
+FX="*res://scripts/autoloads/fx.gd"
+
+[display]
+
+window/size/viewport_width=1280
+window/size/viewport_height=720
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+textures/vram_compression/import_etc2_astc=true
+
+[audio]
+
+buses/default_bus_layout=""
