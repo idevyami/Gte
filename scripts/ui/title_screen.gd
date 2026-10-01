@@ -152,13 +152,13 @@ func _draw() -> void:
         if E0.mono:
                 var foot := "NATIVE GODOT 4.4 · GDSCRIPT · VERTICAL SLICE · BUILD 818"
                 var fw := E0.mono.get_string_size(foot, HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x
-                draw_string(E0.mono, Vector2((vp.x - fw) * 0.5, vp.y - 28.0), foot, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(E0.DIM.r, E0.DIM.g, E0.DIM.b, 0.42))
+                draw_string(E0.mono, Vector2((vp.x - fw) * 0.5, vp.y - 28.0), foot, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(E0.DIM.r, E0.DIM.g, E0.DIM.b, 0.62))
                 var ctl := "A/D MOVE · SPACE JUMP · SHIFT ROLL · J ATTACK · TAB OBSERVE · E MODIFY · F INTERACT · ESC PAUSE"
                 var cw := E0.mono.get_string_size(ctl, HORIZONTAL_ALIGNMENT_LEFT, -1, 10).x
-                draw_string(E0.mono, Vector2((vp.x - cw) * 0.5, vp.y - 46.0), ctl, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Color(E0.DIM.r, E0.DIM.g, E0.DIM.b, 0.38))
+                draw_string(E0.mono, Vector2((vp.x - cw) * 0.5, vp.y - 46.0), ctl, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Color(E0.DIM.r, E0.DIM.g, E0.DIM.b, 0.55))
                 var pad := "GAMEPAD · STICK OR D-PAD MOVE · A JUMP/INTERACT · X ATTACK · B ROLL · Y OBSERVE · RB MODIFY · START PAUSE"
                 var pw := E0.mono.get_string_size(pad, HORIZONTAL_ALIGNMENT_LEFT, -1, 10).x
-                draw_string(E0.mono, Vector2((vp.x - pw) * 0.5, vp.y - 62.0), pad, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Color(E0.DIM.r, E0.DIM.g, E0.DIM.b, 0.30))
+                draw_string(E0.mono, Vector2((vp.x - pw) * 0.5, vp.y - 62.0), pad, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Color(E0.DIM.r, E0.DIM.g, E0.DIM.b, 0.45))
 
 func hide_screen() -> void:
         visible = false

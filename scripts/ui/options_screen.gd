@@ -19,6 +19,7 @@ var _erase_timer := 0.0
 var _hold_dir := 0
 var _hold_t := 0.0
 var _open_grace := 0           # frames of input silence after open
+var _reading_pushed := false
 
 const SLIDER_W := 230.0
 const STEP := 0.1
@@ -53,10 +54,16 @@ func open(parent: String) -> void:
         _hold_t = 0.0
         _open_grace = 10
         GameState.options_open = true
+        if not _reading_pushed:
+                FX.push_reading()
+                _reading_pushed = true
 
 func close() -> void:
         visible = false
         GameState.options_open = false
+        if _reading_pushed:
+                FX.pop_reading()
+                _reading_pushed = false
         closed.emit()
 
 func _process(delta: float) -> void:
@@ -165,12 +172,23 @@ func _confirm() -> void:
                         close()
 
 # ------------------------------------------------------------------ drawing
+## Section anchors: label shown ABOVE this row index (visual grouping only —
+## navigation stays on the flat _rows list the whole game already speaks).
+const SECTIONS := {
+        0: "SOUND",
+        4: "FEEDBACK",
+        6: "PRESENTATION",
+        8: "RECORD",
+}
+const ROW_H := 42.0
+const SECTION_H := 34.0
+
 func _draw() -> void:
         var vp := get_viewport_rect().size
         draw_rect(Rect2(Vector2.ZERO, vp), Color(E0.VOID.r, E0.VOID.g, E0.VOID.b, 0.9))
         var cx := vp.x * 0.5
         # header — ruled like the pause title
-        var hy := vp.y * 0.16
+        var hy := vp.y * 0.14
         if E0.mono_bold:
                 var t := "OPTIONS"
                 var tw := E0.mono_bold.get_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, -1, 30).x
@@ -182,42 +200,66 @@ func _draw() -> void:
                 var sub := "THE DESIGN PERMITS ADJUSTMENT"
                 var sw := E0.mono.get_string_size(sub, HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x
                 draw_string(E0.mono, Vector2(cx - sw * 0.5, hy + 26.0), sub, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, E0.DIM)
-        # rows
+        # rows — section headers set the rhythm, rows keep a uniform stride
         var col_w := 560.0
         var x0 := cx - col_w * 0.5
-        var y := vp.y * 0.30
+        var y := vp.y * 0.255
         for i in _rows.size():
-                var row: Dictionary = _rows[i]
-                var sel: bool = i == idx
-                _draw_row(row, x0, y, col_w, sel)
-                y += 42.0
-        # footer — controls reference
+                if SECTIONS.has(i):
+                        _draw_section(String(SECTIONS[i]), x0, y, col_w)
+                        y += SECTION_H
+                _draw_row(_rows[i], x0, y, col_w, i == idx)
+                y += ROW_H
+        # footer — controls reference, framed so it stops floating
         if E0.mono:
-                var fy := vp.y - 64.0
+                var fy := vp.y - 66.0
+                draw_line(Vector2(cx - 240.0, fy - 22.0), Vector2(cx + 240.0, fy - 22.0), Color(E0.ASH.r, E0.ASH.g, E0.ASH.b, 0.45), 1.0)
                 var l1 := "A/D OR ARROWS ADJUST · F CONFIRM · ESC BACK"
-                var l1w := E0.mono.get_string_size(l1, HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x
-                draw_string(E0.mono, Vector2(cx - l1w * 0.5, fy), l1, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, E0.DIM)
-                var l2 := "GAMEPAD: STICK/D-PAD MOVE · A CONFIRM · B ROLL · Y OBSERVE · RB MODIFY · START PAUSE"
+                var l1w := E0.mono.get_string_size(l1, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
+                draw_string(E0.mono, Vector2(cx - l1w * 0.5, fy), l1, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(E0.DIM.r, E0.DIM.g, E0.DIM.b, 0.95))
+                var l2 := "GAMEPAD · STICK/D-PAD MOVE · A CONFIRM · B BACK · START PAUSE"
                 var l2w := E0.mono.get_string_size(l2, HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x
-                draw_string(E0.mono, Vector2(cx - l2w * 0.5, fy + 18.0), l2, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(E0.DIM.r, E0.DIM.g, E0.DIM.b, 0.7))
+                draw_string(E0.mono, Vector2(cx - l2w * 0.5, fy + 20.0), l2, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(E0.DIM.r, E0.DIM.g, E0.DIM.b, 0.7))
+
+func _draw_section(label: String, x: float, y: float, w: float) -> void:
+        ## Small-caps gold section label with a hairline that runs to the edge
+        ## of the column — the list gains scan rhythm without new nav rules.
+        if E0.mono == null:
+                return
+        var lw := E0.mono.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x
+        _diamond(Vector2(x + 3.0, y - 4.0), 2.0, Color(E0.GOLD.r, E0.GOLD.g, E0.GOLD.b, 0.75))
+        draw_string(E0.mono, Vector2(x + 12.0, y), label, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(E0.GOLD.r, E0.GOLD.g, E0.GOLD.b, 0.85))
+        draw_line(Vector2(x + 12.0 + lw + 12.0, y - 4.0), Vector2(x + w, y - 4.0), Color(E0.GOLD.r, E0.GOLD.g, E0.GOLD.b, 0.16), 1.0)
 
 func _draw_row(row: Dictionary, x: float, y: float, w: float, sel: bool) -> void:
         var kind := String(row["kind"])
         var label := String(row["label"])
         var label_col := E0.BONE if sel else E0.PARCH
+        var warn := kind == "erase"
         if kind == "erase" and _erase_state == 1:
                 label = "CONFIRM — ERASE EVERYTHING?"
                 label_col = E0.CRIMSON
         elif kind == "erase" and _erase_state == 2:
                 label = "THE RECORD IS ERASED"
                 label_col = E0.DIM
-        elif kind == "erase" and not GameState.has_save():
-                label_col = Color(E0.DIM.r, E0.DIM.g, E0.DIM.b, 0.55)
-        # selection strip
+        elif warn:
+                # the blade is red even at rest — destructive rows never masquerade
+                label_col = Color(0.78, 0.42, 0.38) if not sel else Color(0.94, 0.52, 0.46)
+        # selection strip — gold rules for normal rows
         if sel:
                 draw_rect(Rect2(x - 18.0, y - 17.0, w + 36.0, 27.0), Color(E0.SHADOW.r, E0.SHADOW.g, E0.SHADOW.b, 0.72))
-                draw_rect(Rect2(x - 18.0, y - 17.0, w + 36.0, 1.0), Color(E0.GOLD.r, E0.GOLD.g, E0.GOLD.b, 0.3))
-                draw_rect(Rect2(x - 18.0, y + 9.0, w + 36.0, 1.0), Color(E0.GOLD.r, E0.GOLD.g, E0.GOLD.b, 0.3))
+                if not warn:
+                        draw_rect(Rect2(x - 18.0, y - 17.0, w + 36.0, 1.0), Color(E0.GOLD.r, E0.GOLD.g, E0.GOLD.b, 0.3))
+                        draw_rect(Rect2(x - 18.0, y + 9.0, w + 36.0, 1.0), Color(E0.GOLD.r, E0.GOLD.g, E0.GOLD.b, 0.3))
+        # the record row is a scar at REST — breathing crimson frame, always on
+        if warn:
+                var beat := 0.5 + 0.5 * sin(anim_t * 2.4)
+                var armed := _erase_state == 1
+                var frame_a := (0.22 + 0.14 * beat) if not armed else (0.55 + 0.30 * beat)
+                draw_rect(Rect2(x - 18.0, y - 17.0, w + 36.0, 27.0), Color(E0.CRIMSON.r, E0.CRIMSON.g, E0.CRIMSON.b, 0.07 + 0.05 * beat if not armed else 0.16 + 0.10 * beat))
+                draw_rect(Rect2(x - 18.0, y - 17.0, w + 36.0, 1.0), Color(E0.CRIMSON.r, E0.CRIMSON.g, E0.CRIMSON.b, frame_a))
+                draw_rect(Rect2(x - 18.0, y + 9.0, w + 36.0, 1.0), Color(E0.CRIMSON.r, E0.CRIMSON.g, E0.CRIMSON.b, frame_a))
+                draw_rect(Rect2(x - 24.0, y - 14.0, 2.0, 22.0), Color(E0.CRIMSON.r, E0.CRIMSON.g, E0.CRIMSON.b, 0.65))
         if E0.mono:
                 draw_string(E0.mono, Vector2(x, y), label, HORIZONTAL_ALIGNMENT_LEFT, -1, 15, label_col)
         # right-aligned control
@@ -237,15 +279,20 @@ func _draw_row(row: Dictionary, x: float, y: float, w: float, sel: bool) -> void
                         draw_string(E0.mono, Vector2(x + w - vw, y), val, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, col)
         elif kind == "erase":
                 var note := ""
+                var note_col := Color(E0.DIM.r, E0.DIM.g, E0.DIM.b, 0.8)
                 if _erase_state == 0 and GameState.has_save():
                         note = "ONE RECORD EXISTS"
+                        note_col = Color(E0.GOLD.r, E0.GOLD.g, E0.GOLD.b, 0.8)
                 elif _erase_state == 1:
-                        note = "PRESS AGAIN"
+                        note = "PRESS AGAIN — 2s"
+                        note_col = E0.CRIMSON
+                elif _erase_state == 2:
+                        note = "NOTHING REMAINS"
                 elif not GameState.has_save():
                         note = "NOTHING REMAINS"
                 if E0.mono and not note.is_empty():
                         var nw := E0.mono.get_string_size(note, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
-                        draw_string(E0.mono, Vector2(x + w - nw, y), note, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(E0.DIM.r, E0.DIM.g, E0.DIM.b, 0.8))
+                        draw_string(E0.mono, Vector2(x + w - nw, y), note, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, note_col)
 
 func _draw_slider(row: Dictionary, x: float, y: float, sel: bool) -> void:
         var mx := float(row.get("max", 1.0))

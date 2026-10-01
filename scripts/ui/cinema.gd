@@ -109,14 +109,39 @@ func _draw() -> void:
                         _draw_center_card(vp, a, E0.GOLD, E0.PARCH)
 
 func _plate(cx: float, y: float, w: float, h: float, a: float) -> void:
-        ## Backing plate with feathered side edges — supports the type without
-        ## reading as a hard rectangle cut into the art.
-        draw_rect(Rect2(cx - w * 0.5, y, w, h), Color(E0.VOID.r, E0.VOID.g, E0.VOID.b, 0.40 * a))
-        for i in 3:
-                var k := float(i) / 3.0
-                var sw := 26.0 * (1.0 - k)
-                draw_rect(Rect2(cx - w * 0.5 - 26.0 + i * 9.0, y, sw + 2.0, h), Color(E0.VOID.r, E0.VOID.g, E0.VOID.b, 0.16 * (1.0 - k) * a))
-                draw_rect(Rect2(cx + w * 0.5 + 17.0 - i * 9.0, y, sw + 2.0, h), Color(E0.VOID.r, E0.VOID.g, E0.VOID.b, 0.16 * (1.0 - k) * a))
+        ## A light-falloff band, not a panel: cosine vertical falloff (soft
+        ## core, feathered top/bottom over 1.5x height), wide per-row side
+        ## feathers, gold hairlines, and the record's corner brackets framing
+        ## the type. Reads as atmosphere; never as a debug rectangle.
+        var band_h := h * 1.5
+        var rows := 16
+        var row_h := band_h / float(rows)
+        var y0 := y - (band_h - h) * 0.5
+        for i in rows:
+                var t := (float(i) + 0.5) / float(rows)
+                var fall := sin(t * PI)
+                var alpha := 0.44 * fall * fall * a
+                var ry := y0 + band_h * t - row_h * 0.5
+                var rh := row_h + 1.0
+                draw_rect(Rect2(cx - w * 0.5, ry, w, rh), Color(E0.VOID.r, E0.VOID.g, E0.VOID.b, alpha))
+                for s in 6:
+                        var k := float(s) / 6.0
+                        var sw := 34.0 * (1.0 - k)
+                        draw_rect(Rect2(cx - w * 0.5 - 34.0 + s * 5.7, ry, sw + 2.0, rh), Color(E0.VOID.r, E0.VOID.g, E0.VOID.b, alpha * 0.5 * (1.0 - k)))
+                        draw_rect(Rect2(cx + w * 0.5 + 28.3 - s * 5.7, ry, sw + 2.0, rh), Color(E0.VOID.r, E0.VOID.g, E0.VOID.b, alpha * 0.5 * (1.0 - k)))
+        # gold hairlines + corner brackets — the record frames the room
+        draw_rect(Rect2(cx - w * 0.5, y, w, 1.0), Color(E0.GOLD.r, E0.GOLD.g, E0.GOLD.b, 0.20 * a))
+        draw_rect(Rect2(cx - w * 0.5, y + h - 1.0, w, 1.0), Color(E0.GOLD.r, E0.GOLD.g, E0.GOLD.b, 0.14 * a))
+        var br := 12.0
+        var col := Color(E0.GOLD.r, E0.GOLD.g, E0.GOLD.b, 0.5 * a)
+        draw_line(Vector2(cx - w * 0.5, y + br), Vector2(cx - w * 0.5, y), col, 1.5)
+        draw_line(Vector2(cx - w * 0.5, y), Vector2(cx - w * 0.5 + br, y), col, 1.5)
+        draw_line(Vector2(cx + w * 0.5 - br, y), Vector2(cx + w * 0.5, y), col, 1.5)
+        draw_line(Vector2(cx + w * 0.5, y), Vector2(cx + w * 0.5, y + br), col, 1.5)
+        draw_line(Vector2(cx - w * 0.5, y + h - br), Vector2(cx - w * 0.5, y + h), col, 1.5)
+        draw_line(Vector2(cx - w * 0.5, y + h), Vector2(cx - w * 0.5 + br, y + h), col, 1.5)
+        draw_line(Vector2(cx + w * 0.5 - br, y + h), Vector2(cx + w * 0.5, y + h), col, 1.5)
+        draw_line(Vector2(cx + w * 0.5, y + h), Vector2(cx + w * 0.5, y + h - br), col, 1.5)
 
 func _draw_room(vp: Vector2, a: float) -> void:
         # lower-center: overline label, big serif title, expanding rule —
@@ -134,10 +159,15 @@ func _draw_room(vp: Vector2, a: float) -> void:
                         tw = _spaced_width(E0.serif, _big, size, 2.5)
                 # backing plate — feathered so architecture supports, not fights
                 _plate(cx, y + 2.0, tw + 84.0, 56.0, a)
+                # soft glow ring — the title emits faint light, never fights the plate
+                for i in 10:
+                        var ang := TAU * i / 10.0
+                        _spaced_text(E0.serif, Vector2(cx - tw * 0.5 + cos(ang) * 3.0, y + 26.0 + sin(ang) * 3.0), _big, size, 2.5, Color(E0.BONE.r, E0.BONE.g, E0.BONE.b, 0.06 * a))
                 var glitch := _flicker * 4.0
                 if glitch > 0.05:
                         _spaced_text(E0.serif, Vector2(cx - tw * 0.5 + glitch, y + 26.0), _big, size, 2.5, Color(E0.CYAN.r, E0.CYAN.g, E0.CYAN.b, a * 0.25))
-                _spaced_text(E0.serif, Vector2(cx - tw * 0.5 + 1.5, y + 27.5), _big, size, 2.5, Color(0, 0, 0, 0.55 * a))
+                _spaced_text(E0.serif, Vector2(cx - tw * 0.5 + 2.0, y + 28.0), _big, size, 2.5, Color(0, 0, 0, 0.7 * a))
+                _spaced_text(E0.serif, Vector2(cx - tw * 0.5 + 1.0, y + 27.0), _big, size, 2.5, Color(0, 0, 0, 0.5 * a))
                 _spaced_text(E0.serif, Vector2(cx - tw * 0.5, y + 26.0), _big, size, 2.5, Color(E0.BONE.r, E0.BONE.g, E0.BONE.b, a))
                 # rule grows outward
                 var rk := clampf(_t / 0.9, 0.0, 1.0)

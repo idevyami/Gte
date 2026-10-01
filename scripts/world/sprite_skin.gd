@@ -9,15 +9,17 @@ extends AnimatedSprite2D
 const RIM_SHADER := preload("res://art/shaders/rim.gdshader")
 
 ## Per-set rim-light tint: player warm bone, censor cold cyan, boss gold.
+## [tint, strength, width] — width lets small actors (believers at the
+## boss's feet) keep a readable edge without bloating the big silhouettes.
 const RIM_TINTS := {
-        "player": [Color(0.87, 0.82, 0.70), 0.55],
-        "oren": [Color(0.82, 0.78, 0.68), 0.40],
-        "penitent": [Color(0.72, 0.78, 0.85), 0.42],
-        "censor": [Color(0.50, 0.85, 0.86), 0.60],
-        "hollow": [Color(0.80, 0.76, 0.66), 0.38],
-        "null_children": [Color(0.62, 0.55, 0.80), 0.45],
-        "believers": [Color(0.84, 0.72, 0.50), 0.42],
-        "bound_martyr": [Color(0.86, 0.72, 0.36), 0.60],
+        "player": [Color(0.87, 0.82, 0.70), 0.55, 2.5],
+        "oren": [Color(0.82, 0.78, 0.68), 0.40, 2.5],
+        "penitent": [Color(0.72, 0.78, 0.85), 0.42, 2.5],
+        "censor": [Color(0.50, 0.85, 0.86), 0.60, 2.5],
+        "hollow": [Color(0.80, 0.76, 0.66), 0.38, 2.5],
+        "null_children": [Color(0.62, 0.55, 0.80), 0.45, 2.5],
+        "believers": [Color(0.86, 0.74, 0.52), 0.55, 3.2],
+        "bound_martyr": [Color(0.86, 0.72, 0.36), 0.60, 2.5],
 }
 
 ## One-shot animations (play through and hold the last frame).
@@ -95,12 +97,13 @@ func setup(p_set: String, p_fps: Dictionary = {}) -> bool:
 func _apply_rim() -> void:
         ## Rim light: the painted actors are dark against a dark city — a thin
         ## tinted edge (palette-locked per set) recovers their silhouettes.
-        var rim: Array = RIM_TINTS.get(skin_set, [Color(0.81, 0.78, 0.72), 0.42])
+        var rim: Array = RIM_TINTS.get(skin_set, [Color(0.81, 0.78, 0.72), 0.42, 2.5])
+        var rim_w := float(rim[2]) if rim.size() > 2 else 2.5
         var mat := ShaderMaterial.new()
         mat.shader = RIM_SHADER
         mat.set_shader_parameter("rim_color", Color(rim[0]))
         mat.set_shader_parameter("rim_strength", float(rim[1]))
-        mat.set_shader_parameter("rim_width", 2.5)
+        mat.set_shader_parameter("rim_width", rim_w)
         material = mat
 
 func pose(anim: String, speed := 1.0) -> void:

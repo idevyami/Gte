@@ -45,6 +45,13 @@ func _room(id: String, pos := Vector2(640, 600)) -> void:
                         game.dialogue_box.chars_shown = 99999
                         game.dialogue_box.advance()
                 await get_tree().process_frame
+        # let any entry/boss card finish first: world + boss proofs show the
+        # living HUD (dedicated card shots fire their own cards after this)
+        for i in 900:
+                if not game.cinema.is_showing():
+                        break
+                await get_tree().process_frame
+        await _wait(0.6)
         game.player.global_position = pos
         game.player.velocity = Vector2.ZERO
         await _wait(0.6)

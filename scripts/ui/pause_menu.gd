@@ -18,6 +18,7 @@ var screen := 0            # 0 menu · 1 codex · 2 options handoff (never drawn
 var tab := TAB_MEMORY
 var records_scroll := 0
 var anim_t := 0.0
+var _reading_pushed := false
 
 func _ready() -> void:
         set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -40,10 +41,16 @@ func open() -> void:
         tab = TAB_MEMORY
         records_scroll = 0
         get_tree().paused = true
+        if not _reading_pushed:
+                FX.push_reading()
+                _reading_pushed = true
 
 func close() -> void:
         visible = false
         get_tree().paused = false
+        if _reading_pushed:
+                FX.pop_reading()
+                _reading_pushed = false
 
 func _process(delta: float) -> void:
         if not visible:
@@ -206,16 +213,18 @@ func _draw_memory(vp: Vector2) -> void:
         var y := 160.0
         var x := 120.0
         var w := vp.x - 240.0
-        # found fragments — real records only
+        # found fragments — real records only, framed cards
         for frag_id in GameState.fragments:
                 var def: Dictionary = GameState.FRAGMENT_DEFS.get(frag_id, {})
                 if def.is_empty():
                         continue
                 draw_rect(Rect2(x, y - 16.0, w, 58.0), Color(E0.SHADOW.r, E0.SHADOW.g, E0.SHADOW.b, 0.8))
+                draw_rect(Rect2(x, y - 16.0, w, 58.0), Color(E0.ASH.r, E0.ASH.g, E0.ASH.b, 0.35), false, 1.0)
                 draw_rect(Rect2(x, y - 16.0, 3.0, 58.0), E0.GOLD)
-                draw_string(E0.mono, Vector2(x + 14.0, y), String(def["code"]) + "  ·  " + String(def["title"]), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, E0.BONE)
-                draw_string(E0.mono, Vector2(x + 14.0, y + 20.0), "STATE: " + String(def["integrity"]), HORIZONTAL_ALIGNMENT_LEFT, -1, 11, E0.DIM)
-                draw_string(E0.mono, Vector2(x + 14.0, y + 38.0), String(def["note"]), HORIZONTAL_ALIGNMENT_LEFT, -1, 12, E0.PARCH)
+                _diamond(Vector2(x + 16.0, y - 4.0), 2.2, E0.GOLD)
+                draw_string(E0.mono, Vector2(x + 26.0, y), String(def["code"]) + "  ·  " + String(def["title"]), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, E0.BONE)
+                draw_string(E0.mono, Vector2(x + w - 16.0 - E0.mono.get_string_size("STATE: " + String(def["integrity"]), HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x, y - 2.0), "STATE: " + String(def["integrity"]), HORIZONTAL_ALIGNMENT_LEFT, -1, 11, E0.DIM)
+                draw_string(E0.mono, Vector2(x + 26.0, y + 20.0), String(def["note"]), HORIZONTAL_ALIGNMENT_LEFT, -1, 12, E0.PARCH)
                 y += 70.0
         if GameState.fragments.is_empty():
                 draw_string(E0.mono, Vector2(x, y), "NO FRAGMENTS FOUND. MEMORY IS NOT ISSUED. IT IS RECOVERED.", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, E0.DIM)
@@ -238,15 +247,22 @@ func _draw_records(vp: Vector2) -> void:
         var end := mini(rows.size(), records_scroll + visible_rows)
         for i in range(records_scroll, end):
                 var r: Dictionary = rows[i]
-                draw_rect(Rect2(x, y - 16.0, w, 54.0), Color(E0.SHADOW.r, E0.SHADOW.g, E0.SHADOW.b, 0.8))
+                # zebra backing + hairline frame — rows read as filed cards
+                var zebra := 0.62 if (i % 2) == 0 else 0.8
+                draw_rect(Rect2(x, y - 16.0, w, 54.0), Color(E0.SHADOW.r, E0.SHADOW.g, E0.SHADOW.b, zebra))
+                draw_rect(Rect2(x, y - 16.0, w, 54.0), Color(E0.ASH.r, E0.ASH.g, E0.ASH.b, 0.32), false, 1.0)
                 draw_rect(Rect2(x, y - 16.0, 3.0, 54.0), Color(E0.CYAN.r, E0.CYAN.g, E0.CYAN.b, 0.85))
-                draw_string(E0.mono, Vector2(x + 14.0, y - 2.0), String(r["display"]), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, E0.BONE)
-                var meta := String(r["id"]) + "  ·  " + String(r["type"])
-                var mw := E0.mono.get_string_size(meta, HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x
-                draw_string(E0.mono, Vector2(x + w - mw - 12.0, y - 2.0), meta, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, E0.DIM)
+                _diamond(Vector2(x + 15.0, y - 3.0), 2.2, Color(E0.CYAN.r, E0.CYAN.g, E0.CYAN.b, 0.8))
+                # title + ID live on ONE line — no eye-travel to the far edge
+                draw_string(E0.mono, Vector2(x + 26.0, y - 2.0), String(r["display"]), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, E0.BONE)
+                var id_txt := "  ·  " + String(r["id"])
+                draw_string(E0.mono, Vector2(x + 26.0 + E0.mono.get_string_size(String(r["display"]), HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x + 2.0, y - 1.0), id_txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, E0.DIM)
+                # type stays right — a classification stamp, readable at a glance
+                var type_txt := String(r["type"])
+                draw_string(E0.mono, Vector2(x + w - E0.mono.get_string_size(type_txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x - 14.0, y - 1.0), type_txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(E0.DIM.r, E0.DIM.g, E0.DIM.b, 0.95))
                 var mem := String(r["memory"])
                 if not mem.is_empty():
-                        draw_string(E0.mono, Vector2(x + 14.0, y + 18.0), mem, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, E0.PARCH)
+                        draw_string(E0.mono, Vector2(x + 26.0, y + 18.0), mem, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, E0.PARCH)
                 y += 66.0
         # scroll position
         if rows.size() > visible_rows:

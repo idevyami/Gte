@@ -20,11 +20,14 @@ var _shake_offset := Vector2.ZERO
 # time-scale stack
 var _hitstop_until_msec := 0
 var _observe_active := false
+var _observe_reading := false
 
 # post uniforms (lerped)
 var _tear_pulse := 0.0
 var _observe_grade := 0.0
 var _grade_target := 0.0
+var _reading_depth := 0        # pause/options/end/observe stack — body text reads clean
+var _ca := 1.0                 # chromatic aberration mix, eased toward reading state
 
 func _ready() -> void:
         process_mode = Node.PROCESS_MODE_ALWAYS
@@ -71,10 +74,12 @@ func _process(delta: float) -> void:
         var baseline_tear: float = [0.0, 0.02, 0.05, 0.09, 0.16, 0.26][clampi(stage - 1, 0, 5)]
         var grain: float = [0.035, 0.05, 0.065, 0.08, 0.1, 0.13][clampi(stage - 1, 0, 5)]
         _observe_grade = lerpf(_observe_grade, _grade_target, minf(1.0, delta * 6.0))
+        _ca = lerpf(_ca, 0.15 if _reading_depth > 0 else 1.0, minf(1.0, delta * 6.0))
         _post_mat.set_shader_parameter("grain_amount", grain)
         _post_mat.set_shader_parameter("vignette_strength", 0.42 + 0.05 * stage)
         _post_mat.set_shader_parameter("tearing", baseline_tear + _tear_pulse)
         _post_mat.set_shader_parameter("observe_grade", _observe_grade)
+        _post_mat.set_shader_parameter("ca_amount", _ca)
         _post_mat.set_shader_parameter("time_seed", float(msec % 100000) * 0.001)
         _post_rect.queue_redraw()
 
@@ -107,6 +112,22 @@ func hitstop(duration := 0.06) -> void:
 func set_observe(active: bool) -> void:
         _observe_active = active
         _grade_target = 1.0 if active else 0.0
+        # the readout is dense data — the lens steadies while it is open
+        if active and not _observe_reading:
+                push_reading()
+                _observe_reading = true
+        elif not active and _observe_reading:
+                pop_reading()
+                _observe_reading = false
+
+## Reading surfaces (codex, options, end screen, observe) stack their claim on
+## the lens: while any is open the chromatic aberration eases off so body text
+## reads clean; the world keeps its grain and vignette.
+func push_reading() -> void:
+        _reading_depth += 1
+
+func pop_reading() -> void:
+        _reading_depth = maxi(0, _reading_depth - 1)
 
 func tear_pulse(strength := 1.0) -> void:
         _tear_pulse = minf(1.2, _tear_pulse + strength * 0.35)

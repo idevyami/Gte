@@ -11,6 +11,7 @@ uniform float vignette_strength = 0.45;
 uniform float tearing = 0.0;        // 0..1 — horizontal band displacement
 uniform float observe_grade = 0.0;  // 0..1 — cyan scanline overlay
 uniform float time_seed = 0.0;
+uniform float ca_amount = 1.0;      // 1 world · ~0.15 reading surfaces (codex/options) — body text stays clean
 
 float hash(vec2 p) {
         return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
@@ -33,8 +34,8 @@ void fragment() {
         // fade to zero exactly at the frame border — no smear strips
         float edge = min(min(uv.x, 1.0 - uv.x), min(uv.y, 1.0 - uv.y));
         ca_off *= smoothstep(0.0, 0.035, edge);
-        vec2 uv_r = clamp(uv + ca_off, vec2(0.001), vec2(0.999));
-        vec2 uv_b = clamp(uv - ca_off, vec2(0.001), vec2(0.999));
+        vec2 uv_r = clamp(uv + ca_off * ca_amount, vec2(0.001), vec2(0.999));
+        vec2 uv_b = clamp(uv - ca_off * ca_amount, vec2(0.001), vec2(0.999));
         vec3 col;
         col.r = texture(screen_tex, uv_r).r;
         col.g = texture(screen_tex, uv).g;

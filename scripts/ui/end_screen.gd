@@ -7,6 +7,7 @@ signal return_to_title
 
 var anim_t := 0.0
 var stats := {}
+var _reading_pushed := false
 
 func _ready() -> void:
         set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -16,15 +17,24 @@ func open(p_stats: Dictionary) -> void:
         stats = p_stats
         visible = true
         anim_t = 0.0
+        if not _reading_pushed:
+                FX.push_reading()
+                _reading_pushed = true
         AudioManager.play_music("aftermath")
         AudioManager.play_ambient("wind", 0.25)
+
+func _leave() -> void:
+        visible = false
+        if _reading_pushed:
+                FX.pop_reading()
+                _reading_pushed = false
 
 func _process(delta: float) -> void:
         if not visible:
                 return
         anim_t += delta
         if anim_t > 2.0 and (Input.is_action_just_pressed("interact") or Input.is_action_just_pressed("jump") or Input.is_action_just_pressed("attack")):
-                visible = false
+                _leave()
                 return_to_title.emit()
         queue_redraw()
 

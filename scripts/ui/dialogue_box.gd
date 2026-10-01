@@ -94,8 +94,12 @@ func _draw() -> void:
         var x := (vp.x - w) * 0.5
         var y := vp.y - 190.0
         var h := 130.0
-        # panel
+        # panel — feathered sides so the record sits IN the scene, not on it
         draw_rect(Rect2(x - 14, y - 14, w + 28, h + 28), Color(E0.SHADOW.r, E0.SHADOW.g, E0.SHADOW.b, 0.88))
+        for i in 3:
+                var k := float(i) / 3.0
+                draw_rect(Rect2(x - 14 - 16.0 + i * 5.5, y - 14, 18.0 - i * 5.5, h + 28), Color(E0.SHADOW.r, E0.SHADOW.g, E0.SHADOW.b, 0.14 * (1.0 - k)))
+                draw_rect(Rect2(x + w + 14 - 2.0 - i * 5.5, y - 14, 18.0 - i * 5.5, h + 28), Color(E0.SHADOW.r, E0.SHADOW.g, E0.SHADOW.b, 0.14 * (1.0 - k)))
         draw_rect(Rect2(x - 14, y - 14, w + 28, h + 28), E0.ASH, false, 1.0)
         draw_rect(Rect2(x - 14, y - 14, 3.0, h + 28), _speaker_color())
         # corner brackets — the record frames its speakers
@@ -108,24 +112,49 @@ func _draw() -> void:
         draw_line(Vector2(x - 14, y + h + 14), Vector2(x - 14 + _brk, y + h + 14), _speaker_color(), 1.5)
         draw_line(Vector2(x + w + 14 - _brk, y + h + 14), Vector2(x + w + 14, y + h + 14), _speaker_color(), 1.5)
         draw_line(Vector2(x + w + 14, y + h + 2), Vector2(x + w + 14, y + h + 14), _speaker_color(), 1.5)
-        # speaker
+        # speaker — sigil diamond + letter-spaced caps + short hairline tail
+        var sc := _speaker_color()
         if E0.mono_bold:
-                draw_string(E0.mono_bold, Vector2(x, y + 4), speaker, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, _speaker_color())
+                var sigil := _speaker_sigil()
+                var sx := x
+                for ch_i in sigil.length():
+                        draw_string(E0.mono_bold, Vector2(sx, y + 4), sigil[ch_i], HORIZONTAL_ALIGNMENT_LEFT, -1, 14, sc)
+                        sx += E0.mono_bold.get_string_size(sigil[ch_i], HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x
+                _diamond(Vector2(sx + 8.0, y - 1.0), 2.4, sc)
+                var sp_x := sx + 18.0
+                for ch_i in speaker.length():
+                        draw_string(E0.mono_bold, Vector2(sp_x, y + 4), speaker[ch_i], HORIZONTAL_ALIGNMENT_LEFT, -1, 14, sc)
+                        sp_x += E0.mono_bold.get_string_size(speaker[ch_i], HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x + 1.5
+                draw_line(Vector2(sp_x + 8.0, y - 1.0), Vector2(sp_x + 8.0 + 34.0, y - 1.0), Color(sc.r, sc.g, sc.b, 0.45), 1.0)
         # wrapped text
         var text: String = lines[line_idx].substr(0, chars_shown)
-        var wrapped := _wrap(text, w - 20.0, 15)
-        var yy := y + 30.0
+        var wrapped := _wrap(text, w - 20.0, 16)
+        var yy := y + 32.0
         for ln in wrapped:
                 if E0.mono:
-                        draw_string(E0.mono, Vector2(x + 6, yy), ln, HORIZONTAL_ALIGNMENT_LEFT, -1, 15, E0.PARCH)
-                yy += 22.0
+                        draw_string(E0.mono, Vector2(x + 6, yy), ln, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, E0.PARCH)
+                yy += 23.0
         # line counter + continue hint
         var done_line: bool = chars_shown >= lines[line_idx].length()
-        if done_line and fmod(_blink, 0.9) < 0.55:
-                if E0.mono:
-                        draw_string(E0.mono, Vector2(x + w - 90.0, y + h - 2.0), "[F] \u2588", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, E0.DIM)
+        if done_line:
+                var bounce := sin(_blink * 4.0) * 2.0
+                _diamond(Vector2(x + w - 116.0, y + h - 8.0 + bounce), 2.6, Color(E0.GOLD.r, E0.GOLD.g, E0.GOLD.b, 0.9) if fmod(_blink, 0.9) < 0.55 else Color(E0.GOLD.r, E0.GOLD.g, E0.GOLD.b, 0.4))
+                if E0.mono and fmod(_blink, 0.9) < 0.7:
+                        draw_string(E0.mono, Vector2(x + w - 104.0, y + h - 2.0), "[F] CONTINUE", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, E0.PARCH)
         if E0.mono:
                 draw_string(E0.mono, Vector2(x, y + h - 2.0), "%d/%d" % [line_idx + 1, lines.size()], HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(E0.DIM.r, E0.DIM.g, E0.DIM.b, 0.6))
+
+## A small geometric sigil per voice — the record marks who is speaking.
+func _speaker_sigil() -> String:
+        if speaker == "SYSTEM" or speaker.begins_with("TERMINAL"):
+                return "\\\\"
+        if speaker == "THE PENITENT":
+                return "|"
+        if speaker.contains("MARTYR"):
+                return "X"
+        if speaker.contains("MEASURER"):
+                return "I"
+        return "O"
 
 func _speaker_color() -> Color:
         if speaker == "SYSTEM" or speaker.begins_with("TERMINAL"):
@@ -137,6 +166,10 @@ func _speaker_color() -> Color:
         if speaker.contains("MEASURER"):
                 return E0.PARCH
         return E0.GOLD
+
+func _diamond(c: Vector2, r: float, col: Color) -> void:
+        var pts := PackedVector2Array([c + Vector2(0, -r), c + Vector2(r, 0), c + Vector2(0, r), c + Vector2(-r, 0)])
+        draw_colored_polygon(pts, col)
 
 func _wrap(text: String, width: float, size: int) -> PackedStringArray:
         var out := PackedStringArray()
