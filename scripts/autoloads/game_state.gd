@@ -16,8 +16,13 @@ var run_started_at: int = 0
 var debug_no_sprites: bool = false
 ## UI coordination: the global options overlay owns all input while open
 var options_open := false
+## UI coordination: the city map owns input while open (title / pause)
+var map_open := false
 ## OBSERVE codex — def-level records of everything the vessel has read
 var observed: Dictionary = {}
+## World-building state: districts entered (room ids) + inscriptions read
+var visited_rooms: Dictionary = {}
+var texts_read: Dictionary = {}
 
 # Flags worth naming (anything else is free-form):
 const F_RELIQ_CARRIED := "relic_carried"
@@ -44,6 +49,8 @@ var stats := {
         "anchors": 0,            # anchor communions
         "fragments": 0,
         "observed": 0,           # unique entities read through OBSERVE
+        "texts": 0,              # inscriptions read
+        "districts": 0,          # districts entered
 }
 
 # --- HUNTED spawn pacing ------------------------------------------------------
@@ -100,6 +107,7 @@ func _ready() -> void:
         _setup_input_map()
         _reset_run()
         EventBus.fragment_found.connect(_on_fragment_found)
+        EventBus.room_entered.connect(_on_room_entered)
         # settings apply after the whole tree is up (AudioManager builds its
         # buses in its own _ready, which runs after this one)
         load_settings.call_deferred()
@@ -114,9 +122,11 @@ func _reset_run() -> void:
         flags = {}
         fragments = []
         observed = {}
+        visited_rooms = {}
+        texts_read = {}
         one_shots = {}
         property_overrides = {}
-        stats = {"edits": 0, "spent": 0, "deaths": 0, "dissipated": 0, "anchors": 0, "fragments": 0, "observed": 0}
+        stats = {"edits": 0, "spent": 0, "deaths": 0, "dissipated": 0, "anchors": 0, "fragments": 0, "observed": 0, "texts": 0, "districts": 0}
         run_started_at = Time.get_ticks_msec()
         correction_timer = 0.0
         censor_timer = 0.0
@@ -260,6 +270,25 @@ func _on_fragment_found(fragment_id: String) -> void:
 func has_fragment(fragment_id: String) -> bool:
         return fragments.has(fragment_id)
 
+# ------------------------------------------------------------- world-building
+func _on_room_entered(room_id: String) -> void:
+        ## Districts entered feed the city map + the end ledger.
+        if room_id.is_empty() or visited_rooms.has(room_id):
+                return
+        visited_rooms[room_id] = Time.get_unix_time_from_system()
+        stats["districts"] = visited_rooms.size()
+
+func has_visited(room_id: String) -> bool:
+        return visited_rooms.has(room_id)
+
+func mark_text_read(text_id: String) -> bool:
+        ## First reading of an inscription. Returns true on first read only.
+        if text_id.is_empty() or texts_read.has(text_id):
+                return false
+        texts_read[text_id] = true
+        stats["texts"] = texts_read.size()
+        return true
+
 # ------------------------------------------------------------------ observed codex
 func mark_observed(node) -> bool:
         ## Record a live OBSERVE target into the codex. Dedupe by record key:
@@ -313,6 +342,8 @@ func save_game(room_id: String, player_pos: Vector2, hp: int, anchor_id: String)
                 "flags": flags,
                 "fragments": fragments,
                 "observed": observed,
+                "visited": visited_rooms,
+                "texts_read": texts_read,
                 "one_shots": one_shots,
                 "stats": stats,
                 "anchor": anchor_id,
@@ -366,9 +397,15 @@ func apply_save(data: Dictionary) -> void:
                 fragments.append(String(frag))
         one_shots = data.get("one_shots", {})
         observed = data.get("observed", {})
+        visited_rooms = data.get("visited", {})
+        texts_read = data.get("texts_read", {})
         stats = data.get("stats", stats)
         if not stats.has("observed"):
                 stats["observed"] = observed.size()
+        if not stats.has("texts"):
+                stats["texts"] = texts_read.size()
+        if not stats.has("districts"):
+                stats["districts"] = visited_rooms.size()
         _communed = data.get("communed", [])
         property_overrides = data.get("overrides", {})
         EntityDB.import_overrides(property_overrides)

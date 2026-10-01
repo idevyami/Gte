@@ -5,8 +5,10 @@ extends Node
 var game: Game
 var title: TitleScreen
 var options: OptionsScreen
+var world_map: WorldMap
 var _title_layer: CanvasLayer
 var _options_layer: CanvasLayer
+var _map_layer: CanvasLayer
 
 func _ready() -> void:
         E0.load_fonts()
@@ -28,8 +30,16 @@ func _ready() -> void:
         options.closed.connect(_on_options_closed)
         options.save_erased.connect(func(): title._rebuild_menu())
         _options_layer.add_child(options)
+        # THE CITY — the cross-section map, reachable from title and pause
+        _map_layer = CanvasLayer.new()
+        _map_layer.layer = 85
+        add_child(_map_layer)
+        world_map = WorldMap.new()
+        _map_layer.add_child(world_map)
         title.options_requested.connect(func(): options.open("title"))
+        title.city_requested.connect(func(): world_map.open())
         game.options_requested.connect(func(): options.open("pause"))
+        game.pause_menu.city_requested.connect(func(): world_map.open())
         _show_title()
         AudioManager.play_music("title")
         AudioManager.play_ambient("wind", 0.18)

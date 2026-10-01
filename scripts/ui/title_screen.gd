@@ -6,6 +6,7 @@ extends Control
 signal new_game_requested
 signal continue_requested
 signal options_requested
+signal city_requested
 
 var menu: Array = []
 var idx := 0
@@ -23,6 +24,7 @@ func _rebuild_menu() -> void:
         menu = [{"label": "RESTORE THE WORLD", "action": "new"}]
         if GameState.has_save():
                 menu.append({"label": "CONTINUE", "action": "continue"})
+        menu.append({"label": "THE CITY", "action": "city"})
         menu.append({"label": "OPTIONS", "action": "options"})
         menu.append({"label": "QUIT", "action": "quit"})
         idx = 0
@@ -32,7 +34,7 @@ func _process(delta: float) -> void:
         _flicker = maxf(0.0, _flicker - delta * 4.0)
         if randf() < 0.003:
                 _flicker = 1.0
-        if GameState.options_open:
+        if GameState.options_open or GameState.map_open:
                 queue_redraw()
                 return
         if Input.is_action_just_pressed("move_up"):
@@ -54,6 +56,8 @@ func _confirm() -> void:
                 new_game_requested.emit()
         elif action == "continue":
                 continue_requested.emit()
+        elif action == "city":
+                city_requested.emit()
         elif action == "options":
                 options_requested.emit()
         elif action == "quit":

@@ -8,6 +8,7 @@ signal resume_requested
 signal restart_requested
 signal quit_to_title_requested
 signal options_requested
+signal city_requested
 
 const TAB_MEMORY := 0
 const TAB_RECORDS := 1
@@ -29,6 +30,7 @@ func _rebuild() -> void:
         menu = [
                 {"label": "RESUME", "action": "resume"},
                 {"label": "RECORDS", "action": "records"},
+                {"label": "THE CITY", "action": "city"},
                 {"label": "OPTIONS", "action": "options"},
                 {"label": "RESTART FROM ANCHOR", "action": "restart"},
                 {"label": "QUIT TO TITLE", "action": "quit"},
@@ -56,7 +58,7 @@ func _process(delta: float) -> void:
         if not visible:
                 return
         anim_t += delta
-        if GameState.options_open:
+        if GameState.options_open or GameState.map_open:
                 queue_redraw()
                 return
         if Input.is_action_just_pressed("pause"):
@@ -126,6 +128,8 @@ func _confirm() -> void:
                         resume_requested.emit()
                 "records":
                         screen = 1
+                "city":
+                        city_requested.emit()
                 "options":
                         options_requested.emit()
                 "restart":

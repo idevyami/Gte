@@ -64,6 +64,8 @@ func _draw() -> void:
                         ["CONSISTENCY REMAINING", "%03d%% · S%d" % [GameState.consistency, GameState.stage]],
                         ["FRAGMENTS RECOVERED", "%d / 4" % GameState.fragments.size()],
                         ["ENTITIES OBSERVED", str(stats.get("observed", 0))],
+                        ["INSCRIPTIONS READ", str(stats.get("texts", 0))],
+                        ["DISTRICTS ENTERED", "%d / 9" % stats.get("districts", 0)],
                         ["DISSIPATED", str(stats.get("dissipated", 0))],
                         ["DEATHS", str(stats.get("deaths", 0))],
                         ["TIME IN THE CITY", _fmt_time(int(stats.get("elapsed", 0)))],

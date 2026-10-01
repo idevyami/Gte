@@ -20,6 +20,8 @@ names = [
     "18_room_card", "19_boss_intro", "20_atmosphere",
     "21_depth", "22_options",
     "23_records",
+    "24_inscription", "25_reading", "25b_reading_full", "26_city_map",
+    "27_district_stamp", "28_archive_records", "29_margin_note",
 ]
 for n in names:
     p = os.path.join(src, n + ".png")

@@ -15,7 +15,7 @@ var _last_stage := 1
 const KINDS := [
         "column", "arch", "banner", "statue_kneel", "chain_hang", "cage_hang",
         "censer_swing", "pipe", "vent", "cable", "bell", "mural", "bones",
-        "candles", "glyph_row", "machine",
+        "candles", "glyph_row", "machine", "pew", "records",
 ]
 
 const DECOR_TEX_PATHS := {
@@ -136,6 +136,10 @@ func _draw() -> void:
                                         _machine_painted(pos, w, h, s)
                                 else:
                                         _machine(pos, w, h, s)
+                        "pew":
+                                _pew(pos, w, s)
+                        "records":
+                                _records(pos, w, s)
 
 func _ghost(pos: Vector2) -> void:
         draw_rect(Rect2(pos.x - 20, pos.y - 60, 40, 60), Color(E0.CYAN.r, E0.CYAN.g, E0.CYAN.b, 0.05))
@@ -443,3 +447,51 @@ func _machine(pos: Vector2, w: float, h: float, s: float) -> void:
         for i in 2:
                 draw_circle(Vector2(pos.x + w - 10.0, pos.y - h + 12.0 + i * 12.0), 2.5, Color(E0.CRIMSON.r, E0.CRIMSON.g, E0.CRIMSON.b, 0.4 + 0.2 * sin(Time.get_ticks_msec() * 0.004 + i)))
         draw_rect(Rect2(pos.x - 4, pos.y - 6, w + 8, 6), E0.DIRTY_STONE)
+
+func _pew(pos: Vector2, w: float, s: float) -> void:
+        ## Chapel bench — dark wood, worn smooth by the counted. w is the
+        ## bench length; the back stands on the -x side so the congregation
+        ## faces the altar (+x).
+        _contact_shadow(pos, w * 0.56, 0.3 + 0.08 * s)
+        var wood := Color(0.16, 0.12, 0.1).darkened(0.04 * s)
+        var wood_hi := wood.lightened(0.07)
+        # legs
+        for lx in [pos.x - w * 0.38, pos.x + w * 0.36]:
+                draw_rect(Rect2(lx, pos.y - 14, 7, 14), wood)
+        # seat
+        draw_rect(Rect2(pos.x - w * 0.5, pos.y - 18, w, 6), wood_hi)
+        draw_rect(Rect2(pos.x - w * 0.5, pos.y - 13, w, 4), wood)
+        # back, slightly tilted
+        var back_x := pos.x - w * 0.5 + 3.0
+        draw_colored_polygon(PackedVector2Array([
+                Vector2(back_x, pos.y - 18), Vector2(back_x + 4, pos.y - 18),
+                Vector2(back_x + 9, pos.y - 40), Vector2(back_x + 5, pos.y - 40),
+        ]), wood)
+        # a worn spot on the seat where the counted sat
+        draw_rect(Rect2(pos.x + w * 0.1, pos.y - 19, w * 0.18, 2), Color(E0.PARCH.r, E0.PARCH.g, E0.PARCH.b, 0.1 + 0.08 * s))
+        # a dropped hymnal on some benches
+        if s > 0.72:
+                draw_rect(Rect2(pos.x + w * 0.3, pos.y - 23, 9, 5), Color(E0.PARCH.r * 0.6, E0.PARCH.g * 0.6, E0.PARCH.b * 0.6, 0.9))
+
+func _records(pos: Vector2, w: float, s: float) -> void:
+        ## Loose record pages, fallen where they were read. Pale rectangles,
+        ## slightly turned — the archive sheds.
+        var rng := RandomNumberGenerator.new()
+        rng.seed = hash(str(int(pos.x)) + "rec" + str(s))
+        var n := maxi(4, int(w / 30.0))
+        for i in n:
+                var px := pos.x + rng.randf() * w
+                var py := pos.y - rng.randf() * 3.0
+                var pw := 13.0 + rng.randf() * 7.0
+                var ph := 9.0 + rng.randf() * 4.0
+                var rot := (rng.randf() - 0.5) * 0.9
+                # soft contact shadow so pages sit on the floor
+                draw_set_transform(Vector2(px, py), rot, Vector2.ONE)
+                draw_rect(Rect2(-pw * 0.5 - 1.5, -ph + 1.5, pw + 3.0, ph + 1.5), Color(0.02, 0.02, 0.03, 0.3))
+                draw_rect(Rect2(-pw * 0.5, -ph, pw, ph), Color(E0.PARCH.r * 0.78, E0.PARCH.g * 0.78, E0.PARCH.b * 0.74, 0.85 + 0.15 * rng.randf()))
+                # a line or two of record text
+                if rng.randf() > 0.3:
+                        draw_rect(Rect2(-pw * 0.5 + 2.0, -ph + 2.0, pw * 0.6 * rng.randf() + 3.0, 1.2), Color(E0.VOID.r, E0.VOID.g, E0.VOID.b, 0.6))
+                if rng.randf() > 0.55:
+                        draw_rect(Rect2(-pw * 0.5 + 2.0, -ph + 4.4, pw * 0.45 * rng.randf() + 2.0, 1.2), Color(E0.VOID.r, E0.VOID.g, E0.VOID.b, 0.5))
+                draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)

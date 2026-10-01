@@ -17,6 +17,9 @@ const ROOMS := {
                 "ambient": {"id": "machine", "vol": 0.45},
                 "hunts": false,
                 "spawn": Vector2(140, 974),
+				"zones": [
+					{"x0": 0, "x1": 800, "name": "THE CRADLES", "sub": "SUBLEVEL IX · THE IRON WOMB"}, {"x0": 800, "x1": 1600, "name": "THE ASCENT SHAFT", "sub": "EXIT IS PURPOSE"},
+				],
                 "floors": [Rect2(0, 1000, 1600, 100)],
                 "platforms": [
                         Rect2(420, 950, 160, 22), Rect2(640, 900, 150, 22), Rect2(870, 850, 160, 22),
@@ -76,6 +79,9 @@ const ROOMS := {
                 "ambient": {"id": "machine", "vol": 0.5},
                 "hunts": false,
                 "spawn": Vector2(120, 634),
+				"zones": [
+					{"x0": 0, "x1": 733, "name": "THE LOWER WALK", "sub": "SUBLEVEL VIII"}, {"x0": 733, "x1": 1466, "name": "PROCESSION STREET", "sub": "KEEP TO THE COUNT"}, {"x0": 1466, "x1": 2200, "name": "THE FIRST DOOR", "sub": "CONSECRATED UNDER THE DESIGN"},
+				],
                 "floors": [Rect2(0, 660, 2200, 60)],
                 "platforms": [
                         Rect2(340, 610, 140, 22), Rect2(560, 560, 140, 22), Rect2(800, 510, 160, 22),
@@ -90,6 +96,11 @@ const ROOMS := {
                         {"entity": "DOOR_029", "instance": "DOOR_029", "mode": "lock", "pos": Vector2(1522, 660), "size": Vector2(54, 160)},
                 ],
                 "decor": [
+				{"kind": "statue_kneel", "pos": Vector2(1300, 660), "s": 0.3},
+				{"kind": "statue_kneel", "pos": Vector2(1352, 660), "s": 0.55},
+				{"kind": "statue_kneel", "pos": Vector2(1404, 660), "s": 0.8},
+				{"kind": "candles", "pos": Vector2(1462, 660), "w": 46, "s": 0.4},
+				{"kind": "bones", "pos": Vector2(1230, 660), "w": 70, "s": 0.25},
                         {"kind": "pipe", "pos": Vector2(0, 90), "w": 2200, "h": 24, "s": 0.3},
                         {"kind": "pipe", "pos": Vector2(0, 140), "w": 2200, "h": 18, "s": 0.6},
                         {"kind": "vent", "pos": Vector2(240, 600), "w": 70},
@@ -135,6 +146,9 @@ const ROOMS := {
                 "ambient": {"id": "wind", "vol": 0.5},
                 "hunts": false,
                 "spawn": Vector2(120, 814),
+				"zones": [
+					{"x0": 0, "x1": 650, "name": "THE ASH QUARTER", "sub": "WARD 3 · SWEPT DAILY"}, {"x0": 650, "x1": 1300, "name": "PROCESSION STREET", "sub": "CIVIC GRADE"}, {"x0": 1300, "x1": 1950, "name": "TOLL GATE 03", "sub": "DEBTS DO NOT LAPSE"}, {"x0": 1950, "x1": 2600, "name": "CENSUS ROW", "sub": "RECARVING DAY SOON"},
+				],
                 "floors": [Rect2(0, 840, 2600, 60)],
                 "platforms": [
                         Rect2(760, 790, 200, 22), Rect2(1100, 740, 220, 22), Rect2(1700, 790, 200, 22),
@@ -145,6 +159,11 @@ const ROOMS := {
                         Rect2(0, -40, 2600, 40),
                 ],
                 "decor": [
+				{"kind": "statue_kneel", "pos": Vector2(1395, 840), "s": 0.2},
+				{"kind": "statue_kneel", "pos": Vector2(1447, 840), "s": 0.5},
+				{"kind": "statue_kneel", "pos": Vector2(1499, 840), "s": 0.75},
+				{"kind": "bones", "pos": Vector2(1570, 840), "w": 80, "s": 0.3},
+				{"kind": "banner", "pos": Vector2(1750, 300), "w": 60, "h": 70, "s": 0.62},
                         {"kind": "column", "pos": Vector2(340, 840), "w": 44, "h": 420, "s": 0.2},
                         {"kind": "column", "pos": Vector2(640, 840), "w": 44, "h": 420, "s": 0.5},
                         {"kind": "column", "pos": Vector2(1240, 840), "w": 44, "h": 420, "s": 0.8},
@@ -209,6 +228,9 @@ const ROOMS := {
                 "ambient": {"id": "void", "vol": 0.45},
                 "hunts": false,
                 "spawn": Vector2(120, 914),
+				"zones": [
+					{"x0": 0, "x1": 733, "name": "THE CENSUS FLOOR", "sub": "SUBLEVEL V"}, {"x0": 733, "x1": 1466, "name": "THE TOLL PLAZA", "sub": "COLLECTING SINCE THE THIRD ENUMERATION"}, {"x0": 1466, "x1": 2200, "name": "THE ACCOUNTED DOOR", "sub": "ACCOUNTS SEALED"},
+				],
                 "floors": [Rect2(0, 940, 2200, 60)],
                 "platforms": [
                         Rect2(500, 890, 160, 22), Rect2(1560, 890, 160, 22),
@@ -225,6 +247,9 @@ const ROOMS := {
                         {"entity": "CONTRADICTION_DOOR", "instance": "DOOR_114", "mode": "accounts", "pos": Vector2(1822, 940), "size": Vector2(54, 160)},
                 ],
                 "decor": [
+				{"kind": "statue_kneel", "pos": Vector2(950, 940), "s": 0.35},
+				{"kind": "statue_kneel", "pos": Vector2(1002, 940), "s": 0.7},
+				{"kind": "bones", "pos": Vector2(1075, 940), "w": 70, "s": 0.2},
                         {"kind": "column", "pos": Vector2(350, 940), "w": 40, "h": 520, "s": 0.2},
                         {"kind": "column", "pos": Vector2(390, 940), "w": 40, "h": 520, "s": 0.7},
                         {"kind": "column", "pos": Vector2(820, 940), "w": 40, "h": 520, "s": 0.5},
@@ -279,6 +304,9 @@ const ROOMS := {
                 "ambient": {"id": "choir", "vol": 0.55},
                 "hunts": false,
                 "spawn": Vector2(120, 814),
+				"zones": [
+					{"x0": 0, "x1": 666, "name": "THE NAVE", "sub": "SUBLEVEL IV · CHAPEL GRADE"}, {"x0": 666, "x1": 1333, "name": "THE CHANTRY", "sub": "HYMNALS 1–11"}, {"x0": 1333, "x1": 2000, "name": "THE RELIQUARY", "sub": "WHERE THE PALE SAINT IS KEPT"},
+				],
                 "floors": [Rect2(0, 840, 2000, 60)],
                 "platforms": [
                         Rect2(560, 790, 160, 22),
@@ -290,6 +318,13 @@ const ROOMS := {
                 ],
                 "ward": {"instance": "WARD_BARRIER", "pos": Vector2(1830, 840), "height": 300.0},
                 "decor": [
+				{"kind": "pew", "pos": Vector2(400, 840), "w": 105, "s": 0.15},
+				{"kind": "pew", "pos": Vector2(520, 840), "w": 105, "s": 0.42},
+				{"kind": "pew", "pos": Vector2(640, 840), "w": 105, "s": 0.78},
+				{"kind": "pew", "pos": Vector2(760, 840), "w": 105, "s": 0.3},
+				{"kind": "pew", "pos": Vector2(880, 840), "w": 105, "s": 0.9},
+				{"kind": "pew", "pos": Vector2(1000, 840), "w": 105, "s": 0.55},
+				{"kind": "candles", "pos": Vector2(1120, 840), "w": 60, "s": 0.6},
                         {"kind": "arch", "pos": Vector2(420, 840), "w": 340, "h": 80, "s": 0.3},
                         {"kind": "arch", "pos": Vector2(900, 840), "w": 340, "h": 80, "s": 0.6},
                         {"kind": "arch", "pos": Vector2(1400, 840), "w": 340, "h": 80, "s": 0.4},
@@ -353,6 +388,9 @@ const ROOMS := {
                 "ambient": {"id": "void", "vol": 0.5},
                 "hunts": true,
                 "spawn": Vector2(120, 814),
+				"zones": [
+					{"x0": 0, "x1": 800, "name": "THE ARCHIVE LOFT", "sub": "SUBLEVEL III"}, {"x0": 800, "x1": 1600, "name": "RECORD HALL A", "sub": "ATTEMPTS, FAILED"}, {"x0": 1600, "x1": 2400, "name": "THE CORRECTED MURAL", "sub": "THE COUNT REMAINS DISPUTED"},
+				],
                 "floors": [Rect2(0, 840, 2400, 60)],
                 "platforms": [
                         Rect2(1900, 750, 160, 22),
@@ -364,6 +402,9 @@ const ROOMS := {
                 ],
                 "hidden": {"rect": Rect2(2140, 700, 240, 22)},
                 "decor": [
+				{"kind": "records", "pos": Vector2(940, 840), "w": 190, "s": 0.3},
+				{"kind": "records", "pos": Vector2(1480, 840), "w": 230, "s": 0.7},
+				{"kind": "records", "pos": Vector2(2040, 840), "w": 160, "s": 0.5},
                         {"kind": "machine", "pos": Vector2(300, 840), "w": 120, "h": 160, "s": 0.2},
                         {"kind": "machine", "pos": Vector2(500, 840), "w": 120, "h": 160, "s": 0.5},
                         {"kind": "machine", "pos": Vector2(1050, 840), "w": 120, "h": 160, "s": 0.8},
@@ -420,6 +461,9 @@ const ROOMS := {
                 "ambient": {"id": "machine", "vol": 0.6},
                 "hunts": true,
                 "spawn": Vector2(120, 814),
+				"zones": [
+					{"x0": 0, "x1": 866, "name": "GANTRY 7-4", "sub": "SUBLEVEL II · INDUSTRIAL GRADE"}, {"x0": 866, "x1": 1733, "name": "THE MAINTENANCE FLOOR", "sub": "SHIFT CONTINUES"}, {"x0": 1733, "x1": 2600, "name": "THE HEART APPROACH", "sub": "DO NOT LOOK LONGER THAN IS MEASURED"},
+				],
                 "floors": [Rect2(0, 840, 2600, 60)],
                 "platforms": [
                         Rect2(1490, 770, 180, 22),
@@ -435,6 +479,10 @@ const ROOMS := {
                         {"entity": "HEART_OF_THE_DESIGN", "instance": "SANCTUM_GATE", "mode": "gate", "flag": "heart_aligned", "pos": Vector2(2472, 840), "size": Vector2(54, 100)},
                 ],
                 "decor": [
+				{"kind": "cable", "pos": Vector2(260, 150), "w": 480, "h": 46, "s": 0.25},
+				{"kind": "cable", "pos": Vector2(1950, 170), "w": 520, "h": 54, "s": 0.75},
+				{"kind": "machine", "pos": Vector2(340, 840), "w": 84, "h": 104, "s": 0.35},
+				{"kind": "machine", "pos": Vector2(2140, 840), "w": 92, "h": 112, "s": 0.65},
                         {"kind": "pipe", "pos": Vector2(0, 100), "w": 2600, "h": 30, "s": 0.3},
                         {"kind": "pipe", "pos": Vector2(0, 160), "w": 2600, "h": 22, "s": 0.6},
                         {"kind": "pipe", "pos": Vector2(0, 220), "w": 2600, "h": 26, "s": 0.9},
@@ -488,6 +536,9 @@ const ROOMS := {
                 "ambient": {"id": "fire", "vol": 0.35},
                 "hunts": false,
                 "spawn": Vector2(120, 814),
+				"zones": [
+					{"x0": 0, "x1": 533, "name": "THE PILGRIM FLOOR", "sub": "SUBLEVEL I · OFFERINGS ACCEPTED"}, {"x0": 533, "x1": 1066, "name": "THE BOUND MARTYR", "sub": "ENTITY_000_001 · SEALED"}, {"x0": 1066, "x1": 1600, "name": "THE MONUMENT BASE", "sub": "UNDER THE CHAINS"},
+				],
                 "floors": [Rect2(0, 840, 1600, 60)],
                 "platforms": [],
                 "walls": [
@@ -505,6 +556,9 @@ const ROOMS := {
                         "bearers": [Vector2(500, 814), Vector2(1300, 814)],
                 },
                 "decor": [
+				{"kind": "candles", "pos": Vector2(255, 840), "w": 52, "s": 0.3},
+				{"kind": "bones", "pos": Vector2(500, 840), "w": 80, "s": 0.45},
+				{"kind": "candles", "pos": Vector2(1345, 840), "w": 72, "s": 0.7},
                         {"kind": "column", "pos": Vector2(340, 840), "w": 48, "h": 460, "s": 0.2},
                         {"kind": "column", "pos": Vector2(1260, 840), "w": 48, "h": 460, "s": 0.5},
                         {"kind": "arch", "pos": Vector2(800, 840), "w": 380, "h": 90, "s": 0.3},
@@ -563,6 +617,9 @@ const ROOMS := {
                 "ambient": {"id": "wind", "vol": 0.3},
                 "hunts": false,
                 "spawn": Vector2(120, 634),
+				"zones": [
+					{"x0": 0, "x1": 700, "name": "THE SURFACE", "sub": "UNMEASURED"}, {"x0": 700, "x1": 1400, "name": "THE OPEN AIR", "sub": "THE WIND DOES NOT ASK"},
+				],
                 "floors": [Rect2(0, 660, 1400, 60)],
                 "platforms": [],
                 "walls": [

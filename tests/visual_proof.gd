@@ -267,4 +267,59 @@ func _run() -> void:
         await _snap("23_records")
         pm.close()
 
+        # --- 24 · INSCRIPTION IN THE WORLD (posted law on the street)
+        await _room("act3", Vector2(150, 840))
+        game.player.facing = 1
+        game.player.velocity = Vector2.ZERO
+        await _wait(0.4)
+        await _snap("24_inscription")
+        # read it — the panel open, mid-typewriter
+        var rd := _find_readable("r07_fundamental_two")
+        if rd:
+                game.open_reading(rd)
+                await _wait(1.1)
+                await _snap("25_reading")
+                game.reading_panel._chars = 999.0
+                game.reading_panel._margin_t = 1.0
+                await _wait(0.5)
+                await _snap("25b_reading_full")
+                game.reading_panel.close()
+                await _wait(0.4)
+
+        # --- 26 · THE CITY, IN SECTION (world map)
+        main.world_map.open()
+        await _wait(1.4)
+        await _snap("26_city_map")
+        main.world_map.close_map()
+        await _wait(0.3)
+
+        # --- 27 · DISTRICT STAMP (crossing into a named zone)
+        await _room("act6", Vector2(300, 840))
+        game.player.facing = 1
+        game.player.velocity = Vector2.ZERO
+        await _wait(0.5)
+        game.player.global_position = Vector2(1000, 840)   # cross: ARCHIVE LOFT -> RECORD HALL A
+        game.player.velocity = Vector2.ZERO
+        await _wait(0.8)
+        await _snap("27_district_stamp")
+        # the archive sheds: loose records + the margin note
+        game.player.global_position = Vector2(1450, 840)
+        game.player.velocity = Vector2.ZERO
+        await _wait(0.5)
+        await _snap("28_archive_records")
+        var margin := _find_readable("r21_margin_note")
+        if margin:
+                game.open_reading(margin)
+                await _wait(1.2)
+                await _snap("29_margin_note")
+                game.reading_panel.close()
+                await _wait(0.3)
+
         get_tree().quit()
+
+func _find_readable(id: String) -> Readable:
+        for node in EntityDB.live_nodes():
+                var r := node as Readable
+                if r != null and r.instance_key == id:
+                        return r
+        return null

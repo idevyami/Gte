@@ -21,8 +21,11 @@ var observe_panel: ObservePanel
 var brackets: ObserveBrackets
 var pause_menu: PauseMenu
 var end_screen: EndScreen
+var reading_panel: ReadingPanel
+var location_stamp: LocationStamp
 
 var dialogues: Dictionary = {}
+var readables: Dictionary = {}      # room id -> [readable entries]
 var room_id := ""
 var room_title := ""
 var room_data: Dictionary = {}
@@ -56,10 +59,14 @@ var _pending_room := ""
 var _dead_handled := false
 var _exits: Array = []
 var _triggers: Array = []
+var _zones: Array = []
+var _current_zone := -1
+var _zone_delay := 0.0
 
 func _ready() -> void:
         add_to_group("game")
         _load_dialogues()
+        _load_readables()
         _build_ui()
         var world_root := Node2D.new()
         world = world_root
@@ -93,6 +100,19 @@ func _load_dialogues() -> void:
         else:
                 push_error("Game: dialogue.json failed to parse")
 
+func _load_readables() -> void:
+        ## The city's carved texts — stelae, posted law, graffiti. Room-keyed.
+        var txt := FileAccess.get_file_as_string("res://data/readables.json")
+        var parsed: Variant = JSON.parse_string(txt)
+        if typeof(parsed) == TYPE_DICTIONARY:
+                for entry in parsed.get("readables", []):
+                        var room := String(entry.get("room", ""))
+                        if not readables.has(room):
+                                readables[room] = []
+                        (readables[room] as Array).append(entry)
+        else:
+                push_error("Game: readables.json failed to parse")
+
 func _build_ui() -> void:
         ui_layer = CanvasLayer.new()
         ui_layer.layer = 50
@@ -118,6 +138,12 @@ func _build_ui() -> void:
         ui_layer.add_child(end_screen)
         cinema = Cinema.new()
         ui_layer.add_child(cinema)
+        reading_panel = ReadingPanel.new()
+        reading_panel.game = self
+        ui_layer.add_child(reading_panel)
+        location_stamp = LocationStamp.new()
+        location_stamp.game = self
+        ui_layer.add_child(location_stamp)
 
 # ------------------------------------------------------------------ lifecycle
 func set_active(v: bool) -> void:
@@ -208,8 +234,17 @@ func load_room(id: String) -> void:
                 all_rects.append(r)
         masonry.setup(all_rects, hash(id), _terrain_style(id))
         world.add_child(masonry)
+        # architectural framing: every door gets its carved arch (and the
+        # sealed gates their banner) — exits read as passages between places
+        var decor_items: Array = room_data.get("decor", []).duplicate()
+        for d in room_data.get("doors", []):
+                var dpos: Vector2 = d["pos"]
+                var dsize: Vector2 = d.get("size", Vector2(54, 160))
+                decor_items.append({"kind": "arch", "pos": Vector2(dpos.x, dpos.y + 2.0), "w": dsize.x + 74.0, "h": 90.0, "s": 0.35})
+                if String(d.get("mode", "")) == "gate":
+                        decor_items.append({"kind": "banner", "pos": Vector2(dpos.x, dpos.y - dsize.y - 26.0), "w": 60.0, "h": 54.0, "s": 0.62})
         decor_renderer = Decor.new()
-        decor_renderer.setup(room_data.get("decor", []))
+        decor_renderer.setup(decor_items)
         world.add_child(decor_renderer)
         camera = CameraRig.new()
         world.add_child(camera)
@@ -244,6 +279,12 @@ func load_room(id: String) -> void:
                 _build_door(d)
         for p in room_data.get("props", []):
                 _build_prop(p)
+        for r_ent in readables.get(id, []):
+                var rd := Readable.new()
+                rd.setup_readable(r_ent)
+                var rpos: Array = r_ent.get("pos", [0, 0])
+                rd.position = Vector2(float(rpos[0]), float(rpos[1]))
+                world.add_child(rd)
         for a in room_data.get("anchors", []):
                 var anchor := Anchor.new()
                 anchor.setup_anchor(String(a.get("instance", "ANCHOR")))
@@ -269,6 +310,9 @@ func load_room(id: String) -> void:
         for t in room_data.get("triggers", []):
                 _triggers.append(t.duplicate())
         _exits = room_data.get("exits", [])
+        _zones = room_data.get("zones", [])
+        _current_zone = -1
+        _zone_delay = 3.7
 
         # --- player
         _spawn_player_at(room_data["spawn"] as Vector2)
@@ -441,13 +485,52 @@ func _process(delta: float) -> void:
                         _scan_interact()
                         _check_triggers()
                         _check_exits()
+                        _check_zones()
                         _hunted(delta)
                         _combat_music(delta)
                         _apply_hidden_state()
                 "dialogue":
                         pass
+                "reading":
+                        pass
                 "dead", "transition", "ending":
                         pass
+
+# ------------------------------------------------------------------ reading
+func open_reading(source: Readable) -> void:
+        if state != "playing":
+                return
+        state = "reading"
+        if player:
+                player.input_locked = true
+        var first := GameState.mark_text_read(String(source.entry.get("id", "")))
+        reading_panel.open(source)
+        if first:
+                system_message("THE TEXT IS REMEMBERED.", "quiet")
+
+func reading_closed() -> void:
+        if state == "reading":
+                state = "playing"
+        if player:
+                player.input_locked = false
+
+# ------------------------------------------------------------------ zones
+func _check_zones() -> void:
+        ## Districts within districts: crossing into a named zone stamps it.
+        if _zones.is_empty() or player == null:
+                return
+        if _zone_delay > 0.0:
+                _zone_delay -= get_process_delta_time()
+                return
+        var px := player.global_position.x
+        for i in _zones.size():
+                var z: Dictionary = _zones[i]
+                if px >= float(z.get("x0", 0.0)) and px < float(z.get("x1", 1e9)):
+                        if i != _current_zone:
+                                _current_zone = i
+                                location_stamp.show_stamp(String(z.get("name", "")), String(z.get("sub", "")))
+                                AudioManager.play_sfx("sfx_ui_move", -16.0)
+                        return
 
 # ------------------------------------------------------------------ interact
 var _nearest_interactable = null
