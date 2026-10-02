@@ -59,7 +59,23 @@ func sync_state(delta: float) -> void:
         var sq: float = clampf(player.land_squash, 0.0, 1.0)
         var sk := 1.0 + 0.16 * sq
         var sh := 1.0 - 0.22 * sq
+        # AIR STRETCH: rising stretches tall, falling stretches further —
+        # the body reads the arc of the jump instead of swapping poses
+        if player.hp > 0 and not player.is_on_floor() and sq < 0.2:
+                var vy := clampf(player.velocity.y / 900.0, -1.0, 1.0)
+                if vy < 0.0:
+                        sk *= 1.0 + vy * 0.06
+                        sh *= 1.0 - vy * 0.07
+                else:
+                        sk *= 1.0 - vy * 0.05
+                        sh *= 1.0 + vy * 0.09
         scale = Vector2(sk, sh)
+        # RUN LEAN: the vessel leans into its speed (a few degrees, springy)
+        if player.hp > 0 and player.is_on_floor():
+                var lean_k := clampf(absf(player.velocity.x) / E0.P_MAX_SPEED, 0.0, 1.0)
+                rotation = lerpf(rotation, player.facing * lean_k * 0.085, delta * 9.0)
+        else:
+                rotation = lerpf(rotation, 0.0, delta * 7.0)
 
         # damage / iframe shimmer (same rules the rig used)
         var m := Color(1.0, 1.0, 1.0, 1.0)

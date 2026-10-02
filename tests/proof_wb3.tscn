@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://wb3proof00001"]
+
+[ext_resource type="Script" path="res://tests/proof_wb3.gd" id="1"]
+
+[node name="ProofWB3" type="Node"]
+script = ExtResource("1")

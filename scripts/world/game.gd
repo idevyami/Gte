@@ -249,7 +249,10 @@ func load_room(id: String) -> void:
                         decor_items.append({"kind": "banner", "pos": Vector2(dpos.x, dpos.y - arch_h + 14.0), "w": 60.0, "h": 54.0, "s": 0.62})
         decor_renderer = Decor.new()
         decor_renderer.setup(decor_items)
-        world.add_child(decor_renderer)
+        # PAINTER'S ORDER: room dressing is added AFTER the far planes
+        # (parallax backdrop + midground silhouettes), so the near
+        # architecture sits IN FRONT of the depth fog instead of being
+        # buried under it — stalls, columns and machines stay readable.
         camera = CameraRig.new()
         world.add_child(camera)
         parallax = Parallax.new()
@@ -265,6 +268,7 @@ func load_room(id: String) -> void:
         if OS.get_environment("E0_NO_MIDGROUND").is_empty():
                 mid.setup(String(room_data.get("backdrop", "")), room_size, horizon, room_data.get("fog", E0.VOID), camera)
                 world.add_child(mid)
+        world.add_child(decor_renderer)
         lights = Lights.new()
         var light_floor := -1.0
         if not floors.is_empty():

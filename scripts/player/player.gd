@@ -157,6 +157,11 @@ func _handle_movement(delta: float) -> void:
                         dir += 1.0
         var control := 1.0 if is_on_floor() else E0.P_AIR_CONTROL
         if dir != 0.0:
+                # SKID: reversing at speed kicks dust — the body has weight
+                if is_on_floor() and absf(velocity.x) > 190.0 and dir * velocity.x < 0.0:
+                        FX.burst(global_position + Vector2(-facing * 6.0, -2), "dust", PI if facing > 0 else 0.0, 6)
+                        land_squash = maxf(land_squash, 0.22)
+                        AudioManager.play_sfx("sfx_step", -4.0)
                 velocity.x = move_toward(velocity.x, dir * E0.P_MAX_SPEED, E0.P_ACCEL * control * delta)
                 if not input_locked:
                         facing = 1 if dir > 0 else -1
@@ -174,6 +179,8 @@ func _handle_jump() -> void:
                 _buffer = 0.0
                 _coyote = 0.0
                 AudioManager.play_sfx("sfx_jump", -8.0)
+                # takeoff kick: dust off the floor the vessel leaves behind
+                FX.burst(global_position + Vector2(0, -2), "dust", PI * 0.5, 5)
         # let go early = shorter jump
         if Input.is_action_just_released("jump") and velocity.y < 0.0:
                 velocity.y *= 0.55
