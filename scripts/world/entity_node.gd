@@ -329,11 +329,19 @@ func _draw_brazier() -> void:
         ]), Color(E0.GOLD.r, E0.GOLD.g, E0.GOLD.b, 0.7))
 
 func _draw_cage() -> void:
+        # relic cage: chained all the way up to its mount (extra.chain_top),
+        # never floating on a stub
+        var top := float(extra.get("chain_top", 96.0))
+        var links := maxi(2, int((top - 70.0) / 22.0))
+        for i in links:
+                var ly := -top + 8.0 + float(i) * (top - 70.0) / float(links)
+                var sway := sin(i * 0.7 + _seeded(3) * 6.0) * 2.2
+                draw_arc(Vector2(sway, ly + 11.0), 5.5, 0, TAU, 8, E0.ASH, 3.0)
+        draw_circle(Vector2(0.0, -top + 5.0), 3.0, E0.ASH)
         draw_rect(Rect2(-14, -70, 28, 46), Color(0, 0, 0, 0.55))
         for i in 5:
                 draw_line(Vector2(-14 + i * 7, -70), Vector2(-14 + i * 7, -24), E0.ASH, 1.5)
         draw_rect(Rect2(-14, -70, 28, 3), E0.ASH)
-        draw_line(Vector2(0, -70), Vector2(0, -96), E0.ASH, 2.0)
         # the ownerless purpose inside: a faint bone shape
         var pulse := 0.3 + 0.2 * sin(anim_t * 2.0)
         draw_circle(Vector2(0, -46), 5.0, Color(E0.PARCH.r, E0.PARCH.g, E0.PARCH.b, pulse))
@@ -410,8 +418,18 @@ func _draw_census() -> void:
         draw_line(Vector2(-10, -2), Vector2(10, -6), Color(E0.CRIMSON.r, E0.CRIMSON.g, E0.CRIMSON.b, 0.5), 1.0)
 
 func _draw_censer() -> void:
-        # hanging ritual censer, smoking
-        draw_line(Vector2(0, -70), Vector2(0, -30), E0.ASH, 1.5)
+        # hanging ritual censer, smoking — chained all the way UP to the vault
+        # beam (extra.chain_top), never floating on a stub of chain
+        var top := float(extra.get("chain_top", 70.0))
+        var swing := sin(anim_t * 0.9 + _seeded(2) * 6.0) * 3.0
+        # long chains draw as linked segments so length reads as weight
+        var links := maxi(3, int((top - 34.0) / 16.0))
+        for i in links:
+                var ly := -top + 8.0 + float(i) * (top - 34.0) / float(links)
+                draw_line(Vector2(swing * (i / float(links)), ly), Vector2(swing * ((i + 1.0) / links), ly + 16.0), E0.ASH, 1.5)
+        # the mount ring where chain meets the beam
+        draw_circle(Vector2(0.0, -top + 4.0), 3.0, E0.ASH)
+        draw_line(Vector2(0, -34.0), Vector2(0, -30.0), E0.ASH, 1.5)
         draw_rect(Rect2(-12, -30, 24, 12), E0.GOLD.darkened(0.35))
         draw_rect(Rect2(-8, -18, 16, 5), E0.GOLD.darkened(0.5))
         for i in 5:
@@ -472,23 +490,39 @@ func _draw_chains() -> void:
                         draw_circle(Vector2(lerpf(-18.0, 18.0, k / 4.0), y + sag * sin(PI * k / 4.0) * 0.9), 2.0, E0.PARCH.darkened(0.5))
 
 func _draw_archive_wall() -> void:
-        draw_rect(Rect2(-120, -150, 240, 150), E0.CHARCOAL)
-        # record slots: 817 marks in rows
-        for row in 12:
-                for col in 20:
-                        var idx := row * 20 + col
-                        if idx >= 817:
-                                break
-                        var px := -112.0 + col * 11.0
-                        var py := -140.0 + row * 11.0
-                        var failed := idx != 816
-                        var c := Color(E0.DIM.r, E0.DIM.g, E0.DIM.b, 0.5) if failed else Color(E0.CYAN.r, E0.CYAN.g, E0.CYAN.b, 0.8)
-                        draw_rect(Rect2(px, py, 6, 6), c)
-        # the sealed 818th slot glints
+        # THE WALL OF THE COUNTED: a shelved registry — stone-framed bays,
+        # shelf ledges, and the filed marks in their slots. The 818th slot
+        # waits, cyan, unassigned.
+        var frame := 8.0
+        var w := 240.0
+        var h := 150.0
+        # stone frame + base seat
+        draw_rect(Rect2(-w * 0.5 - frame, -h - frame, w + frame * 2.0, h + frame), E0.DIRTY_STONE.darkened(0.06))
+        draw_rect(Rect2(-w * 0.5 - frame, -h - frame, w + frame * 2.0, 3.0), Color(0.9, 0.88, 0.82, 0.12))
+        # shelf ledges inside — the marks sit IN slots, not on a mesh
+        var rows := 8
+        for r in rows + 1:
+                var ly := -h + 6.0 + float(r) * (h - 12.0) / float(rows)
+                draw_rect(Rect2(-w * 0.5 + 4.0, ly, w - 8.0, 2.5), E0.ASH.darkened(0.15))
+        draw_rect(Rect2(-w * 0.5, -h, w, h), E0.CHARCOAL.darkened(0.1))
+        # filed marks: 817 in their slots (the failed), row by row
+        var per_row := 15
+        for idx in 817:
+                var r := idx / per_row
+                if r >= rows:
+                        break
+                var c := idx % per_row
+                var px := -w * 0.5 + 10.0 + float(c) * ((w - 20.0) / float(per_row - 1))
+                var py := -h + 13.0 + float(r) * ((h - 12.0) / float(rows))
+                draw_rect(Rect2(px - 2.2, py - 2.2, 4.4, 4.4), Color(E0.DIM.r, E0.DIM.g, E0.DIM.b, 0.42))
+        # the sealed 818th slot glints in its own empty shelf
         var pulse := 0.4 + 0.3 * sin(anim_t * 2.0)
-        draw_rect(Rect2(-112 + (817 % 20) * 11.0, -140 + (817 / 20) * 11.0, 6, 6),
-                Color(E0.CYAN.r, E0.CYAN.g, E0.CYAN.b, pulse))
-        draw_rect(Rect2(-120, -4, 240, 6), E0.DIRTY_STONE)
+        var ex := -w * 0.5 + 10.0 + float(817 % per_row) * ((w - 20.0) / float(per_row - 1))
+        var ey := -h + 13.0 + float(817 / per_row) * ((h - 12.0) / float(rows))
+        draw_rect(Rect2(ex - 3.0, ey - 3.0, 6.0, 6.0), Color(E0.CYAN.r, E0.CYAN.g, E0.CYAN.b, pulse))
+        draw_rect(Rect2(ex - 5.0, ey - 5.0, 10.0, 10.0), Color(E0.CYAN.r, E0.CYAN.g, E0.CYAN.b, pulse * 0.25))
+        # plinth
+        draw_rect(Rect2(-w * 0.5 - 12.0, -6.0, w + 24.0, 6.0), E0.DIRTY_STONE.darkened(0.1))
 
 func _draw_fragment_shard() -> void:
         var pulse := 0.5 + 0.4 * sin(anim_t * 2.6)
@@ -500,7 +534,15 @@ func _draw_fragment_shard() -> void:
 
 func _draw_rotor() -> void:
         var pulled: bool = extra.get("pulled", false)
-        draw_rect(Rect2(-16, -46, 32, 46), E0.ASH)
+        # grounded: soft contact shadow + mounting slab under the body
+        var pts := PackedVector2Array()
+        for i in 8:
+                var a := PI * i / 7.0
+                pts.append(Vector2(cos(a) * 20.0, -sin(a) * 20.0 * 0.22))
+        draw_colored_polygon(pts, Color(0.02, 0.02, 0.03, 0.32))
+        draw_rect(Rect2(-22, -6, 44, 6), E0.DIRTY_STONE.darkened(0.12))
+        draw_rect(Rect2(-26, -2.5, 52, 2.5), E0.DIRTY_STONE.darkened(0.2))
+        draw_rect(Rect2(-16, -46, 32, 40), E0.ASH)
         draw_rect(Rect2(-10, -40, 20, 26), E0.VOID)
         var lever_y := -34.0 if pulled else -12.0
         draw_line(Vector2(0, -12), Vector2(0, lever_y), E0.PARCH, 4.0)

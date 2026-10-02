@@ -10,9 +10,20 @@ var _fog_color := E0.VOID
 var _fog_alpha := 0.35
 var _room_height := 720.0
 var _room_width := 1280.0
+var _floor_y := 660.0          # play-floor line — the painted ground anchors to it
 var _ash: Array = []
 var _camera: Camera2D
 var _last_cam := Vector2.ZERO
+
+# Where each painting's painted GROUND sits, as a fraction of texture height
+# (0=top, 1=bottom). Measured per asset: every tile is anchored so its painted
+# ground lands on ONE shared line — the distant street reads as a real place,
+# not as random slices floating at random heights.
+const GROUND_FRAC := {
+        "vessels": 0.82, "city": 0.88, "undercity": 0.90, "chapel": 0.89,
+        "archive": 0.86, "engine": 0.95, "reliquary": 0.80, "aftermath": 0.92,
+}
+const GROUND_LIFT := 42.0       # painted ground sits this far above the play floor
 
 const BACKDROP_FILES := {
         "vessels": "res://art/backdrops/backdrop_vessels.png",
@@ -25,12 +36,13 @@ const BACKDROP_FILES := {
         "aftermath": "res://art/backdrops/backdrop_aftermath.png",
 }
 
-func setup(key: String, fog: Color, fog_alpha: float, room_size: Vector2, camera: Camera2D) -> void:
+func setup(key: String, fog: Color, fog_alpha: float, room_size: Vector2, camera: Camera2D, floor_y := -1.0) -> void:
         backdrop_key = key
         _fog_color = fog
         _fog_alpha = fog_alpha
         _room_width = room_size.x
         _room_height = room_size.y
+        _floor_y = floor_y if floor_y > 0.0 else room_size.y * 0.9
         _camera = camera
         if BACKDROP_FILES.has(key):
                 _tex = load(BACKDROP_FILES[key])
@@ -65,7 +77,8 @@ func _draw() -> void:
         # --- painted sky: a vertical grade behind everything — void above,
         #     fog-tempered air at the horizon, faint ash-warmth at the floor.
         #     Kills the flat grey void where the backdrop art ends.
-        var horizon := _room_height * 0.62
+        var ground_y := _floor_y - GROUND_LIFT - scroll.y * 0.25
+        var horizon := ground_y
         for i in 14:
                 var t := float(i) / 13.0
                 var y := -240.0 + t * (horizon + 240.0)
@@ -80,31 +93,38 @@ func _draw() -> void:
                         Color(E0.PARCH.r, E0.PARCH.g, E0.PARCH.b, 0.020 * (1.0 - gt)))
         if _tex != null:
                 var ts := _tex.get_size()
-                var scale_k := maxf(_room_height / ts.y, 640.0 / ts.x) * 1.05
+                var ground_frac: float = GROUND_FRAC.get(backdrop_key, 0.86)
+                # every tile's painted ground lands on the SAME line: the
+                # distant street floor, a little above the play floor (it is
+                # further away). Scale only changes how much sky shows above.
+                var tile_h := (_floor_y - GROUND_LIFT + 90.0) / ground_frac
                 # varied-crop tiling: every tile samples a DIFFERENT window of
-                # the painting (own crop, scale, vertical offset). Identical
-                # mirrored repeats read as wallpaper; varied crops read as a
-                # long hall of similar architecture. Local mirror pairs read
-                # as symmetric gothic structure — seams veiled in fog below.
+                # the painting (own crop, mild scale). Identical repeats read as
+                # wallpaper; varied crops read as a long hall of similar bays.
+                # Mirrored pairs read as symmetric gothic structure — flipped
+                # properly via transform (NOT transpose, which lays the
+                # painting on its side).
                 var tile_i := 0
-                var origin_x := -scroll.x - ts.x * scale_k
+                var origin_x := -scroll.x - ts.x * 1.6
                 while origin_x < scroll.x + _room_width:
                         var rng := RandomNumberGenerator.new()
                         rng.seed = hash(backdrop_key + ":" + str(tile_i))
-                        var crop_frac := rng.randf_range(0.62, 0.88)
+                        var crop_frac := rng.randf_range(0.66, 0.88)
                         var crop_w := ts.x * crop_frac
                         var crop_x := rng.randf() * (ts.x - crop_w)
-                        var this_k := scale_k / crop_frac * rng.randf_range(0.92, 1.12)
+                        var this_k := tile_h / ts.y * rng.randf_range(0.97, 1.05)
                         var tile_w := crop_w * this_k
-                        var tile_h := ts.y * this_k
-                        var top_y := -scroll.y * 0.4 - 40.0 + rng.randf_range(-18.0, 6.0)
+                        var top_y := ground_y - ground_frac * tile_h - scroll.y * 0.15
                         var src := Rect2(Vector2(crop_x, 0.0), Vector2(crop_w, ts.y))
                         # outer tiles sink into the air (depth-of-field feel);
                         # the centre tile carries the full-contrast painting
                         var dist := absf(float(tile_i) - 1.0)
                         var depth_a := 0.85 * clampf(1.0 - dist * 0.22, 0.5, 1.0)
                         draw_texture_rect_region(_tex, Rect2(Vector2(origin_x, top_y), Vector2(tile_w, tile_h)), src, Color(1, 1, 1, depth_a))
-                        draw_texture_rect_region(_tex, Rect2(Vector2(origin_x + tile_w, top_y), Vector2(tile_w, tile_h)), src, Color(1, 1, 1, depth_a), true)
+                        # mirrored twin: x-flip around the tile's own right edge
+                        draw_set_transform(Vector2(origin_x + tile_w * 2.0, 0.0), 0.0, Vector2(-1.0, 1.0))
+                        draw_texture_rect_region(_tex, Rect2(Vector2(0.0, top_y), Vector2(tile_w, tile_h)), src, Color(1, 1, 1, depth_a))
+                        draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
                         _seam_veil(origin_x, top_y, tile_h)
                         _seam_veil(origin_x + tile_w, top_y, tile_h)
                         _seam_veil(origin_x + tile_w * 2.0, top_y, tile_h)
@@ -118,6 +138,13 @@ func _draw() -> void:
                 var t := float(i) / 5.0
                 var col := Color(_fog_color.r, _fog_color.g, _fog_color.b, _fog_alpha * (1.0 - t))
                 draw_rect(Rect2(-400.0, -240.0 + t * fog_h, _room_width + 800.0, fog_h / 5.0), col)
+        # ground melt: the band where the painted ground meets the play floor
+        # dissolves into haze — no hard seam between the far street and the
+        # near stone, and no floating read if a crop's ground drifts a few px
+        for i in 5:
+                var gt := float(i) / 5.0
+                draw_rect(Rect2(-500.0 - scroll.x * 0.1, ground_y - 8.0 + gt * 34.0, _room_width + 1000.0, 12.0),
+                        Color(_fog_color.r, _fog_color.g, _fog_color.b, 0.10 * (1.0 - gt * 0.5)))
         # ashfall
         var time_s := Time.get_ticks_msec() * 0.001
         for m in _ash:

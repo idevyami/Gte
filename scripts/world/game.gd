@@ -234,28 +234,33 @@ func load_room(id: String) -> void:
                 all_rects.append(r)
         masonry.setup(all_rects, hash(id), _terrain_style(id))
         world.add_child(masonry)
-        # architectural framing: every door gets its carved arch (and the
-        # sealed gates their banner) — exits read as passages between places
+        # architectural framing: every door gets its carved arch — the portal
+        # TOWERS over the door it frames (the painting is 414x300, so width
+        # drives height; a 160-tall door needs a ~300-wide arch), and the
+        # sealed gates hang their banner from the arch crown, not from the air
         var decor_items: Array = room_data.get("decor", []).duplicate()
         for d in room_data.get("doors", []):
                 var dpos: Vector2 = d["pos"]
                 var dsize: Vector2 = d.get("size", Vector2(54, 160))
-                decor_items.append({"kind": "arch", "pos": Vector2(dpos.x, dpos.y + 2.0), "w": dsize.x + 74.0, "h": 90.0, "s": 0.35})
+                var arch_w: float = clampf(dsize.y * 1.9, 150.0, 340.0)
+                var arch_h: float = arch_w * 300.0 / 414.0
+                decor_items.append({"kind": "arch", "pos": Vector2(dpos.x, dpos.y + 2.0), "w": arch_w, "h": arch_h, "s": 0.35})
                 if String(d.get("mode", "")) == "gate":
-                        decor_items.append({"kind": "banner", "pos": Vector2(dpos.x, dpos.y - dsize.y - 26.0), "w": 60.0, "h": 54.0, "s": 0.62})
+                        decor_items.append({"kind": "banner", "pos": Vector2(dpos.x, dpos.y - arch_h + 14.0), "w": 60.0, "h": 54.0, "s": 0.62})
         decor_renderer = Decor.new()
         decor_renderer.setup(decor_items)
         world.add_child(decor_renderer)
         camera = CameraRig.new()
         world.add_child(camera)
         parallax = Parallax.new()
-        parallax.setup(String(room_data.get("backdrop", "")), room_data.get("fog", E0.VOID), float(room_data.get("fog_a", 0.3)), room_size, camera)
+        parallax.setup(String(room_data.get("backdrop", "")), room_data.get("fog", E0.VOID), float(room_data.get("fog_a", 0.3)), room_size, camera, (floors[0] as Rect2).position.y if not floors.is_empty() else -1.0)
         world.add_child(parallax)
         # mid-ground depth plane: silhouettes at half camera speed between the
-        # painted backdrop and the play floor
+        # painted backdrop and the play floor — standing a little ABOVE the
+        # floor line so the far plane reads as behind the walkway's back edge
         var horizon := float(room_size.y) * 0.76
         if not floors.is_empty():
-                horizon = (floors[0] as Rect2).position.y - 10.0
+                horizon = (floors[0] as Rect2).position.y - 26.0
         var mid := Midground.new()
         if OS.get_environment("E0_NO_MIDGROUND").is_empty():
                 mid.setup(String(room_data.get("backdrop", "")), room_size, horizon, room_data.get("fog", E0.VOID), camera)

@@ -63,14 +63,28 @@ func _draw() -> void:
                 draw_circle(Vector2(0, -70.0), r + 26.0 + t * 46.0,
                         Color(E0.CRIMSON.r, E0.CRIMSON.g, E0.CRIMSON.b, (0.055 + 0.035 * beat) * (1.0 - t)))
         _shadow_ellipse(Vector2(0, -2.0), 76.0, 15.0, 0.05 + 0.025 * beat, true)
-        # mount
-        draw_rect(Rect2(-30, -26, 60, 26), E0.DIRTY_STONE)
+        # the cradle: a heavy mounting plate with bolts, angled struts
+        # holding the chamber from below like a carried reliquary
+        draw_rect(Rect2(-46, -18, 92, 18), E0.DIRTY_STONE.darkened(0.12))
+        draw_rect(Rect2(-54, -8, 108, 8), E0.DIRTY_STONE.darkened(0.2))
+        for bx in [-44.0, -14.0, 16.0, 44.0]:
+                draw_circle(Vector2(bx, -13.0), 2.4, E0.ASH)
+                draw_circle(Vector2(bx, -13.0), 1.0, E0.VOID)
+        for sgn in [-1.0, 1.0]:
+                draw_colored_polygon(PackedVector2Array([
+                        Vector2(sgn * 40.0, -18.0), Vector2(sgn * 52.0, -18.0),
+                        Vector2(sgn * 62.0, -84.0), Vector2(sgn * 48.0, -84.0),
+                ]), E0.ASH.darkened(0.05))
+                draw_line(Vector2(sgn * 46.0, -18.0), Vector2(sgn * 55.0, -84.0), E0.DIRTY_STONE, 4.0)
         for i in 3:
-                draw_rect(Rect2(-24 + i * 18, -32, 10, 8), E0.ASH)
-        # cable-tracery rising into the dark
-        draw_line(Vector2(-40, -110), Vector2(-70, -160), E0.ASH, 2.0)
-        draw_line(Vector2(40, -110), Vector2(74, -158), E0.ASH, 2.0)
-        draw_line(Vector2(0, -126), Vector2(0, -170), E0.ASH, 2.0)
+                draw_rect(Rect2(-24 + i * 18, -26, 10, 8), E0.ASH)
+        # cable-tracery rising into the dark — thick enough to carry weight
+        draw_line(Vector2(-52, -96), Vector2(-78, -170), E0.ASH, 4.0)
+        draw_line(Vector2(52, -96), Vector2(80, -168), E0.ASH, 4.0)
+        draw_line(Vector2(0, -122), Vector2(0, -176), E0.ASH, 4.0)
+        for y in [-120.0, -142.0, -164.0]:
+                draw_circle(Vector2(-y * 0.42, y), 2.2, E0.DIRTY_STONE)
+                draw_circle(Vector2(y * 0.42, y), 2.2, E0.DIRTY_STONE)
 
 func _shadow_ellipse(c: Vector2, rx: float, ry: float, a: float, warm := false) -> void:
         var pts := PackedVector2Array()

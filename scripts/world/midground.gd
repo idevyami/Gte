@@ -37,9 +37,10 @@ func _generate() -> void:
         _overhead.clear()
         var rng := RandomNumberGenerator.new()
         rng.seed = hash("midground:" + key)
-        # span the full parallax-lagged traversal (half-speed plane)
+        # span the full parallax-lagged traversal (half-speed plane) — the
+        # +1500 margin guarantees coverage to the far right end of every room
         var x := -320.0
-        var end_x := _room_width * 0.5 + 1100.0
+        var end_x := _room_width * 0.5 + 1500.0
         while x < end_x:
                 var w := rng.randf_range(70.0, 190.0)
                 var h := rng.randf_range(120.0, 330.0)
@@ -244,8 +245,14 @@ func _draw() -> void:
         var fade_h := 150.0
         for i in 5:
                 var t2 := float(i) / 5.0
-                var a := (1.0 - t2) * 0.34
+                var a := (1.0 - t2) * 0.40
                 draw_rect(Rect2(-600.0 - scroll.x, base_y - 4.0 + t2 * fade_h * 0.2, _room_width * 0.5 + 2400.0, fade_h / 5.0 + 4.0), Color(_fog.r, _fog.g, _fog.b, a))
+        # a soft occlusion band right at the play-floor's back edge — the far
+        # plane sits BEHIND the walkway, never on the same line as the actors
+        for i in 4:
+                var bt := float(i) / 4.0
+                draw_rect(Rect2(-600.0 - scroll.x, base_y + 14.0 + bt * 26.0, _room_width * 0.5 + 2400.0, 10.0),
+                        Color(_fog.r, _fog.g, _fog.b, 0.10 * (1.0 - bt * 0.6)))
 
 func _poly(pts: PackedVector2Array, col: Color) -> void:
         ## Distant masses are out of focus: two offset ghost copies at partial

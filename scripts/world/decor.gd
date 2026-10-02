@@ -15,7 +15,7 @@ var _last_stage := 1
 const KINDS := [
         "column", "arch", "banner", "statue_kneel", "chain_hang", "cage_hang",
         "censer_swing", "pipe", "vent", "cable", "bell", "mural", "bones",
-        "candles", "glyph_row", "machine", "pew", "records",
+        "candles", "glyph_row", "machine", "pew", "records", "frieze",
 ]
 
 const DECOR_TEX_PATHS := {
@@ -33,6 +33,16 @@ const DECOR_TEX_PATHS := {
 }
 
 static var _tex_cache := {}
+static var _stone_tex: Texture2D
+
+static func _stone() -> Texture2D:
+        ## the masonry material tile — the frieze samples it so the beam is
+        ## the SAME stone as the floors and walls, not a flat grey strip
+        if _stone_tex == null:
+                var p := "res://art/environments/tex_stone.png"
+                if ResourceLoader.exists(p):
+                        _stone_tex = load(p)
+        return _stone_tex
 
 static func _tex(key: String) -> Texture2D:
         if not _tex_cache.has(key):
@@ -76,9 +86,10 @@ func _draw() -> void:
                 var w: float = item.get("w", 40.0)
                 var h: float = item.get("h", 100.0)
                 var s: float = item.get("s", 0.5)
-                # ghost duplicate at S2+ — a copy of the decor that shouldn't be there
+                # ghost duplicate at S2+ — a displaced echo of the decor
+                # that shouldn't be there (never a flat UI rect)
                 if stage >= 2 and s > 0.88:
-                        _ghost(pos + Vector2(12.0, 2.0))
+                        _ghost(pos + Vector2(12.0, 2.0), w, h)
                 match kind:
                         "column":
                                 if _sprites_on() and _tex("column_cap") != null and _tex("column_shaft") != null and _tex("column_base") != null:
@@ -136,13 +147,21 @@ func _draw() -> void:
                                         _machine_painted(pos, w, h, s)
                                 else:
                                         _machine(pos, w, h, s)
+                        "frieze":
+                                _frieze(pos, w, h, s)
                         "pew":
                                 _pew(pos, w, s)
                         "records":
                                 _records(pos, w, s)
 
-func _ghost(pos: Vector2) -> void:
-        draw_rect(Rect2(pos.x - 20, pos.y - 60, 40, 60), Color(E0.CYAN.r, E0.CYAN.g, E0.CYAN.b, 0.05))
+func _ghost(pos: Vector2, w: float, h: float) -> void:
+        ## The world disagreeing with itself: a displaced dark echo of the
+        ## piece, like a double exposure — never a flat UI-colored rectangle.
+        var gw := maxf(w, 36.0)
+        var gh := clampf(h, 54.0, 130.0)
+        var echo := Color(E0.CYAN.r * 0.4, E0.CYAN.g * 0.4, E0.CYAN.b * 0.5, 0.055)
+        draw_rect(Rect2(pos.x - gw * 0.5, pos.y - gh, gw, gh), echo)
+        draw_rect(Rect2(pos.x - gw * 0.5 + 2.0, pos.y - gh + 2.0, gw - 4.0, gh - 2.0), Color(E0.VOID.r, E0.VOID.g, E0.VOID.b, 0.10))
 
 # ------------------------------------------------------------ painted decor
 
@@ -156,26 +175,42 @@ func _contact_shadow(pos: Vector2, half_w: float, strength := 0.4) -> void:
         draw_colored_polygon(pts, Color(0.02, 0.02, 0.03, strength))
 
 func _column_painted(pos: Vector2, w: float, h: float, s: float) -> void:
-        ## Three-slice column: carved capital + stretched plain shaft + plinth.
-        ## Per-seed brightness keeps repeats of the same texture from reading
-        ## as clones.
-        _contact_shadow(pos, w * 1.35, 0.34 + 0.1 * s)
+        ## Three-slice column: carved capital + stretched plain shaft + a
+        ## TWO-STEP plinth wide enough to carry the visual weight. Per-seed
+        ## brightness keeps repeats of the same texture from reading as clones.
+        _contact_shadow(pos, w * 1.6, 0.36 + 0.1 * s)
         var mod := Color(0.88 + 0.2 * s, 0.88 + 0.2 * s, 0.88 + 0.2 * s)
         var cap_h := 34.0
-        var base_h := 26.0
-        var cap_w := w * 1.44
+        var base_h := 24.0
+        var cap_w := w * 1.58
         draw_texture_rect(_tex("column_cap"), Rect2(pos.x - cap_w * 0.5, pos.y - h, cap_w, cap_h), false, mod)
         draw_texture_rect(_tex("column_shaft"), Rect2(pos.x - w * 0.5, pos.y - h + cap_h, w, h - cap_h - base_h), false, mod)
-        var base_w := w * 1.3
-        draw_texture_rect(_tex("column_base"), Rect2(pos.x - base_w * 0.5, pos.y - base_h, base_w, base_h), false, mod)
+        # carved fluting: dark vertical reeds mask the shaft stretch and read
+        # as tooled stone, not a smeared texture
+        for i in 3:
+                var fx := pos.x - w * 0.5 + w * (0.26 + 0.24 * float(i))
+                draw_line(Vector2(fx, pos.y - h + cap_h + 3.0), Vector2(fx, pos.y - base_h - 3.0), Color(E0.VOID.r, E0.VOID.g, E0.VOID.b, 0.22), 1.4)
+        draw_line(Vector2(pos.x - w * 0.5 + 2.0, pos.y - h + cap_h + 3.0), Vector2(pos.x - w * 0.5 + 2.0, pos.y - base_h - 3.0), Color(0.9, 0.88, 0.82, 0.10), 1.2)
+        # two-step plinth: upper step + wider footing
+        draw_texture_rect(_tex("column_base"), Rect2(pos.x - w * 0.75, pos.y - base_h, w * 1.5, base_h * 0.6), false, mod)
+        draw_texture_rect(_tex("column_base"), Rect2(pos.x - w * 1.0, pos.y - base_h * 0.42, w * 2.0, base_h * 0.42), false, mod.darkened(0.08))
+
+# the arch painting's portal axis and visible span, as fractions of canvas
+# width (measured from alpha): the structure is NOT centered in its canvas —
+# anchoring the full canvas would shift every arch ~16% left of its mark
+const ARCH_AXIS := 0.331
+const ARCH_SPAN := 0.681
 
 func _arch_painted(pos: Vector2, w: float) -> void:
-        ## Monumental arch at the painting's own aspect, feet on the floor line.
+        ## Monumental arch, RE-ANCHORED so pos.x marks the real portal center
+        ## and w the real visible width; feet on the floor line.
         var t := _tex("arch")
-        var draw_h := w * float(t.get_height()) / float(t.get_width())
-        _contact_shadow(pos + Vector2(-w * 0.36, 0.0), w * 0.16, 0.3)
-        _contact_shadow(pos + Vector2(w * 0.36, 0.0), w * 0.16, 0.3)
-        draw_texture_rect(t, Rect2(pos.x - w * 0.5, pos.y - draw_h, w, draw_h), false)
+        var rect_w := w / ARCH_SPAN
+        var draw_h := rect_w * float(t.get_height()) / float(t.get_width())
+        var x0 := pos.x - ARCH_AXIS * rect_w
+        _contact_shadow(pos + Vector2(-w * 0.35, 0.0), w * 0.17, 0.3)
+        _contact_shadow(pos + Vector2(w * 0.35, 0.0), w * 0.17, 0.3)
+        draw_texture_rect(t, Rect2(x0, pos.y - draw_h, rect_w, draw_h), false)
 
 func _banner_painted(pos: Vector2, w: float, h: float, s: float) -> void:
         ## Hanging cloth, swinging gently from its hang point; the violet
@@ -191,18 +226,29 @@ func _banner_painted(pos: Vector2, w: float, h: float, s: float) -> void:
         draw_texture_rect(t, Rect2(-draw_w * 0.5 + 7.0, 6.0, draw_w, h), false, Color(0.02, 0.02, 0.03, 0.38))
         draw_texture_rect(t, Rect2(-draw_w * 0.5, 0.0, draw_w, h), false, mod)
         draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+        # the rod it hangs from, with mounting studs at both ends — the cloth
+        # is ATTACHED to architecture, not pasted on the air
         draw_line(Vector2(pos.x - w * 0.5 - 4, pos.y), Vector2(pos.x + w * 0.5 + 4, pos.y), E0.GOLD.darkened(0.4), 2.0)
+        for sx in [pos.x - w * 0.5 - 5.0, pos.x + w * 0.5 + 5.0]:
+                draw_circle(Vector2(sx, pos.y), 2.6, E0.DIRTY_STONE)
+                draw_circle(Vector2(sx, pos.y), 1.2, E0.GOLD.darkened(0.25))
+        # hang straps from rod to cloth
+        for sx in [pos.x - draw_w * 0.34, pos.x + draw_w * 0.34]:
+                draw_line(Vector2(sx, pos.y), Vector2(sx, pos.y + 7.0), E0.GOLD.darkened(0.45), 1.5)
 
 func _statue_painted(pos: Vector2, s: float) -> void:
-        ## Kneeling penitent; every statue faces slightly the wrong way (the
-        ## painting mirrors by seed).
+        ## Kneeling penitent on a low plinth; every statue faces slightly the
+        ## wrong way (the painting mirrors by seed).
         var t := _tex("statue_kneel")
         var tw := float(t.get_width())
         var th := float(t.get_height())
         var face_dir := 1.0 if s > 0.5 else -1.0
-        _contact_shadow(pos, tw * 0.55, 0.38 + 0.08 * s)
+        _contact_shadow(pos, tw * 0.62, 0.4 + 0.08 * s)
+        # low stone plinth — the statue sits ON the floor, never sunk into it
+        draw_rect(Rect2(pos.x - tw * 0.42, pos.y - 5.0, tw * 0.84, 5.0), E0.DIRTY_STONE.darkened(0.1 + 0.06 * s))
+        draw_rect(Rect2(pos.x - tw * 0.36, pos.y - 5.0, tw * 0.72, 1.6), Color(0.9, 0.88, 0.82, 0.12))
         draw_set_transform(pos, 0.0, Vector2(face_dir, 1.0))
-        draw_texture_rect(t, Rect2(-tw * 0.5, -th, tw, th), false)
+        draw_texture_rect(t, Rect2(-tw * 0.5, -th - 4.0, tw, th), false)
         draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 func _censer_painted(pos: Vector2, h: float) -> void:
@@ -222,8 +268,8 @@ func _censer_painted(pos: Vector2, h: float) -> void:
 
 func _mural_painted(pos: Vector2, w: float, h: float) -> void:
         ## Wall panel: the eleven saints in procession, plaster and all. A
-        ## carved stone frame and a base shadow seat it into the wall.
-        _contact_shadow(pos + Vector2(0.0, -2.0), w * 0.52, 0.3)
+        ## carved stone frame plus a support LEDGE with brackets — the panel
+        ## is raised off the floor and actually held up.
         var frame := 7.0
         draw_rect(Rect2(pos.x - frame, pos.y - h - frame, w + frame * 2.0, h + frame * 2.0), E0.DIRTY_STONE)
         draw_texture_rect(_tex("mural"), Rect2(pos.x, pos.y - h, w, h), false)
@@ -231,6 +277,14 @@ func _mural_painted(pos: Vector2, w: float, h: float) -> void:
         draw_rect(Rect2(pos.x - frame, pos.y - h - frame, w + frame * 2.0, frame + 3.0), Color(E0.VOID.r, E0.VOID.g, E0.VOID.b, 0.35))
         draw_rect(Rect2(pos.x - frame, pos.y - h - frame, frame, h + frame * 2.0), Color(E0.VOID.r, E0.VOID.g, E0.VOID.b, 0.28))
         draw_rect(Rect2(pos.x + w, pos.y - h - frame, frame, h + frame * 2.0), Color(E0.VOID.r, E0.VOID.g, E0.VOID.b, 0.28))
+        # support ledge: shelf + pair of brackets under the panel
+        draw_rect(Rect2(pos.x - 10.0, pos.y, w + 20.0, 7.0), E0.DIRTY_STONE.darkened(0.06))
+        draw_rect(Rect2(pos.x - 10.0, pos.y + 7.0, w + 20.0, 2.0), E0.VOID)
+        for bx in [pos.x + 14.0, pos.x + w - 26.0]:
+                draw_colored_polygon(PackedVector2Array([
+                        Vector2(bx, pos.y + 7.0), Vector2(bx + 12.0, pos.y + 7.0),
+                        Vector2(bx + 8.0, pos.y + 22.0), Vector2(bx + 4.0, pos.y + 22.0),
+                ]), E0.DIRTY_STONE.darkened(0.16))
 
 func _bones_painted(pos: Vector2, w: float, s: float) -> void:
         ## Scatter of remains along the floor line.
@@ -242,17 +296,93 @@ func _bones_painted(pos: Vector2, w: float, s: float) -> void:
 
 func _machine_painted(pos: Vector2, w: float, h: float, s: float) -> void:
         ## Painted reliquary-engine body with the live procedural instrumentation
-        ## (cycling gauges, blinking fault lights) drawn over it.
-        _contact_shadow(pos, w * 0.62, 0.42 + 0.08 * s)
-        draw_texture_rect(_tex("machine"), Rect2(pos.x, pos.y - h, w, h), false)
+        ## (cycling gauges, blinking fault lights) drawn over it. CENTERED on
+        ## pos.x like every other floor-standing prop, on a two-step plinth.
+        var x := pos.x - w * 0.5
+        _contact_shadow(pos, w * 0.66, 0.42 + 0.08 * s)
+        # plinth: upper slab + wider footing
+        draw_rect(Rect2(x - 5.0, pos.y - 7.0, w + 10.0, 7.0), E0.DIRTY_STONE.darkened(0.08))
+        draw_rect(Rect2(x - 9.0, pos.y - 3.0, w + 18.0, 3.0), E0.DIRTY_STONE.darkened(0.16))
+        draw_texture_rect(_tex("machine"), Rect2(x, pos.y - h, w, h - 7.0), false)
         for i in 3:
-                var gauge_y := pos.y - h + 14.0 + i * (h - 28.0) / 3.0
+                var gauge_y := pos.y - h + 14.0 + i * (h - 30.0) / 3.0
                 var v := 0.3 + 0.2 * sin(Time.get_ticks_msec() * 0.003 + i * 2.0 + s * 7.0)
-                draw_rect(Rect2(pos.x + 8, gauge_y, w - 16, 3), Color(E0.VOID.r, E0.VOID.g, E0.VOID.b, 0.65))
-                draw_rect(Rect2(pos.x + 8, gauge_y, (w - 16) * v, 3), Color(E0.CYAN.r, E0.CYAN.g, E0.CYAN.b, 0.5))
+                draw_rect(Rect2(x + 8, gauge_y, w - 16, 3), Color(E0.VOID.r, E0.VOID.g, E0.VOID.b, 0.65))
+                draw_rect(Rect2(x + 8, gauge_y, (w - 16) * v, 3), Color(E0.CYAN.r, E0.CYAN.g, E0.CYAN.b, 0.5))
         for i in 2:
-                draw_circle(Vector2(pos.x + w - 10.0, pos.y - h + 12.0 + i * 12.0), 2.5, Color(E0.CRIMSON.r, E0.CRIMSON.g, E0.CRIMSON.b, 0.4 + 0.2 * sin(Time.get_ticks_msec() * 0.004 + i)))
-        draw_rect(Rect2(pos.x - 4, pos.y - 6, w + 8, 6), E0.DIRTY_STONE)
+                draw_circle(Vector2(x + w - 10.0, pos.y - h + 12.0 + i * 12.0), 2.5, Color(E0.CRIMSON.r, E0.CRIMSON.g, E0.CRIMSON.b, 0.4 + 0.2 * sin(Time.get_ticks_msec() * 0.004 + i)))
+
+func _frieze(pos: Vector2, w: float, h: float, s: float) -> void:
+        ## The vault beam: a two-course carved cornice spanning the colonnade —
+        ## the horizontal architecture everything hangs FROM (banners, censers,
+        ## bells, chains) and everything rises TO (column capitals). pos.x is
+        ## the LEFT end, pos.y the beam TOP (h unused). Seed > 0.95 selects the
+        ## riveted metal gantry variant for the engine sanctum.
+        var beam_h := 20.0
+        var mold_h := 12.0
+        var metal := s > 0.95
+        var col := E0.DIRTY_STONE.darkened(0.08) if not metal else E0.ASH.darkened(0.12)
+        # under-shadow: the cornice shades the wall beneath it
+        for i in 4:
+                var t := float(i) / 4.0
+                draw_rect(Rect2(pos.x, pos.y + beam_h + mold_h + t * 11.0, w, 5.0), Color(E0.VOID.r, E0.VOID.g, E0.VOID.b, 0.17 * (1.0 - t)))
+        # main beam course
+        draw_rect(Rect2(pos.x, pos.y, w, beam_h), col)
+        # lower molding course: a lip wider than the beam, with its own shadow
+        var lip := 5.0
+        draw_rect(Rect2(pos.x - lip, pos.y + beam_h, w + lip * 2.0, mold_h), col.darkened(0.07))
+        draw_rect(Rect2(pos.x - lip, pos.y + beam_h, w + lip * 2.0, 2.5), Color(E0.VOID.r, E0.VOID.g, E0.VOID.b, 0.4))
+        if not metal:
+                # ASHLAR SKIN: the beam samples the masonry stone tile in long
+                # varied strips — same material as the world, never flat UI grey
+                var st := _stone()
+                if st != null:
+                        var tw := float(st.get_width())
+                        var th := float(st.get_height())
+                        var seg := 220.0
+                        var x := pos.x
+                        var k := 0
+                        while x < pos.x + w - 2.0:
+                                var ww := minf(seg, pos.x + w - x)
+                                var rng := RandomNumberGenerator.new()
+                                rng.seed = hash("frieze:" + str(int(pos.x)) + ":" + str(k))
+                                var sw := minf(ww * 0.9, tw - 4.0)
+                                var src := Rect2(rng.randf() * (tw - sw - 2.0), rng.randf() * (th - 46.0), sw, minf(40.0, th))
+                                var shade := 0.72 + rng.randf() * 0.14
+                                draw_texture_rect_region(st, Rect2(x, pos.y + 1.0, ww, beam_h - 2.0), src, Color(shade, shade * 0.985, shade * 0.955))
+                                var sw2 := minf(ww * 0.9, tw - 4.0)
+                                var src2 := Rect2(rng.randf() * (tw - sw2 - 2.0), rng.randf() * (th - 30.0), sw2, minf(26.0, th))
+                                draw_texture_rect_region(st, Rect2(x, pos.y + beam_h + 1.0, ww, mold_h - 2.0), src2, Color(shade * 0.8, shade * 0.79, shade * 0.77))
+                                x += seg
+                                k += 1
+        if metal:
+                # riveted flanges + rivets on both courses
+                draw_rect(Rect2(pos.x, pos.y - 4.0, w, 4.0), col.darkened(0.1))
+                var rx := pos.x + 14.0
+                while rx < pos.x + w - 8.0:
+                        draw_circle(Vector2(rx, pos.y + beam_h * 0.5), 1.7, col.lightened(0.12))
+                        draw_circle(Vector2(rx + 17.0, pos.y + beam_h + mold_h * 0.5), 1.4, col.lightened(0.08))
+                        rx += 34.0
+        else:
+                # stone: block joints + top light catch + molding returns
+                var jx := pos.x + 20.0 + fmod(s * 47.0, 30.0)
+                while jx < pos.x + w - 12.0:
+                        draw_rect(Rect2(jx, pos.y + 2.0, 2.0, beam_h - 3.0), E0.VOID)
+                        draw_rect(Rect2(jx + 37.0, pos.y + beam_h + 2.0, 2.0, mold_h - 3.0), E0.VOID)
+                        jx += 74.0
+                draw_rect(Rect2(pos.x, pos.y, w, 3.0), Color(0.9, 0.88, 0.82, 0.14))
+        # corbels — the brackets holding it up (stone rooms)
+        if not metal:
+                var cx := pos.x + 64.0 + fmod(s * 91.0, 40.0)
+                while cx < pos.x + w - 40.0:
+                        draw_colored_polygon(PackedVector2Array([
+                                Vector2(cx - 8.0, pos.y + beam_h + mold_h), Vector2(cx + 8.0, pos.y + beam_h + mold_h),
+                                Vector2(cx + 4.5, pos.y + beam_h + mold_h + 17.0), Vector2(cx - 4.5, pos.y + beam_h + mold_h + 17.0),
+                        ]), col.darkened(0.13))
+                        cx += 148.0
+        # end caps where the beam meets a wall or pier
+        for ex in [pos.x, pos.x + w - 6.0]:
+                draw_rect(Rect2(ex, pos.y - 3.0, 6.0, beam_h + mold_h + 6.0), col.darkened(0.05))
 
 # ------------------------------------------------------- procedural fallback
 
