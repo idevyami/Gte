@@ -26,7 +26,7 @@ const RIM_TINTS := {
 const NO_LOOP := [
         "attack1", "attack2", "attack3", "death", "telegraph", "lunge",
         "strike", "interact", "p1_attack", "p2_attack", "p3_attack",
-        "arrive", "reach",
+        "arrive", "reach", "hurt",
 ]
 const DEFAULT_FPS := 6.0
 
@@ -127,3 +127,14 @@ func _apply_anchor() -> void:
 
 func anim_finished() -> bool:
         return not is_playing()
+
+func has_anim(anim: String) -> bool:
+        return sprite_frames != null and sprite_frames.has_animation(anim) \
+                and sprite_frames.get_frame_count(anim) > 0
+
+func anim_duration(anim: String) -> float:
+        ## Seconds the one-shot takes to play through (frames / fps).
+        if not has_anim(anim):
+                return 0.0
+        var fps := maxf(0.05, sprite_frames.get_animation_speed(anim))
+        return float(sprite_frames.get_frame_count(anim)) / fps

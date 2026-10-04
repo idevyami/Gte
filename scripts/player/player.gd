@@ -67,6 +67,9 @@ func _ready() -> void:
         }):
                 sprite.attach(self)
                 add_child(sprite)
+                # the vessel's skin rides above its aura (z=1) and every
+                # world layer — the reader's eye anchor, never veiled
+                sprite.z_index = 2
                 rig.visible = false
         else:
                 sprite = null

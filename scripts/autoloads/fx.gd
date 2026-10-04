@@ -169,6 +169,66 @@ func burst(pos: Vector2, kind := "ash", dir := 0.0, count := -1) -> Burst:
         _burst_world.add_child(b)
         return b
 
+## The wound card: a bright directional read at the contact point — three
+## bone-white arc segments opening INTO the push direction, a hot core
+## flash, spark ticks. Heavy (chain finisher) adds a crimson edge ring.
+## The hit you land must be legible at gameplay zoom from across the room.
+func impact(pos: Vector2, dir := 1.0, heavy := false) -> Impact:
+        if _burst_world == null or not is_instance_valid(_burst_world):
+                return null
+        var c := Impact.new()
+        c.setup(pos, dir, heavy)
+        _burst_world.add_child(c)
+        return c
+
+class Impact:
+        extends Node2D
+        var dir := 1.0
+        var heavy := false
+        var life := 0.16
+        var _t := 0.0
+
+        func setup(pos: Vector2, p_dir: float, p_heavy: bool) -> void:
+                global_position = pos
+                dir = 1.0 if p_dir >= 0.0 else -1.0
+                heavy = p_heavy
+                life = 0.21 if heavy else 0.15
+                z_index = 22
+
+        func _process(delta: float) -> void:
+                _t += delta
+                if _t >= life:
+                        queue_free()
+                queue_redraw()
+
+        func _draw() -> void:
+                var k := _t / life                  # 0 -> 1
+                var fade := 1.0 - k
+                var ang := 0.0 if dir > 0.0 else PI
+                # three expanding arc segments, opening toward the push
+                for i in 3:
+                        var rr := (12.0 + i * 7.0) * (0.7 + 0.6 * k)
+                        var spread := (0.55 + 0.28 * i) * (1.0 - 0.25 * k)
+                        var a := fade * (0.95 - 0.22 * i)
+                        draw_arc(Vector2.ZERO, rr, ang - spread, ang + spread, 10,
+                                Color(E0.BONE.r, E0.BONE.g, E0.BONE.b, a), 3.4 - i * 0.7)
+                # hot core flash (the first 45% only — the instant of contact)
+                if k < 0.45:
+                        var ca := (1.0 - k / 0.45)
+                        draw_circle(Vector2.ZERO, 7.0 * (1.0 - k), Color(1.0, 0.96, 0.88, 0.85 * ca))
+                        draw_circle(Vector2(dir * 9.0, -2.0), 3.4, Color(E0.BONE.r, E0.BONE.g, E0.BONE.b, ca))
+                # spark ticks firing along the push
+                for i in 5:
+                        var ta := ang + (float(i) / 4.0 - 0.5) * 1.5
+                        var d0 := 14.0 + 26.0 * k
+                        var p0 := Vector2(cos(ta), sin(ta)) * d0
+                        var p1 := p0 + Vector2(cos(ta), sin(ta)) * (5.0 + 9.0 * k)
+                        draw_line(p0, p1, Color(E0.PARCH.r, E0.PARCH.g, E0.PARCH.b, fade * 0.7), 1.6)
+                # the finisher's verdict: a crimson edge ring
+                if heavy:
+                        draw_arc(Vector2.ZERO, 26.0 * (0.8 + 0.5 * k), 0.0, TAU, 18,
+                                Color(E0.CRIMSON.r, E0.CRIMSON.g, E0.CRIMSON.b, fade * 0.55), 2.2)
+
 class Burst:
         extends Node2D
         var parts: Array = []

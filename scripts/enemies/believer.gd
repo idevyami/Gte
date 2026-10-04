@@ -127,7 +127,7 @@ func skin_set() -> String:
         return "believers"
 
 func skin_fps() -> Dictionary:
-        return {"kneel": 1.2, "walk": 8.0, "strike": 8.0}
+        return {"kneel": 1.6, "walk": 8.0, "strike": 8.0, "hurt": 11.0, "death": 2.6}
 
 func skin_facing() -> int:
         return facing
@@ -139,7 +139,7 @@ func skin_pose() -> String:
                 WINDUP, STRIKE:
                         return "strike"
                 _:
-                        return "walk"
+                        return "walk" if absf(velocity.x) > 20.0 else "kneel"
 
 func _draw_body() -> void:
         # painted skin active: keep only the windup telegraph flash
@@ -212,6 +212,9 @@ func _ellipse(center: Vector2, rx: float, ry: float) -> PackedVector2Array:
 
 func _draw_death() -> void:
         super()
+        # painted collapse active: no procedural body double
+        if _skin != null and not GameState.debug_no_sprites:
+                return
         if death_t < 0.5 and state == FLEE:
                 var alpha := clampf(1.0 - death_t * 2.0, 0.0, 1.0)
                 draw_colored_polygon(PackedVector2Array([

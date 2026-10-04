@@ -44,6 +44,7 @@ func _run() -> void:
         await _living_city()
         await _closest_walls()
         await _ground_you_walk_on()
+        await _performers()
         print("=== %d checks, %d failures ===" % [checks, fails])
         get_tree().quit(1 if fails > 0 else 0)
 
@@ -828,3 +829,167 @@ func _player_shadow() -> Variant:
                 if absf(float(s["pos"].x) - game.player.global_position.x) < 24.0:
                         return s
         return null
+
+# ------------------------------------------------------------------ WB-7
+func _performers() -> void:
+        print("[THE PERFORMERS — WB-7]")
+        # --- THE INVENTORY LAW: every performance set carries its frames.
+        # (the audit's loudest finding: the game's most-fought enemy had no
+        # walk cycle — it slid. This can never regress silently again.)
+        var inv := {
+                "hollow": {"walk": 6, "hurt": 2, "death": 4, "idle": 4, "lunge": 3, "telegraph": 2},
+                "oren": {"idle": 4, "talk": 4},
+                "believers": {"kneel": 4, "walk": 6, "strike": 2, "hurt": 2, "death": 4},
+                "bound_martyr": {"p1": 4, "p2": 4, "p3": 4, "death": 3},
+                "player": {"idle": 4, "walk": 8},
+        }
+        for set_name in inv:
+                var anims := SpriteSkin.discover_anims(set_name)
+                for anim in inv[set_name]:
+                        var want: int = inv[set_name][anim]
+                        var got: int = (anims.get(anim) as Array).size() if anims.has(anim) else 0
+                        ok(got == want, "%s %s carries all %d frames" % [set_name, anim, want])
+        # --- THE RIM LAW: every silhouette edge reads brighter than the
+        # body it bounds (the WB-7 deepened bake — the world grew six layers
+        # richer; the actors must not sink back into it)
+        var rim_ok := _rim_edge_brighter("res://art/characters/player/idle_0.png")
+        ok(rim_ok, "the vessel's rim reads brighter than its body (the deepened bake)")
+        rim_ok = _rim_edge_brighter("res://art/characters/hollow/idle_0.png")
+        ok(rim_ok, "the hollow's rim reads brighter than its body")
+
+        # --- live pose laws ------------------------------------------------
+        game.transition_to("act3")
+        await _room("act3")
+        game.player.global_position = Vector2(980, 840)
+        await _frames(6)
+        var hollow: Hollow = null
+        for node in get_tree().get_nodes_in_group("enemies"):
+                if node is Hollow:
+                        hollow = node
+                        break
+        ok(hollow != null and hollow._skin != null, "a hollow patrols act3 with painted skin")
+        if hollow and hollow._skin:
+                # WALK: while it actually moves, the walk cycle plays
+                var saw_walk := false
+                for i in 40:
+                        if hollow.state == Hollow.PATROL and absf(hollow.velocity.x) > 20.0 \
+                                        and hollow._skin.animation == "walk":
+                                saw_walk = true
+                                break
+                        await get_tree().process_frame
+                ok(saw_walk, "the hollow WALKS while patrolling (no more sliding idle)")
+                # HURT: the recoil pose reads during the hurt flash
+                game.player.global_position = hollow.global_position + Vector2(-60, 0)
+                await _frames(3)
+                hollow.take_hit(4, game.player.global_position, false)
+                await get_tree().process_frame
+                ok(hollow._skin.animation == "hurt", "the hollow recoils from the blow (hurt pose)")
+                # IMPACT: the wound card flashes at the contact point
+                var card_seen := false
+                for i in 4:
+                        for ch in game.world.get_children():
+                                if ch is FX.Impact:
+                                        card_seen = true
+                        if card_seen:
+                                break
+                        await get_tree().process_frame
+                ok(card_seen, "the wound card flashes at the contact point")
+                # DEATH: a whole performance, solid through the collapse
+                var spot := hollow.global_position
+                hollow.take_hit(9999, game.player.global_position, true)
+                await _frames(3)
+                ok(hollow.dead and hollow._death_anim_len > 0.5,
+                        "the hollow's death is a timed performance (%.2fs)" % hollow._death_anim_len)
+                ok(hollow._skin.animation == "death", "the collapse animation plays")
+                await _frames(8)
+                ok(hollow._skin.modulate.a > 0.85,
+                        "the body stays SOLID through the collapse (no instant fade)")
+                ok(hollow.global_position.distance_to(spot) > 2.0,
+                        "the corpse keeps the killing blow's momentum (it falls like a body)")
+                # ...and it persists past the old 0.9s cutoff, then frees
+                # (wall-clock polling — headless frame rate is not a constant)
+                var t0 := Time.get_ticks_msec()
+                var freed := false
+                while Time.get_ticks_msec() - t0 < 5000:
+                        if not is_instance_valid(hollow):
+                                freed = true
+                                break
+                        await get_tree().process_frame
+                ok(freed, "the dissolved body frees after its fall")
+
+        # --- OREN PERFORMS HIS SPEECH --------------------------------------
+        var oren: NPC = null
+        for node in get_tree().get_nodes_in_group("interactable"):
+                if node is NPC and node.npc_id == "oren":
+                        oren = node
+                        break
+        ok(oren != null and oren._skin != null, "Oren stands at his post with painted skin")
+        if oren and oren._skin:
+                game.player.global_position = oren.global_position + Vector2(-50, 0)
+                await _frames(4)
+                oren.interact(game)
+                await _frames(6)
+                var talking := game.dialogue_box.active and oren._skin.animation == "talk"
+                ok(talking, "Oren talks while he speaks (head bob, stamp accents)")
+                while game.dialogue_box.active:
+                        game.dialogue_box.chars_shown = 99999
+                        game.dialogue_box.advance()
+                        await _frames(2)
+                await _frames(4)
+                ok(oren._skin.animation == "idle", "Oren settles back to idle when spoken to no more")
+
+        # --- PRESENCE POOLS: the ground holds a light for every body -----
+        await _frames(6)
+        ok(game.shadows != null and game.shadows.pool_count() >= 3,
+                "presence pools under the bodies (%d lit)" % (game.shadows.pool_count() if game.shadows else -1))
+        var pool_layer := game.shadows._pools
+        ok(pool_layer != null and pool_layer.material != null
+                        and (pool_layer.material as CanvasItemMaterial).blend_mode == CanvasItemMaterial.BLEND_MODE_ADD,
+                "the presence layer speaks the world's additive light language")
+        # --- THE VESSEL'S OWN LIGHT: aura above the world, under the skin --
+        var psprite := game.player.sprite
+        ok(psprite != null and psprite._aura != null,
+                "the vessel carries its aura")
+        if psprite and psprite._aura:
+                ok(psprite._aura.z_index == 1 and psprite.z_index == 2,
+                        "the aura paints above every world layer, under the skin (z law)")
+                ok((psprite._aura.material as CanvasItemMaterial).blend_mode == CanvasItemMaterial.BLEND_MODE_ADD,
+                        "the aura speaks the additive light language")
+                ok(psprite._aura.visible and psprite._aura.is_visible_in_tree(),
+                        "the aura burns while the vessel lives")
+
+func _rim_edge_brighter(path: String) -> bool:
+        ## Edge band (opaque within 2px of transparency) must average
+        ## brighter than the body's interior — the baked rim law.
+        var img := Image.new()
+        if img.load(path) != OK:
+                return false
+        var w := img.get_width()
+        var h := img.get_height()
+        if w < 8 or h < 8:
+                return false
+        var edge_n := 0
+        var edge_sum := 0.0
+        var inner_n := 0
+        var inner_sum := 0.0
+        for y in range(2, h - 2):
+                for x in range(2, w - 2):
+                        var a := img.get_pixel(x, y).a
+                        if a <= 0.5:
+                                continue
+                        var near_clear := false
+                        for dy in range(-2, 3):
+                                for dx in range(-2, 3):
+                                        if img.get_pixel(x + dx, y + dy).a <= 0.5:
+                                                near_clear = true
+                        var c := img.get_pixel(x, y)
+                        var lum := (c.r + c.g + c.b) / 3.0
+                        if near_clear:
+                                edge_n += 1
+                                edge_sum += lum
+                        else:
+                                inner_n += 1
+                                inner_sum += lum
+        if edge_n < 12 or inner_n < 12:
+                return false
+        return (edge_sum / edge_n) > (inner_sum / inner_n) + 0.015

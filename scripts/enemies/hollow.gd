@@ -89,7 +89,8 @@ func skin_set() -> String:
         return "hollow"
 
 func skin_fps() -> Dictionary:
-        return {"idle": 1.6, "telegraph": 2.5, "lunge": 7.0}
+        return {"idle": 1.6, "walk": 7.0, "telegraph": 2.5, "lunge": 7.0,
+                "hurt": 11.0, "death": 3.4}
 
 func skin_facing() -> int:
         return facing
@@ -101,7 +102,8 @@ func skin_pose() -> String:
                 LUNGE:
                         return "lunge"
                 _:
-                        return "idle"
+                        # it WALKS now — the drift was the loudest missing beat
+                        return "walk" if absf(velocity.x) > 20.0 else "idle"
 
 func _draw_body() -> void:
         # painted skin active: keep only the readable crimson telegraph
@@ -159,6 +161,10 @@ func _ellipse(center: Vector2, rx: float, ry: float) -> PackedVector2Array:
 
 func _draw_death() -> void:
         super()
+        # painted collapse active: the procedural body must not double it —
+        # only the dispersal motes (super) ride along
+        if _skin != null and not GameState.debug_no_sprites:
+                return
         if death_t < 0.4:
                 var alpha := clampf(1.0 - death_t * 2.5, 0.0, 1.0)
                 draw_colored_polygon(PackedVector2Array([

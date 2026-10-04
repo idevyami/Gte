@@ -8,6 +8,7 @@ extends SpriteSkin
 var player: Player
 var _t := 0.0
 var _shadow: ContactShadow
+var _aura: VesselAura
 
 class ContactShadow:
         extends Node2D
@@ -34,11 +35,50 @@ class ContactShadow:
                         halo.append(Vector2(0, 2) + Vector2(cos(a) * radius * 1.45, sin(a) * radius * 0.42))
                 draw_colored_polygon(halo, Color(0.02, 0.02, 0.025, 0.22 * owner_alpha))
 
+## THE VESSEL CARRIES ITS OWN LIGHT — the genre law (Blasphemous, Hollow
+## Knight, Eastward): the protagonist is the one body that never sinks into
+## the world. A soft warm bone-gold aura breathes BEHIND the painted body
+## (additive, z=1: ABOVE every world layer — floors, dressing, fog veils —
+## just under the skin at z=2). A candle the record carries through the
+## dark; it reads strongest exactly where the world is darkest.
+class VesselAura:
+        extends Node2D
+        var _t := 0.0
+        var _k := 0.0
+        func _init() -> void:
+                z_index = 1
+                var mat := CanvasItemMaterial.new()
+                mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+                material = mat
+        func _process(delta: float) -> void:
+                _t += delta
+                _k = minf(1.0, _k + delta * 1.6)   # eases in on spawn
+                queue_redraw()
+        func _draw() -> void:
+                var glow := Lights.get_glow_texture()
+                var breath := 1.0 + 0.05 * sin(_t * 1.4)
+                var w := 118.0 * breath
+                var h := 138.0 * breath
+                var a := (0.30 + 0.04 * sin(_t * 1.4 + 1.1)) * _k
+                draw_set_transform(Vector2(-w * 0.5, -46.0 - h * 0.5), 0.0,
+                                Vector2(w / 128.0, h / 128.0))
+                draw_texture_rect(glow, Rect2(Vector2.ZERO, Vector2(128, 128)), false,
+                                Color(0.85, 0.72, 0.50, a))
+                # a hotter heart at the chest — the record's seal
+                var hw := 46.0
+                draw_set_transform(Vector2(-hw * 0.5, -52.0 - hw * 0.5), 0.0,
+                                Vector2(hw / 128.0, hw / 128.0))
+                draw_texture_rect(glow, Rect2(Vector2.ZERO, Vector2(128, 128)), false,
+                                Color(0.95, 0.85, 0.62, a * 0.55))
+                draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
 func attach(p_player: Player) -> void:
         player = p_player
         _shadow = ContactShadow.new()
         _shadow.target = player
         player.add_child(_shadow)
+        _aura = VesselAura.new()
+        player.add_child(_aura)
 
 func sync_state(delta: float) -> void:
         if player == null:
@@ -46,6 +86,8 @@ func sync_state(delta: float) -> void:
         _t += delta
         var sprites_on := not GameState.debug_no_sprites
         visible = sprites_on
+        if _aura:
+                _aura.visible = sprites_on and player.hp > 0
         if _shadow:
                 _shadow.visible = sprites_on
                 var r := 16.0 if player.is_on_floor() else 12.0
@@ -88,8 +130,10 @@ func sync_state(delta: float) -> void:
         else:
                 rotation = lerpf(rotation, 0.0, delta * 7.0)
 
-        # damage / iframe shimmer (same rules the rig used)
-        var m := Color(1.0, 1.0, 1.0, 1.0)
+        # damage / iframe shimmer (same rules the rig used) — over a faint
+        # constant self-lift: the vessel is the reader's eye anchor and must
+        # never sink into the world it walks through (the WB-7 readability law)
+        var m := Color(1.10, 1.10, 1.10, 1.0)
         if player.hp > 0 and player.has_iframes() and not player.is_rolling():
                 m.a = 0.45 if fmod(_t * 24.0, 2.0) < 1.0 else 0.85
         if player._hurt_flash > 0.0:

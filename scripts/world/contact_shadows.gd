@@ -5,6 +5,12 @@
 ## as AIR. Drawn at the z=0 plane AFTER every other z=0 renderer (added last
 ## in the room build) — above the crafted floor, below every actor (z>=1).
 ## The null children's shadows glitch with them; the censor's breathes.
+##
+## WB-7: each body also carries a PRESENCE POOL — a faint additive glow
+## pooling at its feet in the actor's own tint (the stage-light language
+## the world's braziers already speak), so bodies stand OUT of the busy
+## floor instead of sinking into it. Pools ride the same ray-projected
+## ground point and fade with the actor (death fades its light).
 class_name ContactShadows
 extends Node2D
 
@@ -15,10 +21,29 @@ var _t := 0.0
 
 # cached per-actor shadow state, refreshed by ray in _physics_process
 var _shadows: Array = []
+var _pools: Node2D = null          # additive sibling — the presence glow
+
+const POOL_TINTS := {
+        "player": Color(0.58, 0.52, 0.38),
+        "hollow": Color(0.30, 0.34, 0.42),
+        "believer": Color(0.50, 0.40, 0.22),
+        "null": Color(0.30, 0.24, 0.46),
+        "censor": Color(0.20, 0.42, 0.44),
+        "boss": Color(0.52, 0.40, 0.18),
+        "npc": Color(0.44, 0.40, 0.30),
+}
 
 func setup(p_game: Game) -> void:
         game = p_game
         z_index = 0
+        var mat := CanvasItemMaterial.new()
+        mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+        var layer := PoolLayer.new()
+        layer.owner_shadows = self
+        layer.material = mat
+        layer.z_index = 0
+        add_child(layer)
+        _pools = layer
         set_physics_process(true)
 
 func _refresh_actors() -> void:
@@ -63,14 +88,28 @@ func _physics_process(delta: float) -> void:
                 # smaller and fainter it reads — depth you can FEEL in a jump
                 var shrink := clampf(1.0 - gap / 420.0, 0.42, 1.0)
                 var alpha_k := clampf(1.0 - gap / 500.0, 0.30, 1.0)
+                # the owner's own fade (death dissolve) takes its ground with it
+                var vis := 1.0
+                if a is CanvasItem:
+                        vis = (a as CanvasItem).modulate.a
                 _shadows.append({
                         "pos": Vector2(origin.x, gy),
                         "rx": rx * (0.6 + 0.4 * shrink),
-                        "k": alpha_k,
+                        "k": alpha_k * clampf(vis + 0.15, 0.0, 1.0),
                         "glitch": node2d.has_meta("shadow_glitch") and bool(node2d.get_meta("shadow_glitch")),
                         "ph": float(hash(str(node2d.get_instance_id())) % 1000) * 0.01,
+                        "tint": _pool_tint(a),
+                        "pool_k": alpha_k * vis,
+                        # THE VESSEL CARRIES A STAGE LIGHT: the player is the
+                        # constant focal point — his pool burns brighter and
+                        # wider than any enemy's (readability is a gameplay
+                        # feature, not a decoration)
+                        "pi": (0.30 if a is Player else 0.16),
+                        "pw": (3.7 if a is Player else 3.1),
                 })
         queue_redraw()
+        if _pools:
+                _pools.queue_redraw()
 
 func _default_rx(a: Node) -> float:
         if a is BoundMartyr:
@@ -81,6 +120,21 @@ func _default_rx(a: Node) -> float:
                 return 8.0
         return 13.0
 
+func _pool_tint(a: Node) -> Color:
+        if a is BoundMartyr:
+                return POOL_TINTS["boss"]
+        if a is Censor:
+                return POOL_TINTS["censor"]
+        if a is NullChild:
+                return POOL_TINTS["null"]
+        if a is Believer:
+                return POOL_TINTS["believer"]
+        if a is Hollow:
+                return POOL_TINTS["hollow"]
+        if a is Player:
+                return POOL_TINTS["player"]
+        return POOL_TINTS["npc"]
+
 func _draw() -> void:
         for s in _shadows:
                 var pos: Vector2 = s["pos"]
@@ -90,9 +144,10 @@ func _draw() -> void:
                         # null children: the shadow stutters out of phase
                         k *= 0.4 + 0.6 * (1.0 if fmod(_t * 9.0 + float(s["ph"]), 2.0) < 1.3 else 0.15)
                 # three stacked layers = a soft-edged contact, not a sticker
+                # (WB-7: deepened — the audit read the old strength as absent)
                 for i in 3:
                         var t := float(i) / 3.0
-                        var a := 0.16 * k * (1.0 - t * 0.55)
+                        var a := 0.22 * k * (1.0 - t * 0.55)
                         _ellipse(pos, rx * (1.0 - t * 0.34), rx * (1.0 - t * 0.34) * 0.26,
                                 Color(E0.VOID.r, E0.VOID.g, E0.VOID.b, a))
 
@@ -103,5 +158,40 @@ func _ellipse(c: Vector2, rx: float, ry: float, col: Color) -> void:
                 pts.append(c + Vector2(cos(ang) * rx, sin(ang) * ry))
         draw_colored_polygon(pts, col)
 
+## The additive presence layer — draws itself from the parent's cached
+## shadow list (identity transform child, so the parent's local space IS
+## its own).
+class PoolLayer:
+        extends Node2D
+        var owner_shadows: ContactShadows = null
+
+        func _draw() -> void:
+                if owner_shadows == null:
+                        return
+                var glow := Lights.get_glow_texture()
+                for s in owner_shadows._shadows:
+                        var pos: Vector2 = s["pos"]
+                        var rx: float = s["rx"]
+                        var tint: Color = s["tint"]
+                        var pk: float = s["pool_k"]
+                        if pk <= 0.05:
+                                continue
+                        # squashed radial at the feet, breathing very slowly
+                        var breathe := 1.0 + 0.06 * sin(owner_shadows._t * 1.1 + float(s["ph"]))
+                        var w := rx * float(s.get("pw", 3.1)) * breathe
+                        var h := rx * 1.05 * breathe
+                        draw_set_transform(pos - Vector2(w * 0.5, h * 0.5), 0.0,
+                                Vector2(w / 128.0, h / 128.0))
+                        draw_texture_rect(glow, Rect2(Vector2.ZERO, Vector2(128, 128)), false,
+                                tint * (float(s.get("pi", 0.16)) * pk))
+                draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
 func shadow_count() -> int:
         return _shadows.size()
+
+func pool_count() -> int:
+        var n := 0
+        for s in _shadows:
+                if float(s["pool_k"]) > 0.05:
+                        n += 1
+        return n

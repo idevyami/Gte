@@ -63,19 +63,17 @@ func _process(delta: float) -> void:
         var damp := 1.0 if z < 1.02 else 0.5
         _desired += Vector2(sin(_drift_t * 0.35) * 2.4, cos(_drift_t * 0.27) * 1.5) * drift_k * damp
         position = position.lerp(_desired, 1.0 - exp(-smoothing * delta))
-        # clamp inside room bounds (viewport 1280x720)
-        var half := Vector2(640, 360)
-        var min_x := half.x
-        var max_x := room_size.x - half.x
-        var min_y := half.y
-        var max_y := room_size.y - half.y
-        if room_size.x <= 1280.0:
+        # clamp inside room bounds (viewport 1280x720 — ZOOM-AWARE: the
+        # visible half-extent shrinks as the lens leans in, or a zoomed
+        # frame clamps to the unzoomed bounds and shows past the floor)
+        var half := Vector2(640.0 / maxf(z, 0.001), 360.0 / maxf(z, 0.001))
+        if room_size.x <= half.x * 2.0:
                 position.x = room_size.x * 0.5
         else:
-                position.x = clampf(position.x, min_x, max_x)
-        if room_size.y <= 720.0:
+                position.x = clampf(position.x, half.x, room_size.x - half.x)
+        if room_size.y <= half.y * 2.0:
                 position.y = room_size.y * 0.5
         else:
-                position.y = clampf(position.y, min_y, max_y)
+                position.y = clampf(position.y, half.y, room_size.y - half.y)
         # shake is applied as offset, never rotation
         offset = FX.get_shake_offset()

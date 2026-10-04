@@ -25,7 +25,8 @@ func _ready() -> void:
                 sset = "oren"
         if sset != "":
                 var sk := SpriteSkin.new()
-                if sk.setup(sset, {"idle": 1.0 if sset == "oren" else 1.4}):
+                if sk.setup(sset, {"idle": 1.0 if sset == "oren" else 1.4,
+                                "talk": 5.0}):
                         _skin = sk
                         add_child(sk)
                         z_index = 1
@@ -67,7 +68,19 @@ func _process(delta: float) -> void:
                         if fmod(anim_t, 3.0) < 0.12:
                                 m = m.lerp(Color(0.62, 0.9, 0.9), 0.35)
                 _skin.modulate = m
-                _skin.pose("idle")
+                # OREN PERFORMS HIS SPEECH: while a dialogue he is part of is
+                # open and the player stands close, the clerk talks — head
+                # bobbing, the stamping hand making its points
+                if npc_id == "oren" and _skin.has_anim("talk"):
+                        var talking := false
+                        var game := get_tree().get_first_node_in_group("game")
+                        if game and game.dialogue_box and game.dialogue_box.active:
+                                var pl := get_tree().get_first_node_in_group("player")
+                                talking = pl == null or \
+                                        pl.global_position.distance_to(global_position) < 300.0
+                        _skin.pose("talk" if talking else "idle")
+                else:
+                        _skin.pose("idle")
         if npc_id == "penitent":
                 queue_redraw()
 

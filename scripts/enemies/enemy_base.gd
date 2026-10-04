@@ -15,6 +15,8 @@ var anim_t := 0.0
 var contact_cd := 0.0
 var contact_damage := 0
 var telegraph_t := 0.0        # >0 while winding an attack — reads as a warning
+var _death_anim_len := 0.0     # >0 when the skin carries a death performance
+var _dissolved := false        # the ash scatter fires once, at the fade
 var _hurtbox: Area2D
 var _contact: Area2D
 var _skin: SpriteSkin
@@ -99,11 +101,36 @@ func _process(delta: float) -> void:
         contact_cd = maxf(0.0, contact_cd - delta)
         if dead and death_t >= 0.0:
                 death_t += delta
-                if death_t > 0.9:
+                # the corpse keeps its momentum: the collapse is physical,
+                # it slides and falls like the body it was
+                velocity.x = move_toward(velocity.x, 0.0, 700.0 * delta)
+                if not is_on_floor():
+                        velocity.y += 1500.0 * delta
+                else:
+                        velocity.y = 0.0
+                move_and_slide()
+                # the ash scatter waits for the collapse to land its last
+                # frame — the body finishes its fall BEFORE it scatters
+                if _death_anim_len > 0.0 and not _dissolved \
+                                and death_t >= _death_anim_len:
+                        _dissolved = true
+                        _scatter_ash()
+                var hold := maxf(0.9, _death_anim_len + 0.32)
+                if death_t > hold:
                         queue_free()
         if _skin:
                 _sync_skin(delta)
         queue_redraw()
+
+func _scatter_ash() -> void:
+        # the dissolve: fine bone-dust first (the shape lets go gently), a
+        # restrained ash follow — never a red smear over the fallen body
+        var outsider := data.type == "OUTSIDER"
+        if outsider:
+                FX.burst(global_position + Vector2(0, -12), "glitch", 0.0, 16)
+        else:
+                FX.burst(global_position + Vector2(0, -10), "dust", 0.0, 9)
+                FX.burst(global_position + Vector2(0, -14), "ash", 0.0, 9)
 
 func _sync_skin(_delta: float) -> void:
         _skin.visible = not GameState.debug_no_sprites
@@ -112,13 +139,27 @@ func _sync_skin(_delta: float) -> void:
         if hurt_flash > 0.0:
                 m = m.lerp(Color(1.0, 0.42, 0.36), (hurt_flash / 0.18) * 0.55)
         if dead and death_t >= 0.0:
-                m.a = clampf(1.0 - death_t * 1.2, 0.0, 1.0)
+                if _death_anim_len > 0.0:
+                        # SOLID through the collapse — the body performs its
+                        # fall — then a slow dissolve once the ash scatters
+                        # (the shape holds; it does not smear away)
+                        var over := death_t - _death_anim_len
+                        if over > 0.0:
+                                m.a = clampf(1.0 - over / 0.26, 0.0, 1.0)
+                else:
+                        m.a = clampf(1.0 - death_t * 1.2, 0.0, 1.0)
         _skin.modulate = m
+        if dead and _death_anim_len > 0.0:
+                _skin.pose("death")
+                return
+        if hurt_flash > 0.0 and _skin.has_anim("hurt"):
+                _skin.pose("hurt")
+                return
         _skin.pose(skin_pose())
 
 func _physics_process(delta: float) -> void:
         if dead:
-                return
+                return          # corpse physics live in _process (death path)
         _act(delta)
         move_and_slide()
 
@@ -149,6 +190,9 @@ func take_hit(dmg: int, from_pos: Vector2, _heavy: bool) -> void:
         hurt_flash = 0.18
         var dir := -1 if from_pos.x > global_position.x else 1
         velocity = Vector2(dir * 180.0, -120.0)
+        # the wound card: a bright directional read at the contact point,
+        # facing the way the blow pushes
+        FX.impact(global_position + Vector2(-dir * 14.0, -26.0), dir, _heavy)
         FX.burst(global_position + Vector2(0, -26), "glitch" if data.type == "OUTSIDER" else "ash", 0.0, 9)
         _on_hurt()
         if hp <= 0:
@@ -164,11 +208,17 @@ func _die() -> void:
         dead = true
         death_t = 0.0
         GameState.stats["dissipated"] += 1
-        velocity = Vector2.ZERO
         var outsider := data.type == "OUTSIDER"
-        FX.burst(global_position + Vector2(0, -26), "glitch" if outsider else "ash", 0.0, 18)
-        if not outsider:
-                FX.burst(global_position + Vector2(0, -30), "dust", 0.0, 6)
+        # the death PERFORMANCE: if the skin carries a death animation the
+        # body plays its collapse whole (stun -> buckle -> down) and the
+        # ash waits for it; without one, the old immediate scatter stands
+        _death_anim_len = 0.0
+        _dissolved = false
+        if _skin and _skin.has_anim("death") and not GameState.debug_no_sprites:
+                _death_anim_len = _skin.anim_duration("death")
+        if _death_anim_len <= 0.0:
+                _dissolved = true
+                _scatter_ash()
         AudioManager.play_sfx("sfx_null_warp" if outsider else "sfx_death", -8.0)
 
 func is_dead() -> bool:
