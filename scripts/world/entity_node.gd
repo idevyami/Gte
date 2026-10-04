@@ -36,12 +36,27 @@ func _ready() -> void:
         add_child(shape)
         add_to_group("interactable")
         z_index = 4
+        if kind == "terminal":
+                # resolve the art OUTSIDE the draw call — a load() made from
+                # inside _draw() returns a white placeholder that never
+                # re-resolves (the act2 "debug box" bug, found by the WB-8
+                # audit; fixed by load-once, cached statically)
+                _terminal_art()
         EntityDB.register(self)
         _refresh_prompt()
         queue_redraw()
 
 func _exit_tree() -> void:
         EntityDB.unregister(self)
+
+static var _cached_term_art: Texture2D = null
+
+static func _terminal_art() -> Texture2D:
+        ## Load-once cache for the painted terminal (NEVER from inside _draw).
+        if _cached_term_art == null:
+                if ResourceLoader.exists("res://art/props/terminal.png"):
+                        _cached_term_art = load("res://art/props/terminal.png")
+        return _cached_term_art
 
 func _process(delta: float) -> void:
         anim_t += delta
@@ -239,9 +254,7 @@ func _seeded(i: int) -> float:
 
 func _draw_terminal() -> void:
         var on: bool = GameState.observe_installed
-        var term_art: Texture2D = null
-        if ResourceLoader.exists("res://art/props/terminal.png"):
-                term_art = load("res://art/props/terminal.png")
+        var term_art: Texture2D = _terminal_art()
         if term_art != null and not GameState.debug_no_sprites:
                 # the painted archive terminal; the readout overlay stays live
                 var ah := 118.0

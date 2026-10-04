@@ -45,6 +45,7 @@ func _run() -> void:
         await _closest_walls()
         await _ground_you_walk_on()
         await _performers()
+        await _world_responds()
         print("=== %d checks, %d failures ===" % [checks, fails])
         get_tree().quit(1 if fails > 0 else 0)
 
@@ -993,3 +994,129 @@ func _rim_edge_brighter(path: String) -> bool:
         if edge_n < 12 or inner_n < 12:
                 return false
         return (edge_sum / edge_n) > (inner_sum / inner_n) + 0.015
+
+# ------------------------------------------------------------------ WB-8
+func _world_responds() -> void:
+        print("[THE WORLD RESPONDS — WB-8]")
+        # --- THE WALL-FLOOR MARRIAGE: every act's walls carry their footing
+        # (the skirting law — the seam is joinery, never a hard line)
+        var skirt_districts := {
+                "act1": "vessels", "act2": "undercity", "act3": "city",
+                "act4": "undercity", "act5": "chapel", "act6": "archive",
+                "act7": "engine", "act8": "reliquary", "act9": "aftermath",
+        }
+        for act in skirt_districts.keys():
+                game.transition_to(act)
+                await _room(act)
+                var rd: Dictionary = Rooms.ROOMS[act]
+                var floors_n: int = rd.get("floors", []).size()
+                ok(game.floorcraft.skirt_stone_count() >= floors_n * 8,
+                        "%s walls carry a skirting footing course (>=8 stones/floor)" % act)
+        game.transition_to("act2")
+        await _room("act2")
+        ok(game.floorcraft.has_skirt_trim("skirt_moss"), "the undercity footing grows moss in its joints")
+        game.transition_to("act3")
+        await _room("act3")
+        ok(game.floorcraft.has_skirt_trim("skirt_datum"), "the city footing carries its survey datum line")
+        game.transition_to("act7")
+        await _room("act7")
+        ok(game.floorcraft.has_skirt_trim("skirt_bolts"), "the engine footing is bolted base plates")
+        game.transition_to("act8")
+        await _room("act8")
+        ok(game.floorcraft.has_skirt_trim("skirt_goldline"), "the reliquary footing carries the gold seam")
+        game.transition_to("act1")
+        await _room("act1")
+        ok(game.floorcraft.has_skirt_trim("skirt_staple"), "the womb footing is stapled with conduit")
+        # --- THE GROUND ANSWERS THE FIRE: every source lands a pool ON the
+        # walking surface (the z-bug law: the old spill lived at z=-5 under
+        # the opaque floorcraft slabs and never reached the ground)
+        for act in ["act1", "act2", "act3", "act5", "act6", "act8"]:
+                game.transition_to(act)
+                await _room(act)
+                var lights_n: int = (Rooms.ROOMS[act].get("lights", []) as Array).size()
+                ok(game.floor_lights != null and game.floor_lights.pool_count() == lights_n,
+                        "%s every light lands a dancing pool on the floor" % act)
+                ok(game.floor_lights.z_index == 0
+                                and game.floor_lights.get_index() > game.floorcraft.get_index()
+                                and game.floor_lights.get_index() < game.shadows.get_index(),
+                        "%s floor lights paint above the slabs, under the bodies" % act)
+        game.transition_to("act3")
+        await _room("act3")
+        ok(game.floor_lights.fixture_count() >= 1, "sourceless glows get fixture grounding (brackets/nodes)")
+        # --- FOCAL SHAFTS FOR THE DARK DISTRICTS (the audit's "uniformly
+        # dark, no focal point" — undercity + city get beams now)
+        for act in ["act2", "act3", "act4"]:
+                game.transition_to(act)
+                await _room(act)
+                var rays: GodRays = null
+                for ch in game.world.get_children():
+                        if ch is GodRays:
+                                rays = ch
+                ok(rays != null and rays.beam_count() >= 2,
+                        "%s the dark street breathes focal light shafts" % act)
+        # --- THE WORLD RESPONDS: moths, vermin, ripples
+        # (the moth law: every flame that lives gets its orbiters)
+        game.transition_to("act5")
+        await _room("act5")
+        var flame := Vector2(1200, 700)
+        ok(game.world_life.moth_count_at_light(flame) >= 2, "the candle altar's flame carries its moths")
+        ok(game.world_life.moth_count() >= 6, "the chapel's flames carry a moth population")
+        # the scatter law: a passing body bursts the moths off their orbits
+        game.player.global_position = Vector2(flame.x, 775)
+        game.player.velocity = Vector2.ZERO
+        await _frames(30)
+        var scattered := game.world_life.moth_offset(flame)
+        ok(scattered > 8.0, "a body in the light scatters the moths (burst %.1f)" % scattered)
+        game.player.global_position = Vector2(300, 840)
+        game.player.velocity = Vector2.ZERO
+        await _frames(90)
+        var resettle := game.world_life.moth_offset(flame)
+        ok(resettle < scattered * 0.6, "the air stills and the moths resettle (%.1f -> %.1f)" % [scattered, resettle])
+        # (the vermin law: only the strata that host vermin host them)
+        var vermin_districts := {"act1": true, "act2": true, "act3": true, "act4": true,
+                "act6": true, "act9": true, "act5": false, "act7": false, "act8": false}
+        for act in vermin_districts.keys():
+                game.transition_to(act)
+                await _room(act)
+                var want: bool = vermin_districts[act]
+                ok(game.world_life.scuttler_total() >= 2 if want else game.world_life.scuttler_total() == 0,
+                        "%s vermin population %s" % [act, "present" if want else "absent (holy/engine ground)"])
+        # the flee law: a body within 150px is flight
+        game.transition_to("act3")
+        await _room("act3")
+        await _frames(10)
+        var fled := false
+        for s in game.world_life._scuttlers:
+                if String(s["state"]) == "patrol":
+                        game.player.global_position = Vector2(float(s["x"]) - 120.0, 840)
+                        game.player.velocity = Vector2.ZERO
+                        await _frames(6)
+                        if String(s["state"]) == "flee":
+                                fled = true
+                        break
+        ok(fled, "the vessel's approach sends the vermin fleeing")
+        # the ripple law: a boot in a weep spot opens rings
+        game.transition_to("act2")
+        await _room("act2")
+        ok(game.floorcraft.get_damp_spots().size() >= 3, "the undercity floor keeps its weep spots")
+        var d0: Dictionary = game.floorcraft.get_damp_spots()[0]
+        game.world_life._footfall(Vector2(float(d0["x"]), 660))
+        await get_tree().create_timer(0.05, true, false, true).timeout
+        ok(game.world_life.ripple_count() > 0, "a footfall in the weep spot ripples")
+        # real-time wait (headless fps is unbounded — frame counts lie)
+        await get_tree().create_timer(1.2, true, false, true).timeout
+        ok(game.world_life.ripple_count() == 0, "the rings live briefly and die")
+        # the mist parts around a passing body (probe INSIDE the gap band —
+        # at the body's own x the displacement is zero by symmetry)
+        var px := game.player.global_position.x
+        ok(absf(game.ambient.mist_push(px + 60.0)) > 20.0, "the ground haze parts around the vessel")
+        ok(game.ambient.mist_push(px + 600.0) == 0.0, "far from the body the mist holds its drift")
+        # --- THE WHITE-BOX REGRESSION (the terminal law): art loaded inside
+        # _draw() renders a white placeholder forever — the audit read it as
+        # a debug box in TWO passes. The texture must resolve in _ready.
+        ok(EntityNode._terminal_art() != null, "the terminal art resolves outside the draw call")
+        var term_found := false
+        for ch in game.world.get_children():
+                if ch is EntityNode and String(ch.get("kind")) == "terminal":
+                        term_found = true
+        ok(term_found, "the act2 terminal exists as an EntityNode")

@@ -109,6 +109,17 @@ func _process(delta: float) -> void:
                         p.y = room_size.y * 0.8 + 20.0
                         p.x = randf() * room_size.x
                 m["pos"] = p
+        # THE WORLD RESPONDS (WB-8): a sprinting body pushes the air aside —
+        # the dust swirls out of the vessel's path and settles behind it
+        if _camera != null and _camera.target != null and is_instance_valid(_camera.target):
+                var tgt: Node2D = _camera.target
+                if "velocity" in tgt and absf(tgt.velocity.x) > 110.0:
+                        var pp: Vector2 = tgt.global_position
+                        for m in _motes:
+                                var mp: Vector2 = m["pos"]
+                                var d := mp - pp
+                                if d.length() < 70.0 and d.length() > 0.01:
+                                        m["pos"] = mp + d.normalized() * 60.0 * delta
         for m in _fg_ash:
                 var p: Vector2 = m["pos"]
                 p += (m["v"] as Vector2) * delta
@@ -149,6 +160,17 @@ func _process(delta: float) -> void:
                                 m["pos"] = pp
         queue_redraw()
 
+func mist_push(x: float) -> float:
+        ## How far the mist is displaced at x — the vessel's body opens a
+        ## soft gap in the ground haze (0 when no body / far away).
+        if _camera == null or _camera.target == null or not is_instance_valid(_camera.target):
+                return 0.0
+        var px: float = _camera.target.global_position.x
+        var dx := x - px
+        if absf(dx) >= 150.0:
+                return 0.0
+        return signf(dx) * (150.0 - absf(dx)) * 0.45
+
 func _draw() -> void:
         # --- dust motes: bright specks hanging in the air (behind actors feel,
         #     drawn softly so they read as atmosphere, not noise)
@@ -161,7 +183,8 @@ func _draw() -> void:
                 var col := Color(E0.PARCH.r, E0.PARCH.g, E0.PARCH.b, float(m["a"]) * twinkle)
                 draw_circle(p, float(m["r"]), col)
                 draw_circle(p, float(m["r"]) * 2.2, Color(E0.PARCH.r, E0.PARCH.g, E0.PARCH.b, float(m["a"]) * twinkle * 0.25))
-        # --- floor mist: layered soft bands drifting along the ground
+        # --- floor mist: layered soft bands drifting along the ground,
+        #     PARTING around the vessel's body (the world responds)
         for b in _mist_bands:
                 var y: float = b["y"]
                 var sp: float = b["speed"]
@@ -175,6 +198,9 @@ func _draw() -> void:
                         x0 = fmod(x0, 320.0) - 320.0
                         while x0 < vp_r + 80.0:
                                 var w := 240.0
+                                # the body displaces the haze — a soft gap
+                                # that breathes open around the player
+                                x0 += mist_push(x0 + w * 0.5)
                                 draw_rect(Rect2(Vector2(x0, y - band_h * t * 0.5), Vector2(w, band_h * 0.35 + 10.0)), col)
                                 x0 += w + 90.0
         # --- foreground ash: falls in front of everything, deliberately faint

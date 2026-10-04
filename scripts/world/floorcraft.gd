@@ -7,6 +7,9 @@
 ## THE LEDGES: every climb platform gets a rendered slab — block body, crafted
 ## top surface, rough-hewn underside, and corbel brackets mounting it to the
 ## back wall. Before this pass the climb platforms were collision-only.
+## THE SKIRTING (WB-8): the wall's base course — facing stones carrying the
+## wall down INTO the ground so the wall-floor seam is a marriage, not a hard
+## line; per-district trim (moss joints, gold hairline, datum lines, bolts).
 ## All deterministic per room; palette-locked; static (drawn once per build).
 class_name FloorCraft
 extends Node2D
@@ -18,14 +21,16 @@ var floors: Array = []
 var plats: Array = []
 
 # generated craft data (regenerated per room build)
-var _floor_surfaces: Array = []   # per-floor: slabs, dressing, lip
+var _floor_surfaces: Array = []   # per-floor: slabs, skirt, dressing, lip
 var _ledges: Array = []           # per-platform: blocks, corbels, chips
+var _damp_spots: Array = []       # undercity weep spots (world-life ripples)
 
 var _tex: Texture2D = null
 
 const SLAB_W := 58.0
 const SURFACE_MAX := 30.0        # walking strip depth on floors — deep
                                  # enough that floor craft READS at distance
+const SKIRT_H := 15.0            # the wall's base course — where wall marries floor
 
 func setup(p_key: String, p_floors: Array, p_plats: Array, p_style: String, p_district: String) -> void:
         key = p_key
@@ -43,6 +48,7 @@ func setup(p_key: String, p_floors: Array, p_plats: Array, p_style: String, p_di
 func _generate() -> void:
         _floor_surfaces.clear()
         _ledges.clear()
+        _damp_spots.clear()
         var rng := RandomNumberGenerator.new()
         rng.seed = hash("floorcraft:" + key)
         for r in floors:
@@ -51,6 +57,18 @@ func _generate() -> void:
         for r in plats:
                 var rect: Rect2 = r
                 _ledges.append(_craft_ledge(rect, rng))
+        # collect the weep spots (undercity damp) for the world-life pass —
+        # stepping in a damp stain must ripple
+        for f in _floor_surfaces:
+                var r2: Rect2 = f["rect"]
+                var dep: float = f["depth"]
+                for d in f["dress"]:
+                        if String(d["kind"]) == "damp":
+                                _damp_spots.append({
+                                        "x": float(d["x"]),
+                                        "y": r2.position.y + dep * 0.7,
+                                        "rx": float(d["rx"]),
+                                })
         queue_redraw()
 
 # ------------------------------------------------------------------ floors
@@ -113,9 +131,85 @@ func _craft_floor(rect: Rect2, rng: RandomNumberGenerator) -> Dictionary:
                 "depth": depth,
                 "back_h": back_h,
                 "slabs": slabs,
+                "skirt": _craft_skirt(rect, rng),
                 "dress": _craft_dressing(rect, depth, rng),
         }
         return d
+
+# ------------------------------------------------------------------ skirt
+
+func _craft_skirt(rect: Rect2, rng: RandomNumberGenerator) -> Dictionary:
+        ## The wall's footing: a base course of facing stones sitting ON the
+        ## floor line (drawn above y0, onto the wall) with a projecting
+        ## cornice lip, chipped corners, occasional missing stones, and the
+        ## district's own trim. Generated deterministically per room.
+        var stones: Array = []
+        var x := rect.position.x
+        while x < rect.end.x - 8.0:
+                var w := minf(rng.randf_range(40.0, 66.0), rect.end.x - x)
+                if w < 20.0:
+                        x += 44.0
+                        continue
+                stones.append({
+                        "x": x, "w": w,
+                        "k": 0.70 + rng.randf() * 0.22,
+                        "gap": rng.randf() < 0.07,
+                        "chip": rng.randf() < 0.22,
+                        "chip_side": 1 if rng.randf() < 0.5 else -1,
+                })
+                x += w
+        # district trim: what lives at the wall's base in this stratum
+        var trim: Array = []
+        var joints: Array = []          # mortar joint x positions
+        for s in stones:
+                joints.append(float(s["x"]) + float(s["w"]))
+        match district:
+                "undercity":
+                        for jx in joints:
+                                if rng.randf() < 0.4:
+                                        trim.append({"kind": "skirt_moss", "x": jx,
+                                                "rx": rng.randf_range(3.0, 6.5)})
+                        for s in stones:
+                                if rng.randf() < 0.3:
+                                        trim.append({"kind": "skirt_creep", "x": float(s["x"]) + float(s["w"]) * 0.5,
+                                                "rx": rng.randf_range(10.0, 26.0)})
+                "vessels":
+                        for s in stones:
+                                if rng.randf() < 0.5:
+                                        trim.append({"kind": "skirt_staple", "x": float(s["x"]) + float(s["w"]) * rng.randf_range(0.25, 0.75)})
+                        if not stones.is_empty():
+                                var s0: Dictionary = stones[rng.randi() % stones.size()]
+                                trim.append({"kind": "skirt_livejoint", "x": float(s0["x"]) + float(s0["w"]) * 0.5})
+                "city":
+                        trim.append({"kind": "skirt_datum", "x0": rect.position.x, "x1": rect.end.x})
+                        for jx in joints:
+                                if rng.randf() < 0.3:
+                                        trim.append({"kind": "skirt_tick", "x": jx})
+                "chapel":
+                        for s in stones:
+                                if rng.randf() < 0.22:
+                                        trim.append({"kind": "skirt_bone", "x": float(s["x"]) + float(s["w"]) * rng.randf_range(0.2, 0.8),
+                                                "s": rng.randf_range(0.7, 1.3)})
+                "archive":
+                        for jx in joints:
+                                if rng.randf() < 0.22:
+                                        trim.append({"kind": "skirt_page", "x": jx,
+                                                "up": rng.randf() < 0.5})
+                "engine":
+                        for s in stones:
+                                trim.append({"kind": "skirt_bolts", "x": float(s["x"]), "w": float(s["w"])})
+                                if rng.randf() < 0.15:
+                                        trim.append({"kind": "skirt_hazard", "x": float(s["x"]), "w": float(s["w"])})
+                "reliquary":
+                        trim.append({"kind": "skirt_goldline", "x0": rect.position.x, "x1": rect.end.x})
+                        for jx in joints:
+                                trim.append({"kind": "skirt_goldstud", "x": jx})
+                "aftermath":
+                        for s in stones:
+                                if rng.randf() < 0.25:
+                                        trim.append({"kind": "skirt_rubble", "x": float(s["x"]) + float(s["w"]) * 0.5,
+                                                "s": rng.randf_range(0.8, 1.6)})
+        return {"stones": stones, "trim": trim}
 
 func _crack_density() -> float:
         match district:
@@ -274,6 +368,9 @@ func _draw_floor(f: Dictionary) -> void:
         if _tex:
                 tw = float(_tex.get_width())
                 th = float(_tex.get_height())
+        # ---- THE SKIRTING: the wall's base course, drawn onto the wall
+        # ABOVE the floor line — the seam becomes a marriage of stone
+        _draw_skirt(f)
         # ---- the walking surface: slab courses in false perspective
         for s in f["slabs"]:
                 var sx: float = s["x"]
@@ -335,6 +432,173 @@ func _draw_floor(f: Dictionary) -> void:
         draw_rect(Rect2(rect.position.x, lip_y, rect.size.x, 2.2),
                 Color(E0.VOID.r, E0.VOID.g, E0.VOID.b, 0.34))
         _draw_dressing(f, y0, depth)
+
+func _draw_skirt(f: Dictionary) -> void:
+        ## The wall's footing, rendered: facing stones with a projecting
+        ## cornice lip, wall AO above the lip, gaps showing the wall's wound,
+        ## and the district's trim. Painted ONTO the wall (above y0) — this
+        ## is what turns the floor-wall seam from a hard line into joinery.
+        var rect: Rect2 = f["rect"]
+        var y0 := rect.position.y
+        var skirt: Dictionary = f["skirt"]
+        var stones: Array = skirt["stones"]
+        var tw := 512.0
+        var th := 512.0
+        if _tex:
+                tw = float(_tex.get_width())
+                th = float(_tex.get_height())
+        for s in stones:
+                var sx: float = s["x"]
+                var sw: float = s["w"]
+                var k: float = s["k"]
+                if s["gap"]:
+                        # a missing stone — the wall shows its wound, and the
+                        # fallen fragments lie at the floor line
+                        draw_rect(Rect2(sx, y0 - SKIRT_H, sw, SKIRT_H),
+                                Color(E0.VOID.r, E0.VOID.g, E0.VOID.b, 0.55))
+                        draw_rect(Rect2(sx + 1.5, y0 - SKIRT_H + 1.5, sw - 3.0, SKIRT_H - 1.5),
+                                Color(E0.VOID.r, E0.VOID.g, E0.VOID.b, 0.30))
+                        for i in 3:
+                                var fx := sx + sw * (0.2 + 0.3 * float(i))
+                                draw_circle(Vector2(fx, y0 - 1.0 - float(i) * 0.8), 1.4 - 0.25 * float(i),
+                                        Color(E0.ASH.r, E0.ASH.g, E0.ASH.b, 0.5))
+                        continue
+                # the stone face — a touch darker than the floor's back course
+                # (it faces the wall, away from the light)
+                var dst := Rect2(Vector2(sx, y0 - SKIRT_H), Vector2(sw, SKIRT_H))
+                if _tex:
+                        var uv := Vector2(sx * 0.31, 77.0 + float(sx) * 0.043)
+                        var src := Rect2(fmod(uv.x, tw - sw - 2.0), fmod(uv.y, th - SKIRT_H - 2.0), sw, SKIRT_H)
+                        draw_texture_rect_region(_tex, dst, src, Color(k * 0.92, k * 0.92, k * 0.92, 1.0))
+                else:
+                        draw_rect(dst, Color(E0.DIRTY_STONE.r * k * 0.92, E0.DIRTY_STONE.g * k * 0.92, E0.DIRTY_STONE.b * k * 0.92))
+                # bed joint where stone meets floor: the load line
+                draw_rect(Rect2(sx, y0 - 1.4, sw, 1.4),
+                        Color(E0.VOID.r, E0.VOID.g, E0.VOID.b, 0.46))
+                # mortar seams between stones
+                draw_rect(Rect2(sx, y0 - SKIRT_H, 1.0, SKIRT_H),
+                        Color(E0.VOID.r, E0.VOID.g, E0.VOID.b, 0.30))
+                # chipped corner — the footing takes kicks
+                if s["chip"]:
+                        var side: float = s["chip_side"]
+                        var cx := sx + (sw - 6.0 if side > 0 else 0.0)
+                        draw_colored_polygon(PackedVector2Array([
+                                Vector2(cx, y0),
+                                Vector2(cx + 6.0 * side, y0),
+                                Vector2(cx + 4.5 * side, y0 - 3.0),
+                                Vector2(cx + 1.2 * side, y0 - 3.6),
+                        ]), Color(E0.VOID.r, E0.VOID.g, E0.VOID.b, 0.42))
+                # the projecting cornice lip — a shelf of stone catching light
+                draw_rect(Rect2(sx - 1.5, y0 - SKIRT_H - 2.8, sw + 3.0, 2.8),
+                        Color(E0.DIRTY_STONE.r * k * 1.08, E0.DIRTY_STONE.g * k * 1.08, E0.DIRTY_STONE.b * k * 1.04, 0.96))
+                draw_rect(Rect2(sx - 1.5, y0 - SKIRT_H - 2.8, sw + 3.0, 1.1),
+                        Color(0.9, 0.88, 0.82, 0.15))
+                draw_rect(Rect2(sx - 1.5, y0 - SKIRT_H - 0.4, sw + 3.0, 0.6),
+                        Color(E0.VOID.r, E0.VOID.g, E0.VOID.b, 0.34))
+        # wall AO above the whole course — the projection shades the wall
+        for i in 2:
+                var t := float(i) / 2.0
+                draw_rect(Rect2(rect.position.x, y0 - SKIRT_H - 3.4 - 3.0 + t * 3.0, rect.size.x, 3.0),
+                        Color(E0.VOID.r, E0.VOID.g, E0.VOID.b, 0.13 - 0.06 * t))
+        # ---- district trim: what lives at this wall's base
+        for d in skirt["trim"]:
+                match String(d["kind"]):
+                        "skirt_moss":
+                                # moss creeps up the mortar joint
+                                var mx: float = d["x"]
+                                var mrx: float = d["rx"]
+                                _ellipse(Vector2(mx, y0 - 1.0), mrx, mrx * 1.6,
+                                        Color(E0.PARCH.r * 0.7, E0.PARCH.g * 0.82, E0.PARCH.b * 0.6, 0.13))
+                                _ellipse(Vector2(mx, y0 - SKIRT_H * 0.5), mrx * 0.5, mrx * 0.9,
+                                        Color(E0.PARCH.r * 0.7, E0.PARCH.g * 0.82, E0.PARCH.b * 0.6, 0.08))
+                        "skirt_creep":
+                                # damp climbing the stone face
+                                var cxx: float = d["x"]
+                                var crx: float = d["rx"]
+                                _ellipse(Vector2(cxx, y0 - 2.0), crx, SKIRT_H * 0.5,
+                                        Color(E0.VOID.r, E0.VOID.g, E0.VOID.b, 0.12))
+                        "skirt_staple":
+                                # a cable staple pinning conduit to the footing
+                                var px := float(d["x"])
+                                draw_rect(Rect2(px - 2.6, y0 - SKIRT_H * 0.72, 5.2, 3.4),
+                                        E0.ASH.darkened(0.1))
+                                draw_rect(Rect2(px - 2.6, y0 - SKIRT_H * 0.72, 5.2, 1.0),
+                                        Color(0.9, 0.88, 0.82, 0.16))
+                        "skirt_livejoint":
+                                # a live seam in the wall's cabling — cyan bleed
+                                var jx: float = d["x"]
+                                draw_rect(Rect2(jx - 1.2, y0 - SKIRT_H * 0.6, 2.4, 5.0),
+                                        Color(E0.CYAN.r, E0.CYAN.g, E0.CYAN.b, 0.40))
+                                _ellipse(Vector2(jx, y0 - SKIRT_H * 0.42), 9.0, 4.0,
+                                        Color(E0.CYAN.r, E0.CYAN.g, E0.CYAN.b, 0.09))
+                        "skirt_datum":
+                                # the city measures itself: an incised datum line
+                                var x0: float = d["x0"]
+                                var x1: float = d["x1"]
+                                var dy := y0 - SKIRT_H * 0.52
+                                draw_rect(Rect2(x0, dy, x1 - x0, 1.2),
+                                        Color(E0.VOID.r, E0.VOID.g, E0.VOID.b, 0.42))
+                                draw_rect(Rect2(x0, dy - 0.6, x1 - x0, 0.6),
+                                        Color(0.9, 0.88, 0.82, 0.10))
+                        "skirt_tick":
+                                # survey tick on the datum
+                                var tx: float = d["x"]
+                                draw_rect(Rect2(tx - 0.6, y0 - SKIRT_H * 0.52 - 2.0, 1.2, 2.0),
+                                        Color(E0.VOID.r, E0.VOID.g, E0.VOID.b, 0.38))
+                        "skirt_bone":
+                                # an offering stub left at the wall's base
+                                var bx: float = d["x"]
+                                var bs: float = d["s"]
+                                draw_line(Vector2(bx - 3.0 * bs, y0 - 1.0), Vector2(bx + 3.0 * bs, y0 - 2.6 * bs),
+                                        Color(E0.BONE.r, E0.BONE.g, E0.BONE.b, 0.55), 1.6)
+                                draw_circle(Vector2(bx + 3.0 * bs, y0 - 2.6 * bs), 1.1 * bs,
+                                        Color(E0.BONE.r, E0.BONE.g, E0.BONE.b, 0.5))
+                        "skirt_page":
+                                # a record tucked into the mortar, half-folded
+                                var pxx: float = d["x"]
+                                var up := 1.0 if d["up"] else -1.0
+                                draw_colored_polygon(PackedVector2Array([
+                                        Vector2(pxx - 3.5, y0 - SKIRT_H * 0.4),
+                                        Vector2(pxx + 3.5, y0 - SKIRT_H * 0.4),
+                                        Vector2(pxx + 2.4, y0 - SKIRT_H * 0.4 - 5.0 * up),
+                                        Vector2(pxx - 2.6, y0 - SKIRT_H * 0.4 - 4.2 * up),
+                                ]), Color(E0.PARCH.r * 0.9, E0.PARCH.g * 0.9, E0.PARCH.b * 0.85, 0.6))
+                        "skirt_bolts":
+                                # riveted base plates: two bolt heads per stone
+                                var bbx: float = d["x"]
+                                var bbw: float = d["w"]
+                                for bfx in [bbx + bbw * 0.3, bbx + bbw * 0.7]:
+                                        draw_circle(Vector2(bfx, y0 - SKIRT_H * 0.5), 1.5,
+                                                E0.ASH.darkened(0.25))
+                                        draw_circle(Vector2(bfx, y0 - SKIRT_H * 0.5 - 0.5), 0.7,
+                                                Color(0.9, 0.88, 0.82, 0.22))
+                        "skirt_hazard":
+                                # chipped hazard paint on the plate
+                                var hx: float = d["x"]
+                                var hw: float = d["w"]
+                                for i in 4:
+                                        var hxx := hx + float(i) * hw / 4.0
+                                        draw_line(Vector2(hxx, y0 - 2.0), Vector2(hxx + hw / 6.0, y0 - SKIRT_H + 2.0),
+                                                Color(E0.BLOOD.r, E0.BLOOD.g, E0.BLOOD.b, 0.30), 2.0)
+                        "skirt_goldline":
+                                # the reliquary's gold seam — salvation inlaid
+                                var gx0: float = d["x0"]
+                                var gx1: float = d["x1"]
+                                draw_rect(Rect2(gx0, y0 - SKIRT_H - 0.9, gx1 - gx0, 1.1),
+                                        Color(E0.GOLD.r, E0.GOLD.g, E0.GOLD.b, 0.34))
+                        "skirt_goldstud":
+                                # gold stud at each joint — the rhythm of the nave
+                                var gsx: float = d["x"]
+                                draw_circle(Vector2(gsx, y0 - SKIRT_H * 0.5), 1.4,
+                                        Color(E0.GOLD.r * 1.1, E0.GOLD.g, E0.GOLD.b * 0.9, 0.5))
+                        "skirt_rubble":
+                                # the broken ground piles against the footing
+                                var rx: float = d["x"]
+                                var rs: float = d["s"]
+                                for i in 3:
+                                        draw_circle(Vector2(rx + (float(i) - 1.0) * 4.0 * rs, y0 - 1.0 - absf(float(i) - 1.0) * 1.2 * rs),
+                                                (1.6 - 0.3 * float(i)) * rs,
+                                                Color(E0.ASH.r, E0.ASH.g, E0.ASH.b, 0.45))
 
 func _draw_dressing(f: Dictionary, y0: float, depth: float) -> void:
         var rect: Rect2 = f["rect"]
@@ -641,3 +905,22 @@ func dressing_count(kind: String) -> int:
                         if String(d["kind"]) == kind:
                                 n += 1
         return n
+
+func skirt_stone_count() -> int:
+        ## The wall-floor marriage is load-bearing: every floor's wall base
+        ## carries its footing course (WB-8 law).
+        var n := 0
+        for f in _floor_surfaces:
+                n += (f["skirt"]["stones"] as Array).size()
+        return n
+
+func has_skirt_trim(kind: String) -> bool:
+        for f in _floor_surfaces:
+                for t in f["skirt"]["trim"]:
+                        if String(t["kind"]) == kind:
+                                return true
+        return false
+
+func get_damp_spots() -> Array:
+        ## The undercity weep spots — world-life ripples where the vessel steps.
+        return _damp_spots

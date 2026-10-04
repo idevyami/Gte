@@ -59,13 +59,10 @@ func _draw() -> void:
                 for i in 3:
                         var ct := 1.0 - float(i) / 3.0
                         draw_circle(pos, 1.0 + 2.6 * ct, Color(col.r, col.g, col.b, 0.10 * k * ct + 0.05))
-                # --- floor spill: squashed radial gradient where light lands
-                if floor_y > 0.0:
-                        var drop := clampf((floor_y - pos.y) / 500.0, 0.0, 1.0)
-                        var rx := r * (0.85 + drop * 0.35)
-                        var ry := rx * 0.17
-                        draw_texture_rect(glow, Rect2(Vector2(pos.x - rx, floor_y - 2.0 - ry), Vector2(rx * 2.0, ry * 2.0)), false,
-                                Color(col.r, col.g, col.b, 0.07 * k))
+                # --- floor spill REMOVED (WB-8): it was drawn here at z=-5,
+                # buried under FloorCraft's opaque slabs (z=0) — the ground
+                # never received it. FloorLights (z=0, above the slabs) now
+                # owns the floor's dancing response to every source.
                 # --- optional cone: a shaft of light falling from the source
                 if l.has("cone"):
                         var h: float = float(l["cone"])

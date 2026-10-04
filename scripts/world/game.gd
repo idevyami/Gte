@@ -13,6 +13,8 @@ var floorcraft: FloorCraft = null
 var shadows: ContactShadows = null
 var decor_renderer: Decor
 var lights: Lights
+var floor_lights: FloorLights = null
+var world_life: WorldLife = null
 
 var ui_layer: CanvasLayer
 var hud: HUD
@@ -320,6 +322,33 @@ func load_room(id: String) -> void:
                 light_floor = (floors[0] as Rect2).position.y
         lights.setup(room_data.get("lights", []), light_floor)
         world.add_child(lights)
+        # THE GROUND ANSWERS THE FIRE (WB-8): the floor's light response drawn
+        # ON the walking surface — the old spill lived at z=-5 under FloorCraft's
+        # opaque slabs and never reached the ground. Anchors (decor/props/npcs/
+        # doors) tell the fixtures where painted art already grounds a glow.
+        var fl_anchors: Array = []
+        for di in decor_items:
+                var dip: Vector2 = di.get("pos", Vector2.ZERO)
+                fl_anchors.append({"x": dip.x, "y": dip.y})
+        for dp in room_data.get("props", []):
+                var dpp: Vector2 = dp.get("pos", Vector2.ZERO)
+                fl_anchors.append({"x": dpp.x, "y": dpp.y})
+        for dn in room_data.get("npcs", []):
+                var dnp: Vector2 = dn.get("pos", Vector2.ZERO)
+                fl_anchors.append({"x": dnp.x, "y": dnp.y})
+        for dd in room_data.get("doors", []):
+                var ddp: Vector2 = dd.get("pos", Vector2.ZERO)
+                fl_anchors.append({"x": ddp.x, "y": ddp.y})
+        floor_lights = FloorLights.new()
+        floor_lights.setup(room_data.get("lights", []), light_floor, fl_anchors)
+        world.add_child(floor_lights)
+        # THE WORLD RESPONDS (WB-8): moths at every flame, vermin on the back
+        # edge, ripples where boots meet the weep spots — the near-plane life
+        # that notices the vessel's passage. Player ref is set after spawn.
+        world_life = WorldLife.new()
+        world_life.setup(id, String(room_data.get("backdrop", "")), room_size,
+                room_data.get("lights", []), null, floorcraft.get_damp_spots(), light_floor)
+        world.add_child(world_life)
         ambient = AmbientFX.new()
         ambient.setup(id, room_size, camera)
         world.add_child(ambient)
@@ -413,6 +442,8 @@ func load_room(id: String) -> void:
         # --- player
         _spawn_player_at(room_data["spawn"] as Vector2)
         camera.setup(player, room_size)
+        if world_life:
+                world_life.set_player(player)
 
         # --- presentation
         AudioManager.play_music(String(room_data.get("music", "")))

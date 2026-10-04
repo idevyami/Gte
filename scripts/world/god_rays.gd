@@ -12,6 +12,14 @@ const PRESETS := {
         "engine": {"n": 3, "col": Color(0.85, 0.62, 0.50), "a": 0.080},
         "aftermath": {"n": 3, "col": Color(0.80, 0.76, 0.70), "a": 0.050},
         "vessels": {"n": 2, "col": Color(0.55, 0.80, 0.82), "a": 0.065},
+        # WB-8 — the dark districts get their focal shafts too: the audit
+        # read the undercity street as "uniformly dark, no focal point —
+        # implement a volumetric beam from the far end". Cold grate-light
+        # falls down the weeping corridors — WIDE, SLANTED, STRONG enough
+        # to read as a place the eye goes; the city gets pale gaps between
+        # roofs (the ash sky leaks through).
+        "undercity": {"n": 2, "col": Color(0.55, 0.80, 0.82), "a": 0.088, "w": [150.0, 260.0], "slant": [-0.34, 0.20]},
+        "city": {"n": 2, "col": Color(0.82, 0.77, 0.64), "a": 0.055, "w": [140.0, 240.0], "slant": [-0.28, 0.16]},
 }
 
 var key := ""
@@ -49,11 +57,13 @@ func setup(p_key: String, room_size: Vector2, camera: Camera2D) -> void:
         rng.seed = hash("rays:" + p_key)
         var preset: Dictionary = PRESETS[p_key]
         var n: int = preset["n"]
+        var w_range: Array = preset.get("w", [110.0, 210.0])
+        var slant_range: Array = preset.get("slant", [-0.16, 0.10])
         for i in n:
                 _beams.append({
                         "x": rng.randf_range(0.12, 0.88) * _room_width,
-                        "w": rng.randf_range(110.0, 210.0),
-                        "slant": rng.randf_range(-0.16, 0.10),
+                        "w": rng.randf_range(float(w_range[0]), float(w_range[1])),
+                        "slant": rng.randf_range(float(slant_range[0]), float(slant_range[1])),
                         "h": _room_height * rng.randf_range(0.86, 1.05),
                         "ph": rng.randf() * TAU,
                         "a": float(preset["a"]) * rng.randf_range(0.7, 1.15),
@@ -69,6 +79,11 @@ func _process(delta: float) -> void:
                 return
         _t += delta
         queue_redraw()
+
+func beam_count() -> int:
+        ## How many shafts this room breathes (smoke law: the dark districts
+        ## get their focal beams — undercity/city included since WB-8).
+        return _beams.size()
 
 func _draw() -> void:
         if _beams.is_empty():
