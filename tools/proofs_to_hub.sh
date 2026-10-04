@@ -22,6 +22,12 @@ names = [
     "23_records",
     "24_inscription", "25_reading", "25b_reading_full", "26_city_map",
     "27_district_stamp", "28_archive_records", "29_margin_note",
+    # WB-4: the living city
+    "wb4_01_city_procession", "wb4_02_barge_birds", "wb4_03_telegraph_ring",
+    "wb4_04a_anticipation", "wb4_04b_strike", "wb4_04c_follow_through",
+    "wb4_05a_roll_tumble", "wb4_06a_oren_bow", "wb4_06b_oren_counter",
+    "wb4_07_chapel_gallery", "wb4_08_kneel_breath", "wb4_09a_engine_gang",
+    "wb4_10_aftermath_mourners", "wb4_11_anchor_ceremony", "wb4_12_observe_zoom",
 ]
 for n in names:
     p = os.path.join(src, n + ".png")

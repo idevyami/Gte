@@ -23,5 +23,5 @@ void fragment() {
         // rim only where the pixel itself carries paint
         float rim = (1.0 - clamp(near_a * 1.35, 0.0, 1.0)) * step(0.32, tex.a);
         vec3 col = tex.rgb + rim_color.rgb * rim * rim_strength;
-        COLOR = vec4(col, tex.a) * MODULATE;
+        COLOR = vec4(col, tex.a);
 }

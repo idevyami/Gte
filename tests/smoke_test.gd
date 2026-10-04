@@ -41,6 +41,7 @@ func _run() -> void:
         await _ending()
         await _options_and_settings()
         await _gamepad_and_codex()
+        await _living_city()
         print("=== %d checks, %d failures ===" % [checks, fails])
         get_tree().quit(1 if fails > 0 else 0)
 
@@ -523,3 +524,75 @@ func _gamepad_and_codex() -> void:
         pm.screen = 0
         pm.close()
         ok(not get_tree().paused, "pause codex closes clean")
+
+
+func _living_city() -> void:
+        print("[THE LIVING CITY — WB-4]")
+        # --- the far-life layer seeds for every district
+        for key in ["vessels", "city", "undercity", "chapel", "archive", "engine", "reliquary", "aftermath"]:
+                var p := Procession.new()
+                add_child(p)
+                p.setup(key, Vector2(1600, 1100), null, 1000.0, Color(0.1, 0.1, 0.12))
+                ok(p.mover_count() > 0, "procession lives in %s" % key)
+                p.queue_free()
+        # the painted districts carry the weight: city has walkers + barge
+        var city_p := Procession.new()
+        add_child(city_p)
+        city_p.setup("city", Vector2(1600, 1100), null, 1000.0, Color(0.1, 0.1, 0.12))
+        ok(city_p.mover_count() >= 12, "city far life is populated (walkers+birds+lanterns+barge)")
+        city_p.queue_free()
+        # --- animation enrichment: frame counts on disk
+        var pa: Dictionary = SpriteSkin.discover_anims("player")
+        ok(int(pa["idle"].size()) >= 4, "player idle breathes in 4 frames")
+        ok(int(pa["walk"].size()) >= 8, "player walk strides in 8 frames")
+        ok(int(pa["roll"].size()) == 4, "player roll tumbles in 4 frames")
+        ok(int(pa["attack1"].size()) >= 3 and int(pa["attack2"].size()) >= 3 and int(pa["attack3"].size()) >= 3,
+                "all attack chains carry a follow-through frame")
+        ok(int(pa["hurt"].size()) >= 2 and int(pa["observe"].size()) >= 2, "hurt + observe enriched")
+        var ha: Dictionary = SpriteSkin.discover_anims("hollow")
+        ok(int(ha["idle"].size()) >= 4 and int(ha["lunge"].size()) >= 3, "hollow sway + landing frames")
+        var ba: Dictionary = SpriteSkin.discover_anims("believers")
+        ok(int(ba["walk"].size()) >= 6 and int(ba["kneel"].size()) >= 2, "believer cadence + prayer breath")
+        var oa: Dictionary = SpriteSkin.discover_anims("oren")
+        ok(int(oa["idle"].size()) >= 4, "oren bows through a 4-frame cycle")
+        var ma: Dictionary = SpriteSkin.discover_anims("bound_martyr")
+        ok(int(ma["p1"].size()) >= 2 and int(ma["p3"].size()) >= 2, "martyr strains through phase idles")
+        # roll frames share a square canvas (rotation pivot = ball center)
+        var roll_tex: Texture2D = load("res://art/characters/player/roll_0.png")
+        ok(absf(roll_tex.get_width() - roll_tex.get_height()) <= 1.0, "roll canvas is square for the pivot")
+        # --- camera zoom punches
+        game.camera.punch_zoom(1.07, 8.0)
+        await _frames(30)
+        ok(game.camera.zoom.x > 1.03, "observe zoom leans in")
+        game.camera.punch_zoom(1.0, 8.0)
+        await _frames(30)
+        ok(absf(game.camera.zoom.x - 1.0) < 0.02, "zoom releases back to neutral")
+        # --- enemy telegraph decays
+        var hollows := get_tree().get_nodes_in_group("enemies").filter(func(n): return n is Hollow)
+        if hollows.is_empty():
+                var h := Hollow.new()
+                add_child(h)
+                h.setup_hollow(Vector2(200, 900), Vector2(100, 400))
+                hollows = [h]
+        var probe: EnemyBase = hollows[0]
+        probe.telegraph_t = 0.5
+        await _frames(6)
+        ok(probe.telegraph_t < 0.5, "telegraph ring decays after the warning")
+        # --- anchor ceremony plays and finishes
+        var anchors: Array = []
+        for n in game.world.get_children():
+                if n is Anchor:
+                        anchors.append(n)
+        if anchors.is_empty():
+                var a := Anchor.new()
+                add_child(a)
+                a.setup_anchor("SMOKE_ANCHOR")
+                anchors = [a]
+        var probe_anchor: Anchor = anchors[0]
+        ok(probe_anchor.save_fx_t < 0.0, "anchor ceremony dormant before communion")
+        probe_anchor.save_fx_t = 0.0
+        await _frames(5)
+        ok(probe_anchor.save_fx_t > 0.0, "anchor ceremony advances while playing")
+        probe_anchor.save_fx_t = 2.0
+        await _frames(3)
+        ok(probe_anchor.save_fx_t < 0.0, "anchor ceremony ends cleanly")

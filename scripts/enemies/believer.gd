@@ -47,6 +47,7 @@ func _act(delta: float) -> void:
                         if absf(pp.x - global_position.x) < 44.0 and state_t > 0.5:
                                 state = WINDUP
                                 state_t = 0.0
+                                telegraph_t = 0.45   # the warning ring, wound once
                         elif absf(pp.x - global_position.x) > 560.0:
                                 state = CHANT
                                 state_t = 0.0
@@ -126,7 +127,7 @@ func skin_set() -> String:
         return "believers"
 
 func skin_fps() -> Dictionary:
-        return {"kneel": 1.5, "walk": 7.0, "strike": 8.0}
+        return {"kneel": 1.2, "walk": 8.0, "strike": 8.0}
 
 func skin_facing() -> int:
         return facing

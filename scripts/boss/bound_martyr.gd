@@ -353,8 +353,8 @@ func skin_set() -> String:
         return "bound_martyr"
 
 func skin_fps() -> Dictionary:
-        return {"p1": 1.2, "p1_attack": 5.0, "p2": 1.6, "p2_attack": 6.0,
-                "p3": 2.0, "p3_attack": 6.0, "death": 1.0}
+        return {"p1": 1.0, "p1_attack": 5.0, "p2": 1.3, "p2_attack": 6.0,
+                "p3": 1.6, "p3_attack": 6.0, "death": 1.0}
 
 func skin_facing() -> int:
         return facing

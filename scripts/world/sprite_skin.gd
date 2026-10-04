@@ -95,16 +95,13 @@ func setup(p_set: String, p_fps: Dictionary = {}) -> bool:
         return true
 
 func _apply_rim() -> void:
-        ## Rim light: the painted actors are dark against a dark city — a thin
-        ## tinted edge (palette-locked per set) recovers their silhouettes.
-        var rim: Array = RIM_TINTS.get(skin_set, [Color(0.81, 0.78, 0.72), 0.42, 2.5])
-        var rim_w := float(rim[2]) if rim.size() > 2 else 2.5
-        var mat := ShaderMaterial.new()
-        mat.shader = RIM_SHADER
-        mat.set_shader_parameter("rim_color", Color(rim[0]))
-        mat.set_shader_parameter("rim_strength", float(rim[1]))
-        mat.set_shader_parameter("rim_width", rim_w)
-        material = mat
+        ## Rim light is BAKED into the sprite PNGs (tools/bake_rim.py).
+        ## The old runtime rim shader never compiled on Godot 4.4 (MODULATE is
+        ## a Godot 3 built-in — the failure fell back silently to the plain
+        ## sprite shader), and a compiling custom canvas_item shader would
+        ## break the modulate chain (hurt flash, iframe blink, death fade).
+        ## Baked rims: palette-locked, zero runtime cost, modulate-safe.
+        pass
 
 func pose(anim: String, speed := 1.0) -> void:
         if sprite_frames == null or not sprite_frames.has_animation(anim):

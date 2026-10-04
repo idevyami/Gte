@@ -14,6 +14,7 @@ var aggro := false
 var anim_t := 0.0
 var contact_cd := 0.0
 var contact_damage := 0
+var telegraph_t := 0.0        # >0 while winding an attack — reads as a warning
 var _hurtbox: Area2D
 var _contact: Area2D
 var _skin: SpriteSkin
@@ -94,6 +95,7 @@ func contact_radius() -> float:
 func _process(delta: float) -> void:
         anim_t += delta
         hurt_flash = maxf(0.0, hurt_flash - delta)
+        telegraph_t = maxf(0.0, telegraph_t - delta)
         contact_cd = maxf(0.0, contact_cd - delta)
         if dead and death_t >= 0.0:
                 death_t += delta
@@ -201,6 +203,8 @@ func _draw() -> void:
                 _draw_death()
                 return
         _draw_body()
+        if telegraph_t > 0.0:
+                _draw_telegraph()
         if hurt_flash > 0.0:
                 _draw_hurt_overlay()
 
@@ -210,6 +214,27 @@ func _draw_body() -> void:
 func _draw_hurt_overlay() -> void:
         var k := hurt_flash / 0.18
         draw_circle(Vector2(0, -26), 26.0, Color(0.9, 0.75, 0.6, 0.25 * k))
+
+func _draw_telegraph() -> void:
+        ## The wind-up warning: a rising warm seal at the attack's height —
+        ## honest signalling, the horror is the world, not cheap hits.
+        var k := clampf(telegraph_t / 0.5, 0.0, 1.0)
+        var r := lerpf(36.0, 20.0, 1.0 - k)          # tightens as it winds
+        var pulse := fmod(anim_t * 12.0, 1.0)
+        var a := 0.55 + 0.35 * (1.0 - k) * pulse
+        # bright hot gold — dim gold dies on the dark fog
+        var hot := Color(1.0, 0.84, 0.46)
+        # soft backing glow so the ring reads on dark fog
+        draw_circle(Vector2(0, -26), r * 0.8, Color(hot.r, hot.g, hot.b, a * 0.20))
+        draw_arc(Vector2(0, -26), r, 0.0, TAU, 22, Color(hot.r, hot.g, hot.b, a), 3.5)
+        draw_arc(Vector2(0, -26), r * 0.62, 0.0, TAU, 16,
+                Color(1.0, 0.93, 0.72, a * 0.8), 1.8)
+        # rising warning ticks at the cardinal points
+        for i in 4:
+                var ang := TAU * i / 4.0 - PI * 0.5
+                var p0 := Vector2(0, -26) + Vector2(cos(ang), sin(ang)) * (r + 4.0)
+                var p1 := p0 + Vector2(cos(ang), sin(ang)) * (5.0 + (1.0 - k) * 6.0)
+                draw_line(p0, p1, Color(1.0, 0.93, 0.72, a * 0.9), 2.0)
 
 func _draw_death() -> void:
         var t := death_t

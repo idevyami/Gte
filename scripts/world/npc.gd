@@ -25,7 +25,7 @@ func _ready() -> void:
                 sset = "oren"
         if sset != "":
                 var sk := SpriteSkin.new()
-                if sk.setup(sset, {"idle": 1.5}):
+                if sk.setup(sset, {"idle": 1.0 if sset == "oren" else 1.4}):
                         _skin = sk
                         add_child(sk)
                         z_index = 1

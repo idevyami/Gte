@@ -258,6 +258,21 @@ func load_room(id: String) -> void:
         parallax = Parallax.new()
         parallax.setup(String(room_data.get("backdrop", "")), room_data.get("fog", E0.VOID), float(room_data.get("fog_a", 0.3)), room_size, camera, (floors[0] as Rect2).position.y if not floors.is_empty() else -1.0)
         world.add_child(parallax)
+        # the far life: pilgrim processions, biers, birds, lanterns, the barge —
+        # tiny rites living ON the painted backdrop's own ground plane
+        var proc := Procession.new()
+        proc.setup(String(room_data.get("backdrop", "")), room_size, camera,
+                (floors[0] as Rect2).position.y if not floors.is_empty() else -1.0,
+                room_data.get("fog", E0.VOID))
+        world.add_child(proc)
+        # the near depth row: the street's far side walking the floor's back
+        # edge — the beat-em-up lane (only where crowds make sense)
+        if Procession.LANE_PRESETS.has(String(room_data.get("backdrop", ""))):
+                var lane := Procession.new()
+                lane.setup_lane(String(room_data.get("backdrop", "")), room_size, camera,
+                        (floors[0] as Rect2).position.y if not floors.is_empty() else -1.0,
+                        room_data.get("fog", E0.VOID))
+                world.add_child(lane)
         # mid-ground depth plane: silhouettes at half camera speed between the
         # painted backdrop and the play floor — standing a little ABOVE the
         # floor line so the far plane reads as behind the walkway's back edge
@@ -626,6 +641,8 @@ func observe_enter() -> void:
         observe_prop_idx = 0
         _mark_observed_current()
         FX.set_observe(true)
+        if camera:
+                camera.punch_zoom(1.07, 2.6)   # the lens leans toward what is read
         AudioManager.play_sfx("sfx_observe_enter", -4.0)
         EventBus.observe_toggled.emit(true)
         brackets.visible = true
@@ -677,6 +694,8 @@ func observe_exit() -> void:
         observe_active = false
         observe_targets = []
         FX.set_observe(false)
+        if camera:
+                camera.punch_zoom(1.0, 4.2)   # the lens lets go
         AudioManager.play_sfx("sfx_observe_exit", -6.0)
         EventBus.observe_toggled.emit(false)
         brackets.visible = false
@@ -961,12 +980,16 @@ func _on_player_died() -> void:
 func _handle_death() -> void:
         state = "dead"
         player.input_locked = true
+        if camera:
+                camera.punch_zoom(1.14, 1.1)   # the lens looms over the collapse
         cinema.death_card()
         FX.burst(player.global_position + Vector2(0, -30), "ash", 0.0, 24)
         await get_tree().create_timer(2.4, true, false, true).timeout
         FX.fade_out(0.5)
         await get_tree().create_timer(0.6, true, false, true).timeout
         _restore_after_death()
+        if camera:
+                camera.punch_zoom(1.0, 3.0)
         FX.fade_in(0.5)
         await get_tree().create_timer(0.6, true, false, true).timeout
         _dead_handled = false

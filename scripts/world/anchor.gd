@@ -7,6 +7,7 @@ extends EntityNode
 var communed := false
 var pulse_t := 0.0
 var saving := false
+var save_fx_t := -1.0        # >=0 while the communion ceremony plays
 var _art: Texture2D = null
 
 func setup_anchor(p_instance: String) -> void:
@@ -43,9 +44,14 @@ func interact(game) -> void:
                         game.system_message("ANCHOR ACCEPTED. THE RECORD IS WRITTEN.")
         queue_redraw()
         saving = false
+        save_fx_t = 0.0            # the ceremony: pulse rings + rising motes
 
 func _process(delta: float) -> void:
         anim_t += delta
+        if save_fx_t >= 0.0:
+                save_fx_t += delta
+                if save_fx_t > 1.6:
+                        save_fx_t = -1.0
         queue_redraw()
 
 func _draw() -> void:
@@ -62,6 +68,7 @@ func _draw() -> void:
                 draw_line(Vector2(w * 0.44, -30), Vector2(w * 0.36, -52), vein, 1.5)
                 draw_circle(Vector2(w * 0.36, -52), 2.2, vein)
                 draw_circle(Vector2(0, -40), 34.0, Color(E0.CYAN.r, E0.CYAN.g, E0.CYAN.b, 0.05 * glow))
+                _draw_save_ceremony()
                 return
         # kneeling marker with a bowl of ash and a thin cyan vein
         var stone := E0.DIRTY_STONE
@@ -81,3 +88,41 @@ func _draw() -> void:
         draw_line(Vector2(20, -26), Vector2(15, -44), vein, 1.5)
         draw_circle(Vector2(15, -44), 2.2, vein)
         draw_circle(Vector2(0, -26), 30.0, Color(E0.CYAN.r, E0.CYAN.g, E0.CYAN.b, 0.05 * glow))
+        _draw_save_ceremony()
+
+func _draw_save_ceremony() -> void:
+        ## The world is WRITTEN: two golden pulse rings expand along the floor
+        ## while record-glyph motes rise from the shrine and dissolve.
+        if save_fx_t < 0.0:
+                return
+        var t := save_fx_t
+        for i in 2:
+                var k := clampf((t - i * 0.22) / 1.1, 0.0, 1.0)
+                if k <= 0.0 or k >= 1.0:
+                        continue
+                var r := 14.0 + k * 120.0
+                var a := 0.5 * (1.0 - k) * (1.0 - k)
+                var col := Color(E0.GOLD.r, E0.GOLD.g, E0.GOLD.b, a)
+                # the ring reads as a floor ripple: squashed ellipse
+                var pts := PackedVector2Array()
+                for s in 20:
+                        var ang := TAU * s / 20.0
+                        pts.append(Vector2(0, -4) + Vector2(cos(ang) * r, sin(ang) * r * 0.22))
+                draw_colored_polygon(pts, Color(col.r, col.g, col.b, a * 0.25))
+                draw_polyline(pts, col, 1.4)
+        # rising glyph motes: tiny written records ascending from the bowl
+        for i in 7:
+                var seed_a := float(i) * 2.399
+                var k := fmod(t * 0.55 + float(i) * 0.143, 1.0)
+                var p := Vector2(cos(seed_a) * 9.0 - (14.0 if i % 2 == 0 else -10.0),
+                                -10.0 - k * 74.0)
+                p.x += sin(t * 2.2 + seed_a) * 4.0
+                var a := 0.65 * sin(PI * k)
+                var mote := Color(E0.CYAN.r, E0.CYAN.g, E0.CYAN.b, a)
+                if i % 3 == 0:
+                        mote = Color(E0.GOLD.r, E0.GOLD.g, E0.GOLD.b, a * 0.9)
+                # a glyph reads as 2-3 short strokes, not a blob
+                draw_line(p, p + Vector2(0, -3.0), mote, 1.0)
+                draw_line(p + Vector2(0, -1.5), p + Vector2(2.0, -2.5), mote, 1.0)
+                if i % 2 == 0:
+                        draw_line(p + Vector2(0, -2.0), p + Vector2(-1.5, -3.0), mote, 1.0)

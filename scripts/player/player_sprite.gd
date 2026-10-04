@@ -70,6 +70,17 @@ func sync_state(delta: float) -> void:
                         sk *= 1.0 - vy * 0.05
                         sh *= 1.0 + vy * 0.09
         scale = Vector2(sk, sh)
+        # ATTACK ANTICIPATION: the first 70ms of a swing coils the body down
+        # (windup crouch), then the strike overshoots tall — the painted pose
+        # reads as effort even between its frames
+        if player.hp > 0 and player._attack_idx >= 0:
+                var ph: float = player._attack_phase
+                if ph < 0.07:
+                        var k := 1.0 - ph / 0.07
+                        scale = Vector2(sk * (1.0 + 0.05 * k), sh * (1.0 - 0.06 * k))
+                elif ph < 0.13:
+                        var k2 := (ph - 0.07) / 0.06
+                        scale = Vector2(sk * (1.0 - 0.03 * k2), sh * (1.0 + 0.04 * k2))
         # RUN LEAN: the vessel leans into its speed (a few degrees, springy)
         if player.hp > 0 and player.is_on_floor():
                 var lean_k := clampf(absf(player.velocity.x) / E0.P_MAX_SPEED, 0.0, 1.0)

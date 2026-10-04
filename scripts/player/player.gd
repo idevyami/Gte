@@ -60,10 +60,10 @@ func _ready() -> void:
         # painted artwork when available; the procedural rig stays as fallback
         sprite = PlayerSprite.new()
         if sprite.setup("player", {
-                "idle": 1.3, "walk": 8.0, "jump": 4.0, "fall": 4.0,
-                "attack1": 9.0, "attack2": 9.0, "attack3": 9.0,
+                "idle": 1.1, "walk": 14.0, "jump": 4.0, "fall": 3.0,
+                "attack1": 13.0, "attack2": 13.0, "attack3": 13.0,
                 "hurt": 5.0, "death": 1.6, "interact": 3.0,
-                "observe": 2.0, "roll": 9.0,
+                "observe": 1.6, "roll": 11.5,
         }):
                 sprite.attach(self)
                 add_child(sprite)
@@ -360,18 +360,20 @@ func _draw() -> void:
                 radius += 6.0
         var prog := clampf(t * 1.45, 0.0, 1.0)
         var head_deg := base_deg + span * prog
-        var fade: float = clampf(1.0 - t * 0.85, 0.0, 1.0)
-        for k in 3:
+        var fade: float = clampf(1.0 - t * 0.75, 0.0, 1.0)
+        for k in 4:
                 var end_deg := head_deg - k * 9.0
-                var start_deg := end_deg - (20.0 - k * 5.0)
+                var start_deg := end_deg - (22.0 - k * 5.0)
                 if start_deg < base_deg:
                         start_deg = base_deg
-                var col := Color(E0.PARCH.r, E0.PARCH.g, E0.PARCH.b, 0.34 * fade * (1.0 - k * 0.28))
+                var col := Color(E0.PARCH.r, E0.PARCH.g, E0.PARCH.b, 0.52 * fade * (1.0 - k * 0.22))
                 if k == 0:
+                        col = Color(E0.BONE.r, E0.BONE.g, E0.BONE.b, 0.75 * fade)
+                elif k == 1:
                         col = col.lerp(Color(E0.BONE.r, E0.BONE.g, E0.BONE.b), 0.35)
                 var a0 := deg_to_rad(start_deg)
                 var a1 := deg_to_rad(end_deg)
                 if f < 0:
                         a0 = deg_to_rad(180.0 - start_deg)
                         a1 = deg_to_rad(180.0 - end_deg)
-                draw_arc(center, radius, a0, a1, 10, col, 3.0 - k * 0.8)
+                draw_arc(center, radius, a0, a1, 10, col, 4.0 - k * 0.8)

@@ -51,6 +51,7 @@ func _act(delta: float) -> void:
                         if dist < 90.0 and state_t > 0.4:
                                 state = TELEGRAPH
                                 state_t = 0.0
+                                telegraph_t = 0.5     # the warning ring, wound once
                                 velocity.x = 0.0
                                 AudioManager.play_sfx("sfx_ui_move", -8.0)
                         elif dist > 420.0:
@@ -88,7 +89,7 @@ func skin_set() -> String:
         return "hollow"
 
 func skin_fps() -> Dictionary:
-        return {"idle": 2.0, "telegraph": 3.0, "lunge": 6.0}
+        return {"idle": 1.6, "telegraph": 2.5, "lunge": 7.0}
 
 func skin_facing() -> int:
         return facing

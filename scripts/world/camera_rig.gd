@@ -1,5 +1,6 @@
 ## CameraRig — cinematic 2D camera: smoothed follow, lookahead, room-bounds
-## clamp, FX shake. Subtle shake only: the world is wrong, not the camera.
+## clamp, FX shake, eased zoom punches (observe leans IN, death looms).
+## Subtle shake only: the world is wrong, not the camera.
 class_name CameraRig
 extends Camera2D
 
@@ -9,13 +10,29 @@ var smoothing := 7.0
 var lookahead := 60.0
 var _desired := Vector2.ZERO
 
+# zoom punch: eases toward zoom_target; zoom speed adapts (observe is a slow
+# lean, death is a slower loom, release springs back quicker)
+var zoom_target := 1.0
+var zoom_speed := 3.0
+
 func setup(p_target: Node2D, p_room_size: Vector2) -> void:
         target = p_target
         room_size = p_room_size
         position = target.global_position
+        zoom = Vector2.ONE
+        zoom_target = 1.0
         make_current()
 
+func punch_zoom(p_target: float, p_speed := 3.0) -> void:
+        ## Cinematic zoom: 1.0 is neutral; >1 leans in.
+        zoom_target = maxf(0.5, p_target)
+        zoom_speed = maxf(0.5, p_speed)
+
 func _process(delta: float) -> void:
+        # eased zoom (Vector2 zoom; keep it uniform)
+        var z := zoom.x
+        z = lerpf(z, zoom_target, 1.0 - exp(-zoom_speed * delta))
+        zoom = Vector2(z, z)
         if target == null:
                 return
         var vel := Vector2.ZERO
