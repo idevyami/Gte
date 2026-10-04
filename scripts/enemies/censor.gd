@@ -1,6 +1,9 @@
 ## THE CENSOR — the system's answer to your edits. It does not chase. It
 ## arrives. It cannot be fought — only survived. Its touch corrects: 30 HP
 ## and −4 consistency. Spawns at stage 4+, despawns after ~25 seconds.
+## WB-5: full performance — it UNFURLS into place (arrive), hovers on a
+## 6-frame bob, LEANS into its correction (reach), and sheds the records
+## it has already redacted as torn pages drifting behind it.
 class_name Censor
 extends Node2D
 
@@ -11,6 +14,10 @@ var anim_t := 0.0
 var contact_cd := 0.0
 var speed := 120.0
 var _skin: SpriteSkin
+var _pose := "arrive"        # arrive -> idle -> (reach) -> idle
+var _reach_t := 0.0
+var _trail: Array = []         # recent positions — the shed pages ride it
+var _trail_t := 0.0
 
 func _ready() -> void:
         data = EntityDB.mint("CENSOR", instance_key)
@@ -19,7 +26,7 @@ func _ready() -> void:
         FX.tear_pulse(1.0)
         EntityDB.register(self)
         var sk := SpriteSkin.new()
-        if sk.setup("censor", {"idle": 2.0}):
+        if sk.setup("censor", {"idle": 5.0, "arrive": 9.0, "reach": 11.0}):
                 _skin = sk
                 add_child(sk)
                 z_index = 1
@@ -38,19 +45,43 @@ func _process(delta: float) -> void:
                 # the censor is not quite inside the world's visual rules
                 var flick := 0.85 + 0.15 * sin(anim_t * 17.0)
                 _skin.modulate = Color(flick, flick, flick, 1.0)
-                _skin.pose("idle")
+                # pose machine: unfurl on arrival, hover, lean on touch.
+                # (the arrive check requires the anim to have STARTED — a
+                # fresh AnimatedSprite reports finished=true before its
+                # first play, which used to skip the unfurl entirely)
+                if _pose == "reach":
+                        _reach_t -= delta
+                        if _reach_t <= 0.0:
+                                _pose = "idle"
+                elif _pose == "arrive":
+                        if _skin.animation == "arrive" and _skin.anim_finished():
+                                _pose = "idle"
+                _skin.pose(_pose)
+        # the shed-record trail: where it has passed, pages fall out of it
+        _trail_t -= delta
+        if _trail_t <= 0.0:
+                _trail_t = 0.09
+                _trail.append({"p": global_position + Vector2(0, -46 + randf_range(-14.0, 14.0)),
+                        "t": 0.0, "r": randf() * TAU, "spin": randf_range(-2.4, 2.4)})
+                if _trail.size() > 7:
+                        _trail.pop_front()
+        for s in _trail:
+                s["t"] = float(s["t"]) + delta
         var player := get_tree().get_first_node_in_group("player") as Player
         if player and player.hp > 0:
                 var to_p := player.global_position - global_position
                 global_position += to_p.normalized() * speed * delta * (0.85 + 0.3 * sin(anim_t * 0.6))
                 if to_p.length() < 26.0 and contact_cd <= 0.0:
                         contact_cd = 1.2
+                        _pose = "reach"
+                        _reach_t = 0.3
                         player.take_damage(E0.CENSOR_DMG, global_position)
                         GameState.spend(E0.CENSOR_TOUCH_DRAIN, "correction")
                         FX.tear_pulse(1.2)
                         FX.shake(9.0, 0.4)
         if life_t > 25.0:
                 _depart()
+        queue_redraw()
 
 func _depart() -> void:
         var tween := create_tween()
@@ -65,6 +96,26 @@ func bracket_size() -> Vector2:
         return Vector2(46.0, 120.0)
 
 func _draw() -> void:
+        # the shed pages FIRST — they fall behind everything else it draws
+        # (trail points are recorded in GLOBAL space; _draw is local)
+        for s in _trail:
+                var t: float = s["t"]
+                if t > 1.4:
+                        continue
+                var k := t / 1.4
+                var pp: Vector2 = (s["p"] as Vector2) - global_position + Vector2(sin(t * 3.0 + float(s["r"])) * 6.0, t * t * 22.0)
+                var rot := float(s["r"]) + float(s["spin"]) * t
+                var c := cos(rot)
+                var sn := sin(rot)
+                var hw := 4.6
+                var hh := 6.4
+                var pts := PackedVector2Array([
+                        pp + Vector2(-hw * c + hh * sn, -hw * sn - hh * c),
+                        pp + Vector2(hw * c + hh * sn, hw * sn - hh * c),
+                        pp + Vector2(hw * c - hh * sn, hw * sn + hh * c),
+                        pp + Vector2(-hw * c - hh * sn, -hw * sn + hh * c),
+                ])
+                draw_colored_polygon(pts, Color(E0.PARCH.r, E0.PARCH.g, E0.PARCH.b, 0.42 * (1.0 - k)))
         # a redaction given a body — painted art when available, geometry otherwise
         var flick := 0.85 + 0.15 * sin(anim_t * 17.0)
         var painted := _skin != null and not GameState.debug_no_sprites

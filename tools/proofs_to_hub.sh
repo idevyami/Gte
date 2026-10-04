@@ -28,6 +28,14 @@ names = [
     "wb4_05a_roll_tumble", "wb4_06a_oren_bow", "wb4_06b_oren_counter",
     "wb4_07_chapel_gallery", "wb4_08_kneel_breath", "wb4_09a_engine_gang",
     "wb4_10_aftermath_mourners", "wb4_11_anchor_ceremony", "wb4_12_observe_zoom",
+    # WB-5: the closest walls
+    "wb5_00_city_no_fg", "wb5_01_city_closest_walls",
+    "wb5_02a_slide_mid", "wb5_02b_slide_late",
+    "wb5_03_womb_sky_band", "wb5_04_undercity_grates",
+    "wb5_05_null_walk", "wb5_06_chapel_censer",
+    "wb5_07_archive_pages", "wb5_08_engine_gantry",
+    "wb5_09_reliquary_arena", "wb5_10_aftermath_rubble",
+    "wb5_11_censor_unfurl", "wb5_12_censor_reach",
 ]
 for n in names:
     p = os.path.join(src, n + ".png")

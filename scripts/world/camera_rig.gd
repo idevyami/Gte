@@ -15,6 +15,12 @@ var _desired := Vector2.ZERO
 var zoom_target := 1.0
 var zoom_speed := 3.0
 
+# idle micro-drift: a held frame still breathes — the world is never a
+# photograph. Ramps in after 2.5s of stillness, releases on any movement,
+# halves while zoomed (observe lean-in stays composed)
+var _idle_t := 0.0
+var _drift_t := 0.0
+
 func setup(p_target: Node2D, p_room_size: Vector2) -> void:
         target = p_target
         room_size = p_room_size
@@ -46,6 +52,16 @@ func _process(delta: float) -> void:
         var dy := _desired.y - position.y
         if absf(dy) < 84.0:
                 _desired.y = position.y
+        # idle micro-drift (AFTER the deadzone — otherwise the deadzone
+        # freezes it back out); a slow two-axis sway, sub-3px, eased in
+        if vel.length() < 8.0:
+                _idle_t = minf(_idle_t + delta, 2.5)
+        else:
+                _idle_t = maxf(_idle_t - delta * 3.0, 0.0)
+        _drift_t += delta
+        var drift_k := (_idle_t / 2.5) * (_idle_t / 2.5)
+        var damp := 1.0 if z < 1.02 else 0.5
+        _desired += Vector2(sin(_drift_t * 0.35) * 2.4, cos(_drift_t * 0.27) * 1.5) * drift_k * damp
         position = position.lerp(_desired, 1.0 - exp(-smoothing * delta))
         # clamp inside room bounds (viewport 1280x720)
         var half := Vector2(640, 360)

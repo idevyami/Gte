@@ -42,6 +42,7 @@ func _run() -> void:
         await _options_and_settings()
         await _gamepad_and_codex()
         await _living_city()
+        await _closest_walls()
         print("=== %d checks, %d failures ===" % [checks, fails])
         get_tree().quit(1 if fails > 0 else 0)
 
@@ -596,3 +597,101 @@ func _living_city() -> void:
         probe_anchor.save_fx_t = 2.0
         await _frames(3)
         ok(probe_anchor.save_fx_t < 0.0, "anchor ceremony ends cleanly")
+
+
+func _closest_walls() -> void:
+        print("[THE CLOSEST WALLS — WB-5]")
+        # --- the foreground plane lives in every district, above FX, below air
+        for key in ["vessels", "undercity", "city", "chapel", "archive", "engine", "reliquary", "aftermath"]:
+                var fg := Foreground.new()
+                add_child(fg)
+                fg.setup("act_t_" + key, key, Vector2(2200, 900), 840.0, null,
+                        [{"x": 700.0, "pad": 200.0}])
+                ok(fg.element_count() > 0, "foreground populates %s" % key)
+                ok(fg.z_index == 30, "foreground sits above FX, below air (%s)" % key)
+                # the exclusion law: nothing near an interactive x in the
+                # foreground's own scrolled space (min element half-width is 30)
+                var all_clear := true
+                for e in fg._elements:
+                        if fg._in_exclusion(float(e["x"]), 30.0):
+                                all_clear = false
+                ok(all_clear, "%s keeps interactive x-zones clear" % key)
+                # the combat-clarity law: stumps never rise above the feet line
+                var stumps_ok := true
+                for e in fg._elements:
+                        if String(e["kind"]).begins_with("stump_"):
+                                if float(e["len"]) > 900.0 - 840.0 - 8.0 + 0.01:
+                                        stumps_ok = false
+                ok(stumps_ok, "%s stumps stay below the feet line" % key)
+                fg.queue_free()
+        # --- the climb room trusts nothing that hangs low
+        var climb := Foreground.new()
+        add_child(climb)
+        climb.setup("act1", "vessels", Vector2(1600, 1100), 1000.0, null, [])
+        var hangs_ok := true
+        for e in climb._elements:
+                if String(e["kind"]).begins_with("hang_"):
+                        if float(e["len"]) > 230.0 + 0.01:
+                                hangs_ok = false
+        ok(hangs_ok, "the climb room's hangs stay in the sky band")
+        climb.queue_free()
+        # --- the boss arena keeps its center clear
+        var arena := Foreground.new()
+        add_child(arena)
+        arena.setup("act8", "reliquary", Vector2(1600, 900), 840.0, null,
+                [{"x": 900.0, "pad": 430.0}])
+        var arena_clear := true
+        for e in arena._elements:
+                if absf(float(e["x"]) - 900.0 * 1.28) < 430.0 + 30.0:
+                        arena_clear = false
+        ok(arena_clear, "the martyr's arena center stays open")
+        arena.queue_free()
+        # --- animation enrichment: the system's own movement
+        var ca: Dictionary = SpriteSkin.discover_anims("censor")
+        ok(int(ca["idle"].size()) >= 6, "censor hovers on a 6-frame bob")
+        ok(int(ca["arrive"].size()) == 4, "censor unfurls through 4 frames")
+        ok(int(ca["reach"].size()) == 3, "censor leans through a 3-frame reach")
+        var na: Dictionary = SpriteSkin.discover_anims("null_children")
+        ok(int(na["idle"].size()) >= 6, "null child sways on 6 idle frames")
+        ok(int(na["walk"].size()) == 4, "null child walks a 4-frame glitch-step")
+        # --- the censor's pose machine: arrive -> idle, reach decays
+        var c := Censor.new()
+        add_child(c)
+        ok(c._pose == "arrive", "censor begins by unfurling")
+        await get_tree().process_frame
+        await get_tree().process_frame
+        ok(c._skin.animation == "arrive" and c._skin.is_playing(),
+                "the unfurl actually PLAYS (not skipped to hover)")
+        for i in 200:
+                if c._pose == "idle":
+                        break
+                await get_tree().process_frame
+        ok(c._pose == "idle", "censor settles into its hover after arriving")
+        ok(c._trail.size() > 0, "censor sheds redacted pages behind it")
+        c._pose = "reach"
+        c._reach_t = 0.3
+        c.global_position = game.player.global_position + Vector2(-400.0, 0.0)
+        for i in 120:
+                if c._pose == "idle":
+                        break
+                await get_tree().process_frame
+        ok(c._pose == "idle", "the correction lean releases back to hover")
+        c.queue_free()
+        # --- null children walk while they drift
+        var nc := NullChild.new()
+        add_child(nc)
+        nc.setup_null(game.player.global_position + Vector2(160, -20))
+        await _frames(30)
+        ok(nc.skin_pose() == "walk", "null child glitch-steps while drifting")
+        nc.queue_free()
+        # --- camera idle micro-drift: a held frame still breathes
+        var cam := game.camera
+        cam._idle_t = 0.0
+        await _frames(24)
+        ok(cam._idle_t > 0.0, "camera idle drift ramps while the vessel holds still")
+        # --- district climate: the scenery carries a temperature
+        ok(game._graded_nodes.size() >= 6, "district grade reaches the scenery renderers")
+        var m_mod: Color = game.masonry.modulate
+        ok(absf(m_mod.r - 1.0) + absf(m_mod.g - 1.0) + absf(m_mod.b - 1.0) > 0.001,
+                "the current district's grade is applied")
+        ok(not (game._graded_nodes.has(game.player)), "actors are never graded")

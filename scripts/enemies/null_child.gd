@@ -56,7 +56,14 @@ func skin_set() -> String:
         return "null_children"
 
 func skin_fps() -> Dictionary:
-        return {"idle": 2.2}
+        return {"idle": 2.4, "walk": 5.5}
+
+func skin_pose() -> String:
+        ## outside classification, outside a proper gait: when it drifts with
+        ## intent it plays its glitch-step; settled, it flickers in place
+        if velocity.length() > 16.0:
+                return "walk"
+        return "idle"
 
 func _sync_skin(delta: float) -> void:
         super(delta)

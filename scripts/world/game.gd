@@ -48,6 +48,26 @@ var rotors: Array = []
 var penitent: NPC = null
 var monument: EntityNode = null
 var ambient: AmbientFX = null
+var foreground: Foreground = null
+
+# per-district world grade: a whisper of temperature on the SCENERY
+# renderers only (architecture, backdrop, air) — actors, UI and combat FX
+# keep their exact approved colors. Values stay within ±7% of white and
+# breathe ±1.2% luminance on a slow ~9s cycle: each stratum of the city
+# has a climate, and the climate is alive.
+const WORLD_GRADES := {
+        "vessels": Color(1.05, 0.98, 0.92),      # the womb's amber warmth
+        "undercity": Color(0.94, 0.99, 1.04),    # cold damp stone
+        "city": Color(0.95, 0.98, 1.05),         # ash-blue dusk air
+        "chapel": Color(1.06, 1.00, 0.90),       # pooled candle gold
+        "archive": Color(0.97, 1.02, 1.03),      # pale paper cyan
+        "engine": Color(1.07, 0.96, 0.90),       # furnace heat
+        "reliquary": Color(1.02, 0.97, 1.04),    # violet dusk on relics
+        "aftermath": Color(1.03, 1.00, 0.94),    # spent gold, cooling
+}
+var _grade_base := Color(1, 1, 1)
+var _grade_t := 0.0
+var _graded_nodes: Array = []
 var hidden_platform: CollisionShape2D = null
 var hidden_platform_visual: Node2D = null
 var hidden_revealed := false
@@ -199,6 +219,7 @@ func load_room(id: String) -> void:
         monument = null
         hidden_platform = null
         hidden_platform_visual = null
+        foreground = null
         hidden_revealed = GameState.has_flag("hidden_seen")
         _gate_doors = []
         _exits = []
@@ -297,6 +318,43 @@ func load_room(id: String) -> void:
         var rays := GodRays.new()
         rays.setup(String(room_data.get("backdrop", "")), room_size, camera)
         world.add_child(rays)
+        # THE CLOSEST WALLS: the near-camera silhouette plane — the front
+        # slice of the depth sandwich. Every interactive x (doors, anchors,
+        # spawn, props, npcs, the boss arena) is handed over as an exclusion
+        # band so nothing ever occludes a thing the player must touch or
+        # read; hangs stop above the telegraph band, stumps stay below the
+        # feet line (the WB-4 combat-clarity law).
+        if OS.get_environment("E0_NO_FOREGROUND").is_empty():
+                var fg := Foreground.new()
+                var fg_ex: Array = []
+                var sp: Vector2 = room_data.get("spawn", Vector2(120, 620))
+                fg_ex.append({"x": sp.x, "pad": 150.0})
+                for d in room_data.get("doors", []):
+                        fg_ex.append({"x": (d["pos"] as Vector2).x, "pad": 130.0})
+                for a in room_data.get("anchors", []):
+                        fg_ex.append({"x": (a["pos"] as Vector2).x, "pad": 110.0})
+                for p in room_data.get("props", []):
+                        var ppos: Vector2 = p.get("pos", Vector2.ZERO)
+                        fg_ex.append({"x": ppos.x, "pad": 100.0})
+                for n in room_data.get("npcs", []):
+                        var npos: Vector2 = n.get("pos", Vector2.ZERO)
+                        fg_ex.append({"x": npos.x, "pad": 120.0})
+                if room_data.has("boss"):
+                        var bpos: Vector2 = room_data["boss"].get("pos", Vector2.ZERO)
+                        fg_ex.append({"x": bpos.x, "pad": 430.0})
+                fg.setup(id, String(room_data.get("backdrop", "")), room_size,
+                        (floors[0] as Rect2).position.y if not floors.is_empty() else -1.0,
+                        camera, fg_ex)
+                world.add_child(fg)
+                foreground = fg
+        # --- district climate: tint the scenery renderers (never the actors)
+        _grade_base = WORLD_GRADES.get(String(room_data.get("backdrop", "")), Color(1, 1, 1))
+        _grade_t = randf() * TAU
+        _graded_nodes = [masonry, parallax, decor_renderer, lights, ambient, rays, foreground]
+        for ch in world.get_children():
+                if ch is Procession or ch is Midground:
+                        _graded_nodes.append(ch)
+        _apply_world_grade(1.0)
 
         # --- entities
         for d in room_data.get("doors", []):
@@ -498,6 +556,18 @@ func _spawn_player_at(pos: Vector2) -> void:
         player.input_locked = false
         player.controllable = true
 
+func _apply_world_grade(breath: float) -> void:
+        ## breath ∈ [0,1] — the slow luminance cycle. Applied as modulate on
+        ## scenery renderers; actor skins own their modulate chain and are
+        ## never in this list.
+        if _graded_nodes.is_empty():
+                return
+        var l := 1.0 + (breath - 0.5) * 0.024
+        var tint := Color(_grade_base.r * l, _grade_base.g * l, _grade_base.b * l, 1.0)
+        for n in _graded_nodes:
+                if is_instance_valid(n):
+                        n.modulate = tint
+
 # ------------------------------------------------------------------ process
 func _process(delta: float) -> void:
         if not active:
@@ -513,6 +583,8 @@ func _process(delta: float) -> void:
                         _hunted(delta)
                         _combat_music(delta)
                         _apply_hidden_state()
+                        _grade_t += delta * 0.7
+                        _apply_world_grade(0.5 + 0.5 * sin(_grade_t))
                 "dialogue":
                         pass
                 "reading":

@@ -26,6 +26,7 @@ const RIM_TINTS := {
 const NO_LOOP := [
         "attack1", "attack2", "attack3", "death", "telegraph", "lunge",
         "strike", "interact", "p1_attack", "p2_attack", "p3_attack",
+        "arrive", "reach",
 ]
 const DEFAULT_FPS := 6.0
 
