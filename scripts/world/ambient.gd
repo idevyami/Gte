@@ -203,7 +203,13 @@ func _draw() -> void:
                                 var gut := maxf(0.0, sin(_t * 3.3 + float(m["ph"])))
                                 var sway := sin(_t * 1.4 + float(m["ph"])) * 4.0
                                 var col := Color(E0.CRIMSON.r * 1.4 + 0.25, E0.CRIMSON.g * 1.1 + 0.18, E0.CRIMSON.b * 0.7 + 0.05, float(m["a"]) * (0.4 + 0.6 * gut))
-                                draw_circle(p + Vector2(sway, 0.0), float(m["r"]), col)
+                                var at := p + Vector2(sway, 0.0)
+                                # motion streak: the ember drags its own light
+                                # upward — a fleck in flight, not a static dot
+                                var sv: Vector2 = m["v"]
+                                var tail := at - sv.normalized() * (3.0 + 4.0 * gut)
+                                draw_line(tail, at, Color(col.r, col.g, col.b, col.a * 0.55), 1.4)
+                                draw_circle(at, float(m["r"]), col)
                 "drips":
                         # bright bead falling, thin trail behind it
                         for m in _special:

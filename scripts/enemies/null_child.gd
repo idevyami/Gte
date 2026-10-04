@@ -15,6 +15,8 @@ func setup_null(p_pos: Vector2) -> void:
         contact_damage = E0.NULL_DMG
         global_position = p_pos
         drift_phase = randf() * TAU
+        # the ground does not quite hold them: their shadow stutters
+        set_meta("shadow_glitch", true)
 
 func _post_ready() -> void:
         # Outside classification: no collision with the world. It simply ignores it.

@@ -237,14 +237,50 @@ const ARCH_SPAN := 0.681
 
 func _arch_painted(pos: Vector2, w: float) -> void:
         ## Monumental arch, RE-ANCHORED so pos.x marks the real portal center
-        ## and w the real visible width; feet on the floor line.
+        ## and w the real visible width; feet on the floor line. The opening is
+        ## never a dead void: a cloister breathes beyond it (drawn BEFORE the
+        ## texture, so it shows only through the portal's transparent throat).
         var t := _tex("arch")
         var rect_w := w / ARCH_SPAN
         var draw_h := rect_w * float(t.get_height()) / float(t.get_width())
         var x0 := pos.x - ARCH_AXIS * rect_w
         _contact_shadow(pos + Vector2(-w * 0.35, 0.0), w * 0.17, 0.3)
         _contact_shadow(pos + Vector2(w * 0.35, 0.0), w * 0.17, 0.3)
+        _arch_interior(pos, w, draw_h * 0.88)
         draw_texture_rect(t, Rect2(x0, pos.y - draw_h, rect_w, draw_h), false)
+
+func _arch_interior(pos: Vector2, w: float, h: float) -> void:
+        ## The room beyond the arch: deep shadow with a warm/cold breath
+        ## rising from its floor, tiny candle glints, and the faint
+        ## suggestion of a farther passage — light leaking from a room
+        ## that keeps its own hours. Deterministic per arch position.
+        var rng := RandomNumberGenerator.new()
+        rng.seed = hash("archfill:" + str(int(pos.x)))
+        var warm := rng.randf() < 0.55
+        var ix0 := pos.x - w * 0.27
+        var iw := w * 0.54
+        # the depth itself: near-black, a touch denser than the backdrop
+        draw_rect(Rect2(ix0, pos.y - h, iw, h), Color(E0.VOID.r, E0.VOID.g, E0.VOID.b, 0.30))
+        # a farther passage: vertical slit, faintly lighter
+        draw_rect(Rect2(pos.x - w * 0.045, pos.y - h * 0.86, w * 0.09, h * 0.86),
+                Color(E0.ASH.r, E0.ASH.g, E0.ASH.b, 0.10))
+        # the breath: glow pooled on the room's own floor, fading upward
+        var gcol := Color(E0.GOLD.r, E0.GOLD.g * 0.9, E0.GOLD.b * 0.6) if warm \
+                else Color(E0.CYAN.r, E0.CYAN.g, E0.CYAN.b * 0.9)
+        for i in 4:
+                var t := float(i) / 4.0
+                draw_rect(Rect2(ix0, pos.y - 4.0 - t * 26.0, iw, 26.0),
+                        Color(gcol.r, gcol.g, gcol.b, 0.075 * (1.0 - t * 0.62)))
+        # candle glints beyond — two or three, breathing out of phase
+        var n := 2 + (rng.randi() % 2)
+        for i in n:
+                var gx := ix0 + iw * rng.randf_range(0.18, 0.82)
+                var gy := pos.y - h * rng.randf_range(0.18, 0.42)
+                var fl := 0.6 + 0.4 * sin(_t * (1.1 + 0.4 * i) + float(i) * 2.4 + rng.randf() * TAU)
+                draw_rect(Rect2(gx - 1.0, gy - 2.4, 2.0, 4.8),
+                        Color(gcol.r, gcol.g, gcol.b, 0.30 * fl))
+                draw_rect(Rect2(gx - 2.6, gy - 4.6, 5.2, 9.2),
+                        Color(gcol.r, gcol.g, gcol.b, 0.05 * fl))
 
 func _banner_painted(pos: Vector2, w: float, h: float, s: float) -> void:
         ## Hanging cloth in a wind cycle: the whole banner pivots gently at
@@ -475,6 +511,7 @@ func _column(pos: Vector2, w: float, h: float) -> void:
                 draw_line(Vector2(pos.x - w * 0.5 + 4, pos.y - h + 14 + i * h * 0.3), Vector2(pos.x - w * 0.5 + 4, pos.y - h + 30 + i * h * 0.3), E0.VOID, 1.5)
 
 func _arch(pos: Vector2, w: float, h: float) -> void:
+        _arch_interior(pos, w, h * 0.92)
         var pts := PackedVector2Array()
         var steps := 12
         for i in steps:

@@ -43,12 +43,19 @@ func _draw() -> void:
                 var dir := Vector2(cos(a), sin(a) * -0.8)
                 draw_line(dir * 60.0, dir * 96.0, E0.ASH, 7.0)
                 draw_circle(dir * 96.0, 5.0, E0.DIRTY_STONE)
-        # the chamber
-        var col := E0.BLOOD.lerp(E0.CRIMSON, beat)
+        # the chamber — DRIED blood, not fresh paint: desaturated crimson
+        # with an inner VIOLET-cold pulse (the machine-heart is wrong inside,
+        # and the wrongness reads as cold light, not saturation)
+        var col := E0.BLOOD.lerp(E0.CRIMSON.darkened(0.16), beat)
         var r := 52.0 * scale_k
         draw_circle(Vector2(0, -70.0), r, E0.CHARCOAL)
         draw_circle(Vector2(0, -70.0), r - 7.0, col)
         draw_circle(Vector2(0, -70.0), r - 18.0, col.darkened(0.35))
+        # the cold core: violet light guttering inside the chamber on the beat
+        var cold := Color(E0.VIOLET.r + 0.10 * beat, E0.VIOLET.g + 0.06 * beat, E0.VIOLET.b + 0.14 * beat,
+                0.55 + 0.30 * beat)
+        draw_circle(Vector2(0, -70.0), (r - 26.0) * (0.9 + 0.14 * beat), cold)
+        draw_circle(Vector2(0, -70.0), (r - 34.0) * (0.9 + 0.10 * beat), Color(cold.r, cold.g, cold.b, cold.a * 0.5))
         # veins of gold when aligned
         if GameState.has_flag(GameState.F_HEART_ALIGNED):
                 for i in 5:
@@ -56,13 +63,14 @@ func _draw() -> void:
                         draw_line(Vector2(0, -70.0) + Vector2(cos(a), sin(a)) * (r - 6.0),
                                 Vector2(0, -70.0) + Vector2(cos(a), sin(a)) * (r + 14.0 + beat * 6.0),
                                 Color(E0.GOLD.r, E0.GOLD.g, E0.GOLD.b, 0.5), 2.0)
-        # heat bloom: the heart is the room's light source — layered crimson
-        # halo breathing with the beat, spilling onto the floor below
+        # heat bloom: the heart is the room's light source — layered DRIED
+        # crimson halo breathing with the beat, spilling onto the floor below
+        # (kept dry: blood-colored light, never neon)
         for i in 4:
                 var t := float(i) / 4.0
                 draw_circle(Vector2(0, -70.0), r + 26.0 + t * 46.0,
-                        Color(E0.CRIMSON.r, E0.CRIMSON.g, E0.CRIMSON.b, (0.055 + 0.035 * beat) * (1.0 - t)))
-        _shadow_ellipse(Vector2(0, -2.0), 76.0, 15.0, 0.05 + 0.025 * beat, true)
+                        Color(E0.BLOOD.r, E0.BLOOD.g, E0.BLOOD.b, (0.045 + 0.030 * beat) * (1.0 - t)))
+        _shadow_ellipse(Vector2(0, -2.0), 76.0, 15.0, 0.04 + 0.02 * beat, true)
         # the cradle: a heavy mounting plate with bolts, angled struts
         # holding the chamber from below like a carried reliquary
         draw_rect(Rect2(-46, -18, 92, 18), E0.DIRTY_STONE.darkened(0.12))

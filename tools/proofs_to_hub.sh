@@ -36,6 +36,12 @@ names = [
     "wb5_07_archive_pages", "wb5_08_engine_gantry",
     "wb5_09_reliquary_arena", "wb5_10_aftermath_rubble",
     "wb5_11_censor_unfurl", "wb5_12_censor_reach",
+    # WB-6: the ground you walk on
+    "wb6_00_climb_before", "wb6_01_climb_ledges", "wb6_01b_on_the_ledge",
+    "wb6_03_shadow_airborne", "wb6_04_chapel_carpet",
+    "wb6_05_undercity_damp", "wb6_06_archive_pages",
+    "wb6_07_engine_plates", "wb6_08_heart_dried",
+    "wb6_09_reliquary_inlay", "wb6_10_aftermath_broken",
 ]
 for n in names:
     p = os.path.join(src, n + ".png")

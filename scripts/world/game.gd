@@ -9,6 +9,8 @@ var player: Player
 var camera: CameraRig
 var parallax: Parallax
 var masonry: Masonry
+var floorcraft: FloorCraft = null
+var shadows: ContactShadows = null
 var decor_renderer: Decor
 var lights: Lights
 
@@ -255,6 +257,13 @@ func load_room(id: String) -> void:
                 all_rects.append(r)
         masonry.setup(all_rects, hash(id), _terrain_style(id))
         world.add_child(masonry)
+        # THE GROUND YOU WALK ON: the crafted walking surface + the rendered
+        # climb ledges (before this pass the platforms were collision-only —
+        # the act1 ascent was invisible). Added between masonry and decor so
+        # floor dressing (puddles, glyphs, bones) still paints ON TOP.
+        floorcraft = FloorCraft.new()
+        floorcraft.setup(id, floors, plats, _terrain_style(id), String(room_data.get("backdrop", "")))
+        world.add_child(floorcraft)
         # architectural framing: every door gets its carved arch — the portal
         # TOWERS over the door it frames (the painting is 414x300, so width
         # drives height; a 160-tall door needs a ~300-wide arch), and the
@@ -350,7 +359,12 @@ func load_room(id: String) -> void:
         # --- district climate: tint the scenery renderers (never the actors)
         _grade_base = WORLD_GRADES.get(String(room_data.get("backdrop", "")), Color(1, 1, 1))
         _grade_t = randf() * TAU
-        _graded_nodes = [masonry, parallax, decor_renderer, lights, ambient, rays, foreground]
+        _graded_nodes = [masonry, floorcraft, parallax, decor_renderer, lights, ambient, rays, foreground]
+        # contact shadows LAST among the z=0 plane: above the crafted floor,
+        # under every actor (z>=1) — the ground holds every body
+        shadows = ContactShadows.new()
+        shadows.setup(self)
+        world.add_child(shadows)
         for ch in world.get_children():
                 if ch is Procession or ch is Midground:
                         _graded_nodes.append(ch)

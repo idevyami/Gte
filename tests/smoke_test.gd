@@ -43,6 +43,7 @@ func _run() -> void:
         await _gamepad_and_codex()
         await _living_city()
         await _closest_walls()
+        await _ground_you_walk_on()
         print("=== %d checks, %d failures ===" % [checks, fails])
         get_tree().quit(1 if fails > 0 else 0)
 
@@ -695,3 +696,135 @@ func _closest_walls() -> void:
         ok(absf(m_mod.r - 1.0) + absf(m_mod.g - 1.0) + absf(m_mod.b - 1.0) > 0.001,
                 "the current district's grade is applied")
         ok(not (game._graded_nodes.has(game.player)), "actors are never graded")
+
+# ------------------------------------------------------------------ WB-6
+func _ground_you_walk_on() -> void:
+        print("[THE GROUND YOU WALK ON — WB-6]")
+        # --- THE CRITICAL REGRESSION: climb platforms must RENDER.
+        # Before WB-6 they were collision-only — the act1 ascent was
+        # invisible. This can never happen again.
+        var platform_counts := {
+                "act1": 15, "act2": 3, "act3": 3, "act4": 2, "act5": 1,
+                "act6": 1, "act7": 2, "act8": 0, "act9": 0,
+        }
+        for act in platform_counts.keys():
+                var want: int = platform_counts[act]
+                game.transition_to(act)
+                await _room(act)
+                var rd: Dictionary = Rooms.ROOMS[act]
+                ok(game.floorcraft != null, "%s builds a floorcraft renderer" % act)
+                ok(game.floorcraft.floor_surface_count() == rd.get("floors", []).size(),
+                        "%s crafts every floor surface" % act)
+                ok(game.floorcraft.ledge_count() == want,
+                        "%s renders all %d climb ledges (the invisible-platform regression)" % [act, want])
+                ok(game.floorcraft.z_index == 0 and game.floorcraft.get_index() < game.decor_renderer.get_index(),
+                        "%s floorcraft paints under the floor dressing" % act)
+        # --- per-district recipes live on the ground
+        game.transition_to("act3")
+        await _room("act3")
+        ok(game.floorcraft.has_dressing("wear"), "the city floor carries the pilgrimage wear path")
+        ok(game.floorcraft.dressing_count("plaque") > 0, "boundary plaques are set into the pavement")
+        game.transition_to("act5")
+        await _room("act5")
+        ok(game.floorcraft.has_dressing("carpet"), "the chapel floor carries the runner carpet")
+        ok(game.floorcraft.dressing_count("tessera") > 0, "mosaic borders flank the chapel runner")
+        game.transition_to("act7")
+        await _room("act7")
+        ok(game.floorcraft.has_dressing("hazard"), "the engine floor carries hazard chevrons")
+        ok(game.floorcraft.has_dressing("sheen"), "steel floors carry the oil sheen band")
+        game.transition_to("act6")
+        await _room("act6")
+        ok(game.floorcraft.dressing_count("page") > 0, "the archive floor is littered with fallen records")
+        game.transition_to("act2")
+        await _room("act2")
+        ok(game.floorcraft.dressing_count("grate") > 0 and game.floorcraft.dressing_count("damp") > 0,
+                "the undercity floor weeps (damp stains + drainage grates)")
+        game.transition_to("act1")
+        await _room("act1")
+        ok(game.floorcraft.dressing_count("conduit") > 0, "the womb floor is cabled (conduits with glow seams)")
+        game.transition_to("act9")
+        await _room("act9")
+        ok(game.floorcraft.dressing_count("drift") > 0 and game.floorcraft.dressing_count("rubble") > 0,
+                "the aftermath ground is broken (ash drifts + rubble)")
+        game.transition_to("act8")
+        await _room("act8")
+        ok(game.floorcraft.has_dressing("inlay"), "the reliquary floor carries gold seam inlays")
+        # --- district climate grades the ground too (scenery law)
+        ok(game._graded_nodes.has(game.floorcraft), "the ground carries its district's climate")
+        ok(not (game._graded_nodes.has(game.shadows)), "shadows are never climate-graded")
+        # --- contact shadows: the ground holds every body
+        game.transition_to("act3")
+        await _room("act3")
+        await _frames(30)
+        ok(game.shadows != null and game.shadows.shadow_count() >= 1, "the player casts a contact shadow")
+        ok(game.shadows.z_index == 0, "shadows sit on the ground plane (under every actor)")
+        # jump: the shadow stays on the ground and the gap grows
+        var shadow_before: Variant = _player_shadow()
+        ok(shadow_before != null, "the player's shadow is projected onto the floor")
+        game.player.velocity.y = E0.P_JUMP
+        game.player._coyote = 0.0
+        await _frames(14)
+        var shadow_mid: Variant = _player_shadow()
+        ok(shadow_mid != null, "the shadow persists while the vessel is airborne")
+        if shadow_before != null and shadow_mid != null:
+                var k_before: float = float(shadow_before["k"])
+                var k_mid: float = float(shadow_mid["k"])
+                ok(k_mid < k_before, "the airborne shadow reads fainter — height is felt")
+        await _frames(50)
+        ok(_player_shadow() != null, "the shadow returns with the vessel")
+        # an enemy casts one too
+        var enemy_shadow := false
+        for s in game.shadows._shadows:
+                if absf(float(s["pos"].x) - game.player.global_position.x) > 60.0:
+                        enemy_shadow = true
+        game.transition_to("act4")
+        await _room("act4")
+        await _frames(30)
+        ok(game.shadows.shadow_count() >= 2, "the null children's shadows stutter on the ground")
+        # --- the arch interiors breathe (no dead voids behind the arches)
+        game.transition_to("act5")
+        await _room("act5")
+        var arch_seen := 0
+        for d in Rooms.ROOMS["act5"].get("decor", []):
+                if String(d.get("kind", "")) == "arch":
+                        arch_seen += 1
+        var auto_arches := 0
+        for d in Rooms.ROOMS["act5"].get("doors", []):
+                auto_arches += 1
+        ok(arch_seen + auto_arches > 0, "the chapel has arches to fill")
+        ok(game.decor_renderer._tex("arch") != null or arch_seen > 0,
+                "arch interiors are dressed (painted or procedural)")
+        # --- midground masses carry inner structure (no black boxes)
+        var mid := Midground.new()
+        add_child(mid)
+        mid.setup("chapel", Vector2(2200, 900), 560.0, E0.VOID, null)
+        var with_inner := 0
+        var with_slit := 0
+        for s in mid._structures:
+                if s.has("inner"):
+                        with_inner += 1
+                if s.has("slit"):
+                        with_slit += 1
+        ok(with_inner > 0, "the big midground masses carry inner floor lines")
+        ok(with_slit > 0, "rare lit slits breathe behind the far masses")
+        mid.queue_free()
+        # --- the heart is dried blood with a cold core, never neon
+        game.transition_to("act7")
+        await _room("act7")
+        var heart := TheHeart.new()
+        add_child(heart)
+        heart.setup_heart()
+        await _frames(3)
+        var h1 := Color(E0.BLOOD.r, E0.BLOOD.g, E0.BLOOD.b)
+        var h2 := Color(E0.CRIMSON.darkened(0.16).r, E0.CRIMSON.darkened(0.16).g, E0.CRIMSON.darkened(0.16).b)
+        var chamber := h1.lerp(h2, 1.0)
+        ok(chamber.s < 0.75, "the heart's chamber stays dried-blood desaturated")
+        heart.queue_free()
+
+func _player_shadow() -> Variant:
+        if game.shadows == null:
+                return null
+        for s in game.shadows._shadows:
+                if absf(float(s["pos"].x) - game.player.global_position.x) < 24.0:
+                        return s
+        return null

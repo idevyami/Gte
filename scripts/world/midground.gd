@@ -58,6 +58,14 @@ func _generate() -> void:
                                 and rng.randf() < 0.38 and h > 150.0:
                         st["win"] = Vector2(rng.randf_range(0.18, 0.82), rng.randf_range(0.25, 0.75))
                         st["win_warm"] = rng.randf() < 0.7
+                # inner structure: big masses carry faint floor lines and the
+                # rare lit slit — a black box is a missing asset, not a city
+                if (kind == "block" or kind == "monolith" or kind == "tank" \
+                                or kind == "ruin" or kind == "shelf" or kind == "cabinet") and h > 140.0:
+                        st["inner"] = true
+                        if rng.randf() < 0.4:
+                                st["slit"] = Vector2(rng.randf_range(0.2, 0.8), rng.randf_range(0.3, 0.7))
+                                st["slit_cold"] = rng.randf() < 0.45
                 _structures.append(st)
                 # gaps — the eye needs air between the masses
                 x += w + rng.randf_range(24.0, 150.0)
@@ -196,6 +204,23 @@ func _draw() -> void:
                                 _mound(Vector2(sx + rr * 1.4, base_y - 4.0), rr * 0.4, body)
                         _:
                                 _poly([Vector2(sx, base_y), Vector2(sx, top), Vector2(sx + sw, top), Vector2(sx + sw, base_y)], body)
+                # inner structure: faint floor lines inside the big masses
+                if s.has("inner") and sh > 140.0:
+                        var ib := Color(E0.PARCH.r, E0.PARCH.g, E0.PARCH.b, 0.045)
+                        for k in range(2, int(sh / 46.0), 2):
+                                var iy := top + float(k) * 46.0
+                                if iy < base_y - 14.0:
+                                        draw_line(Vector2(sx + 5.0, iy), Vector2(sx + sw - 5.0, iy), ib, 1.0)
+                # the rare lit slit — life behind the mass
+                if s.has("slit"):
+                        var sl: Vector2 = s["slit"]
+                        var slx := sx + sl.x * sw
+                        var sly := top + sl.y * sh
+                        var breathe := 0.6 + 0.4 * sin(tnow * 0.6 + float(s["ph"]) * 5.0)
+                        var scol := Color(E0.CYAN.r, E0.CYAN.g, E0.CYAN.b, 0.16 * breathe) if s.get("slit_cold", false) \
+                                else Color(E0.GOLD.r, E0.GOLD.g * 0.9, E0.GOLD.b * 0.55, 0.18 * breathe)
+                        draw_rect(Rect2(slx, sly, 2.0, 4.0), scol)
+                        draw_rect(Rect2(slx - 1.6, sly - 2.0, 5.2, 8.0), Color(scol.r, scol.g, scol.b, scol.a * 0.3))
                 # lit window — a lived-in dark
                 if s.has("win"):
                         var wp: Vector2 = s["win"]

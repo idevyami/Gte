@@ -583,7 +583,7 @@ const ROOMS := {
                         {"kind": "web", "pos": Vector2(2565, 220), "w": 85, "h": 85, "s": 0.4},
                 ],
                 "lights": [
-                        {"pos": Vector2(1900, 640), "r": 420, "color": Color(0.85, 0.35, 0.2), "flicker": 0.3},
+                        {"pos": Vector2(1900, 640), "r": 420, "color": Color(0.58, 0.30, 0.24), "flicker": 0.22},
                         {"pos": Vector2(1250, 700), "r": 200, "color": Color(0.3, 0.85, 0.88), "flicker": 0.2},
                         {"pos": Vector2(2472, 700), "r": 220, "color": Color(0.85, 0.55, 0.25), "flicker": 0.25},
                         {"pos": Vector2(500, 700), "r": 200, "color": Color(0.5, 0.4, 0.3), "flicker": 0.35},
