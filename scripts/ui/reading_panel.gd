@@ -86,16 +86,21 @@ func _draw() -> void:
         var plate := Rect2((vp.x - plate_w) * 0.5, (vp.y - plate_h) * 0.5, plate_w, plate_h)
         plate.position.y += (1.0 - ease_t) * 26.0
 
-        # ---- the plate: aged stone with a carved border
-        _plate(plate)
+        # ---- the plate: aged stone with a carved border (records get paper)
+        var kind_all := String(entry.get("kind", "stele"))
+        if kind_all == "record_page":
+                _paper(plate)
+        else:
+                _plate(plate)
 
         var x := plate.position.x + 34.0
         var y := plate.position.y + 44.0
         var max_w := plate_w - 68.0
 
-        # ---- title: carved caps, serif
+        # ---- title: carved caps, serif (inked on paper records)
         var title := String(entry.get("title", ""))
-        draw_string(E0.serif, Vector2(x, y), title, HORIZONTAL_ALIGNMENT_LEFT, -1, 19, E0.BONE)
+        var title_col := Color(0.14, 0.11, 0.08, 0.97) if kind_all == "record_page" else E0.BONE
+        draw_string(E0.serif, Vector2(x, y), title, HORIZONTAL_ALIGNMENT_LEFT, -1, 19, title_col)
         y += 12.0
         # gold hairline under the title
         var hair := 0.55 * ease_t
@@ -113,6 +118,9 @@ func _draw() -> void:
                 voice_font = E0.mono
                 voice_size = 13
                 tracking = 0.0
+        if kind == "record_page":
+                # paper records are INKED, not carved — dark hand on census stock
+                voice_col = Color(0.19, 0.15, 0.11, 0.95)
         var budget := int(_chars)
         for line in entry.get("body", []):
                 var s := String(line)
@@ -187,6 +195,13 @@ func _draw_wrapped(s: String, at: Vector2, font: FontFile, size: int, col: Color
                         line = cand
         if not line.is_empty():
                 draw_string(font, Vector2(at.x, y), line, HORIZONTAL_ALIGNMENT_LEFT, -1, size, col)
+
+## A paper record: census stock, grain, torn foot, filing holes — the
+## page the archive actually issues (WB-9: records are paper, steles are stone).
+func _paper(plate: Rect2) -> void:
+        draw_rect(Rect2(plate.position + Vector2(4, 6), plate.size), Color(E0.VOID.r, E0.VOID.g, E0.VOID.b, 0.45))
+        UICraft.parchment(self, plate, "read_" + String(entry.get("id", "x")), true, 4, 0.84)
+        draw_rect(plate, Color(E0.BLOOD.r + 0.04, E0.BLOOD.g + 0.03, E0.BLOOD.b, 0.25), false, 1.0)
 
 func _plate(plate: Rect2) -> void:
         ## Aged stone plate: layered fill, carved double border, corner ticks.

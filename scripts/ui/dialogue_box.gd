@@ -1,5 +1,9 @@
-## DialogueBox — typewriter dialogue with per-line conditions. Speakers are
-## the world itself: clerks, martyrs, withheld things, and the SYSTEM.
+## DialogueBox — the CENSUS RECORD: speech arrives on a hung sheet of
+## parchment that slides up into the frame, grain and torn edge and filing
+## holes and all. The speaker's seal is PRESSED into the wax at open (an
+## iron strike: scale settles from 1.35), the line is written in dark ink
+## over ledger ruling, and the sheet recedes when filed.
+## WB-9 law: dialogue is a physical document of the census world.
 class_name DialogueBox
 extends Control
 
@@ -13,6 +17,18 @@ var key := ""
 var _blink := 0.0
 var _last_blip := 0        # chars already ticked on this line
 
+# the sheet's physical entrance/exit + the seal's press
+var sheet_t := 0.0         # 0 = below frame, 1 = seated  (eased)
+var closing := false
+var seal_press := 0.0      # 0 = iron in the air, 1 = wax cooled
+var seal_sigil := 0
+# draw-state accessors (smoke pins the laws)
+var last_ruling_count := 0
+var last_ink_col := Color.BLACK
+
+const SHEET_RISE_TIME := 0.26
+const SEAL_STRIKE_TIME := 0.34
+
 func _ready() -> void:
         set_anchors_preset(Control.PRESET_FULL_RECT)
         mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -20,6 +36,10 @@ func _ready() -> void:
 
 func set_game(p_game) -> void:
         game = p_game
+
+func seal_state() -> Dictionary:
+        ## {sigil, press} — the wax identity and whether the iron has landed.
+        return {"sigil": seal_sigil, "press": seal_press}
 
 func open(dialogue_key: String) -> void:
         var conv: Dictionary = game.dialogues.get(dialogue_key, {})
@@ -40,6 +60,10 @@ func open(dialogue_key: String) -> void:
         _last_blip = 0
         active = true
         visible = true
+        closing = false
+        sheet_t = 0.0
+        seal_press = 0.0
+        seal_sigil = _speaker_sigil_id()
         EventBus.dialogue_started.emit(speaker)
 
 func advance() -> bool:
@@ -60,15 +84,26 @@ func advance() -> bool:
 
 func close() -> void:
         active = false
-        visible = false
+        closing = true
         EventBus.dialogue_finished.emit(key)
 
 func _process(delta: float) -> void:
+        if active or closing:
+                _blink += delta
+                # the sheet slides up (or recedes), eased
+                var target := 1.0 if active else 0.0
+                var speed := 1.0 / SHEET_RISE_TIME if active else 1.0 / (SHEET_RISE_TIME * 0.8)
+                sheet_t = move_toward(sheet_t, target, delta * speed)
+                # the seal strikes within the first moments of the sheet seating
+                if active and sheet_t > 0.55:
+                        seal_press = minf(seal_press + delta / SEAL_STRIKE_TIME, 1.0)
+                if closing and sheet_t <= 0.0:
+                        closing = false
+                        visible = false
         if active:
                 chars_shown = mini(chars_shown + int(ceil(42.0 * delta)), lines[line_idx].length())
-                _blink += delta
                 _maybe_blip()
-                queue_redraw()
+        queue_redraw()
 
 func _maybe_blip() -> void:
         ## Typewriter ticks — one soft felt blip per 2 non-space characters.
@@ -87,73 +122,96 @@ func _maybe_blip() -> void:
                 AudioManager.play_sfx("sfx_blip", -20.0)
 
 func _draw() -> void:
-        if not active:
+        if not (active or closing):
                 return
         var vp := get_viewport_rect().size
         var w := minf(860.0, vp.x - 80.0)
         var x := (vp.x - w) * 0.5
-        var y := vp.y - 190.0
         var h := 130.0
-        # panel — feathered sides so the record sits IN the scene, not on it
-        draw_rect(Rect2(x - 14, y - 14, w + 28, h + 28), Color(E0.SHADOW.r, E0.SHADOW.g, E0.SHADOW.b, 0.88))
-        for i in 3:
-                var k := float(i) / 3.0
-                draw_rect(Rect2(x - 14 - 16.0 + i * 5.5, y - 14, 18.0 - i * 5.5, h + 28), Color(E0.SHADOW.r, E0.SHADOW.g, E0.SHADOW.b, 0.14 * (1.0 - k)))
-                draw_rect(Rect2(x + w + 14 - 2.0 - i * 5.5, y - 14, 18.0 - i * 5.5, h + 28), Color(E0.SHADOW.r, E0.SHADOW.g, E0.SHADOW.b, 0.14 * (1.0 - k)))
-        draw_rect(Rect2(x - 14, y - 14, w + 28, h + 28), E0.ASH, false, 1.0)
-        draw_rect(Rect2(x - 14, y - 14, 3.0, h + 28), _speaker_color())
-        # corner brackets — the record frames its speakers
-        var _brk := 10.0
-        draw_line(Vector2(x - 14, y - 2), Vector2(x - 14, y - 14), _speaker_color(), 1.5)
-        draw_line(Vector2(x - 14, y - 14), Vector2(x - 14 + _brk, y - 14), _speaker_color(), 1.5)
-        draw_line(Vector2(x + w + 14 - _brk, y - 14), Vector2(x + w + 14, y - 14), _speaker_color(), 1.5)
-        draw_line(Vector2(x + w + 14, y - 14), Vector2(x + w + 14, y - 2), _speaker_color(), 1.5)
-        draw_line(Vector2(x - 14, y + h + 2), Vector2(x - 14, y + h + 14), _speaker_color(), 1.5)
-        draw_line(Vector2(x - 14, y + h + 14), Vector2(x - 14 + _brk, y + h + 14), _speaker_color(), 1.5)
-        draw_line(Vector2(x + w + 14 - _brk, y + h + 14), Vector2(x + w + 14, y + h + 14), _speaker_color(), 1.5)
-        draw_line(Vector2(x + w + 14, y + h + 2), Vector2(x + w + 14, y + h + 14), _speaker_color(), 1.5)
-        # speaker — sigil diamond + letter-spaced caps + short hairline tail
+        # the sheet rises from below the frame — physical, eased
+        var ease := 1.0 - pow(1.0 - clampf(sheet_t, 0.0, 1.0), 3.0)
+        var y := vp.y - 190.0 + (1.0 - ease) * 90.0
+        var alpha := clampf(sheet_t * 1.6, 0.0, 1.0)
+        # the sheet: parchment, grain, aged edges, torn bottom, filing holes
+        var sheet := Rect2(x - 14, y - 14, w + 28, h + 28)
+        # the sheet's shadow first — it hangs in front of the world, which darkens
+        # behind its bottom-right shoulder
+        draw_rect(Rect2(sheet.position + Vector2(4, 7), sheet.size), Color(E0.VOID.r, E0.VOID.g, E0.VOID.b, 0.40 * alpha))
+        UICraft.parchment(self, sheet, "dialogue_" + key, true, 3)
         var sc := _speaker_color()
+        # header rule + the speaker's filing line (stamped ink, darkened for paper)
         if E0.mono_bold:
-                var sigil := _speaker_sigil()
-                var sx := x
-                for ch_i in sigil.length():
-                        draw_string(E0.mono_bold, Vector2(sx, y + 4), sigil[ch_i], HORIZONTAL_ALIGNMENT_LEFT, -1, 14, sc)
-                        sx += E0.mono_bold.get_string_size(sigil[ch_i], HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x
-                _diamond(Vector2(sx + 8.0, y - 1.0), 2.4, sc)
-                var sp_x := sx + 18.0
-                for ch_i in speaker.length():
-                        draw_string(E0.mono_bold, Vector2(sp_x, y + 4), speaker[ch_i], HORIZONTAL_ALIGNMENT_LEFT, -1, 14, sc)
-                        sp_x += E0.mono_bold.get_string_size(speaker[ch_i], HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x + 1.5
-                draw_line(Vector2(sp_x + 8.0, y - 1.0), Vector2(sp_x + 8.0 + 34.0, y - 1.0), Color(sc.r, sc.g, sc.b, 0.45), 1.0)
-        # wrapped text
-        var text: String = lines[line_idx].substr(0, chars_shown)
-        var wrapped := _wrap(text, w - 20.0, 16)
-        var yy := y + 32.0
+                var ink_sc := Color(sc.r * 0.62, sc.g * 0.6, sc.b * 0.58)
+                UICraft.stamp_text(self, E0.mono_bold, Vector2(x + 30, y + 2), speaker, ink_sc, 14, -0.006, 0)
+        # the seal: pressed right of the speaker line, struck in wax
+        var seal_pos := Vector2(x + w - 34.0, y - 2.0)
+        UICraft.wax_seal(self, seal_pos, 11.0, _seal_wax_color(), seal_sigil, 0.35 + 0.65 * seal_press)
+        # strike impact: the wax lands big and settles (physical press)
+        if seal_press < 1.0 and seal_press > 0.0:
+                var burst := (1.0 - seal_press) * 0.35
+                UICraft.wax_seal(self, seal_pos, 11.0 * (1.0 + burst), Color(sc.r, sc.g, sc.b, 0.10), seal_sigil, 1.0)
+        # ledger ruling under the speaker line
+        UICraft.ruling(self, Vector2(x + 30, y + 8.0), Vector2(x + w - 56.0, y + 8.0), true)
+        # wrapped text as INK on parchment — dark, written, ruled.
+        # during the recess the writer has already moved past the last line —
+        # the sheet shows the final words as it files away
+        var li := clampi(line_idx, 0, lines.size() - 1)
+        var text: String = lines[li].substr(0, chars_shown)
+        var wrapped := _wrap(text, w - 48.0, 16)
+        var yy := y + 34.0
+        var ink := Color(0.16, 0.13, 0.10, 0.94)
+        last_ink_col = ink
+        last_ruling_count = 0
         for ln in wrapped:
                 if E0.mono:
-                        draw_string(E0.mono, Vector2(x + 6, yy), ln, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, E0.PARCH)
+                        draw_string(E0.mono, Vector2(x + 30, yy), ln, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, ink)
+                        UICraft.ruling(self, Vector2(x + 30, yy + 5.0), Vector2(x + w - 24.0, yy + 5.0))
+                        last_ruling_count += 1
                 yy += 23.0
-        # line counter + continue hint
-        var done_line: bool = chars_shown >= lines[line_idx].length()
+        # the ink pot caret: a small nib diamond where the writing stops
+        if E0.mono and chars_shown < lines[li].length():
+                var partial: String = wrapped[wrapped.size() - 1] if not wrapped.is_empty() else ""
+                var px := x + 30.0
+                if E0.mono:
+                        px += E0.mono.get_string_size(partial, HORIZONTAL_ALIGNMENT_LEFT, -1, 16).x + 4.0
+                var nib := 0.5 + 0.5 * sin(_blink * 7.0)
+                var ncol := Color(ink.r, ink.g, ink.b, 0.4 + 0.6 * nib)
+                var pts := PackedVector2Array([Vector2(px, yy - 23.0 - 9.0), Vector2(px + 4.5, yy - 23.0 - 4.0), Vector2(px, yy - 23.0 + 1.0), Vector2(px - 4.5, yy - 23.0 - 4.0)])
+                draw_colored_polygon(pts, ncol)
+        # line counter + continue mark — stamped, not floating
+        var done_line: bool = chars_shown >= lines[li].length()
         if done_line:
                 var bounce := sin(_blink * 4.0) * 2.0
-                _diamond(Vector2(x + w - 116.0, y + h - 8.0 + bounce), 2.6, Color(E0.GOLD.r, E0.GOLD.g, E0.GOLD.b, 0.9) if fmod(_blink, 0.9) < 0.55 else Color(E0.GOLD.r, E0.GOLD.g, E0.GOLD.b, 0.4))
+                var dcol := Color(E0.GOLD.r, E0.GOLD.g, E0.GOLD.b, 0.9) if fmod(_blink, 0.9) < 0.55 else Color(E0.GOLD.r, E0.GOLD.g, E0.GOLD.b, 0.4)
+                _diamond(Vector2(x + w - 116.0, y + h - 8.0 + bounce), 2.6, dcol)
                 if E0.mono and fmod(_blink, 0.9) < 0.7:
-                        draw_string(E0.mono, Vector2(x + w - 104.0, y + h - 2.0), "[F] CONTINUE", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, E0.PARCH)
+                        UICraft.stamp_text(self, E0.mono, Vector2(x + w - 104.0, y + h - 2.0), "FILE  [F]", Color(0.30, 0.22, 0.14, 0.85), 12, 0.035, 5)
         if E0.mono:
-                draw_string(E0.mono, Vector2(x, y + h - 2.0), "%d/%d" % [line_idx + 1, lines.size()], HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(E0.DIM.r, E0.DIM.g, E0.DIM.b, 0.6))
+                UICraft.stamp_text(self, E0.mono, Vector2(x + 30, y + h - 2.0), "%d / %d" % [line_idx + 1, lines.size()], Color(0.35, 0.28, 0.20, 0.6), 12, -0.01, 9)
+
+## The seal's wax carries the speaker's voice color, deepened to wax density.
+func _seal_wax_color() -> Color:
+        var sc := _speaker_color()
+        return Color(sc.r * 0.55 + 0.12, sc.g * 0.55 + 0.06, sc.b * 0.55 + 0.05)
+
+func _speaker_sigil_id() -> int:
+        if speaker == "SYSTEM" or speaker.begins_with("TERMINAL"):
+                return 0
+        if speaker == "THE PENITENT":
+                return 2
+        if speaker.contains("MARTYR"):
+                return 1
+        if speaker.contains("MEASURER"):
+                return 3
+        return 4
 
 ## A small geometric sigil per voice — the record marks who is speaking.
 func _speaker_sigil() -> String:
-        if speaker == "SYSTEM" or speaker.begins_with("TERMINAL"):
-                return "\\\\"
-        if speaker == "THE PENITENT":
-                return "|"
-        if speaker.contains("MARTYR"):
-                return "X"
-        if speaker.contains("MEASURER"):
-                return "I"
+        match _speaker_sigil_id():
+                0: return "\\\\"
+                2: return "|"
+                1: return "X"
+                3: return "I"
         return "O"
 
 func _speaker_color() -> Color:

@@ -46,6 +46,7 @@ func _run() -> void:
         await _ground_you_walk_on()
         await _performers()
         await _world_responds()
+        await _the_record_is_a_thing()
         print("=== %d checks, %d failures ===" % [checks, fails])
         get_tree().quit(1 if fails > 0 else 0)
 
@@ -1120,3 +1121,122 @@ func _world_responds() -> void:
                 if ch is EntityNode and String(ch.get("kind")) == "terminal":
                         term_found = true
         ok(term_found, "the act2 terminal exists as an EntityNode")
+
+
+# ------------------------------------------------------------------ WB-9
+func _the_record_is_a_thing() -> void:
+        ## The diegetic UI pass: the interface is a physical artifact of the
+        ## census world — brass instruments, parchment records, pressed wax.
+        print("[WB-9 THE RECORD IS A THING]")
+        # --- the craft workshop: deterministic paper, dial math, stamp laws --
+        var g1 := UICraft.grain("smoke_a")
+        var g2 := UICraft.grain("smoke_a")
+        ok(g1 == g2, "paper grain is cached (same paper forever)")
+        var g3 := UICraft.grain("smoke_b")
+        ok(g1 != g3, "different keys are different paper stock")
+        var d1 := UICraft.grain("smoke_c").get_image()
+        var d2 := UICraft.grain("smoke_c").get_image()
+        var same := d1.get_size() == d2.get_size()
+        if same:
+                for i in 64:
+                        if d1.get_pixel(i % 96, i % 96) != d2.get_pixel(i % 96, i % 96):
+                                same = false
+                                break
+        ok(same, "grain pixels are deterministic across calls")
+        # dial law: 100 sits at 210 deg, 0 at -30 deg, linear between
+        ok(absf(rad_to_deg(UICraft.dial_angle(1.0)) - 210.0) < 0.01, "dial: 100 anchors at 210\u00b0")
+        ok(absf(rad_to_deg(UICraft.dial_angle(0.0)) + 30.0) < 0.01, "dial: 0 anchors at -30\u00b0")
+        ok(absf(rad_to_deg(UICraft.dial_angle(0.5)) - 90.0) < 0.01, "dial: mid-value sweeps to vertical")
+        # tremble law: reality's thinness moves the needle's hand
+        ok(HUD.dial_tremble_for(1) == 0.0 and HUD.dial_tremble_for(3) == 0.0, "the hand is steady through S3")
+        ok(HUD.dial_tremble_for(4) == 0.5, "S4 trembles at half")
+        ok(HUD.dial_tremble_for(5) == 1.0 and HUD.dial_tremble_for(6) == 1.0, "S5+ the hand shakes fully")
+        # --- the instrument: tube and dial state read live -------------------
+        await _frames(30)
+        ok(game.hud.last_tube.get("fill", -1.0) > 0.99, "the integrity tube reports a full vessel")
+        ok(game.hud.last_tube.get("cracked", true) == false, "sound glass carries no cracks")
+        ok(absf(float(game.hud.last_dial.get("value", -1.0)) - GameState.consistency) < 0.01, "the dial reads the live consistency")
+        ok(game.hud.last_dial.get("tremble", -1.0) == 0.0, "no tremble at full consistency")
+        # damage: the ghost lags, the glass cracks under 30
+        game.player.hp = 22
+        await _frames(25)
+        ok(game.hud.last_tube.get("cracked", false) == true, "low integrity cracks the glass")
+        ok(game.hud.last_tube.get("fill", 1.0) < 0.30, "the tube measures the wound")
+        ok(game.hud._hp_display > game.player.hp, "the fluid drains with lag (the ghost)")
+        game.player.hp = 100
+        await _frames(40)
+        ok(game.hud.last_tube.get("cracked", true) == false, "healed glass mends (no cracks)")
+        # the mount sways with the camera, then eases home
+        var sway0: Vector2 = game.hud.last_sway
+        Input.action_press("move_right")
+        await _frames(40)
+        Input.action_release("move_right")
+        var sway_moved: bool = game.hud.last_sway.length() > 0.05
+        ok(sway_moved or sway0.length() > 0.05, "the instrument mount lags the camera (inertia)")
+        await get_tree().create_timer(1.4, true, false, true).timeout
+        ok(game.hud.last_sway.length() < 0.6, "the mount eases home when still")
+        # --- the dialogue sheet: it slides, it seals, it is PAPER -------------
+        game.dialogue_box.open("oren_intro")
+        ok(game.dialogue_box.active, "the record opens")
+        ok(game.dialogue_box.sheet_t == 0.0, "the sheet starts below the frame")
+        await get_tree().create_timer(0.12, true, false, true).timeout
+        var mid_rise: float = game.dialogue_box.sheet_t
+        ok(mid_rise > 0.05 and mid_rise < 0.99, "the sheet is rising (physical entrance)")
+        await get_tree().create_timer(0.5, true, false, true).timeout
+        ok(game.dialogue_box.sheet_t >= 1.0, "the sheet seats within its rise time")
+        ok(game.dialogue_box.seal_state()["press"] >= 1.0, "the iron strikes the wax and it cools")
+        ok(game.dialogue_box.seal_state()["sigil"] >= 0, "the seal carries the speaker's sigil")
+        ok(game.dialogue_box.last_ruling_count > 0, "the writing sits on ledger ruling")
+        # ink on parchment: the ink is DARK (paper law, not screen law)
+        var inkc: Color = game.dialogue_box.last_ink_col
+        ok(inkc.r < 0.3 and inkc.g < 0.3 and inkc.b < 0.3, "the record is written in dark ink on paper")
+        game.dialogue_box.chars_shown = 99999
+        game.dialogue_box.advance()
+        while game.dialogue_box.active:
+                game.dialogue_box.chars_shown = 99999
+                game.dialogue_box.advance()
+                await get_tree().process_frame
+        await get_tree().create_timer(0.5, true, false, true).timeout
+        ok(game.dialogue_box.sheet_t < 1.0 and not game.dialogue_box.visible, "the filed sheet recedes and is gone")
+        # --- the stamped citations: strike, wobble, dry -----------------------
+        game.system_log.entries.clear()
+        game.system_log.push("TEST SLIP — FIELD MEASURED.", "warn")
+        game.system_log.push("TEST SLIP — OBJECTION.", "danger")
+        await get_tree().create_timer(0.02, true, false, true).timeout
+        var sc0: float = game.system_log.last_stamp_scales[0] if not game.system_log.last_stamp_scales.is_empty() else 1.0
+        ok(sc0 > 1.2, "a citation strikes in oversized (the die lands big)")
+        await get_tree().create_timer(0.6, true, false, true).timeout
+        var sc1: float = game.system_log.last_stamp_scales[0]
+        ok(absf(sc1 - 1.0) < 0.08, "the citation settles to the paper")
+        var jrot: float = game.system_log.last_jitter_rots[0]
+        ok(absf(jrot) <= 0.03, "each slip sits a hair askew (bounded)")
+        ok(SystemLog.stamp_scale(10.0) == 1.0, "old citations hold still")
+        # --- the ledger: seals on sealed rows, ruling under every field -------
+        # the PENITENT of the aftermath keeps its classification, purpose and
+        # memory sealed at every stage the living ever reach
+        game.transition_to("act9")
+        await _room("act9")
+        game.player.global_position = Vector2(1280, 630)
+        await _frames(30)
+        game.observe_enter()
+        await _frames(20)
+        ok(game.observe_panel.ledger_page, "the observe readout is a ledger page")
+        var sealed_expect := 0
+        if not game.observe_targets.is_empty():
+                var tgt = game.observe_targets[game.observe_idx]
+                if tgt != null and is_instance_valid(tgt):
+                        for sp in tgt.data.visible_properties(GameState.stage, GameState.flags):
+                                if sp["sealed"]:
+                                        sealed_expect += 1
+        ok(sealed_expect > 0, "the penitent keeps sealed rows at this stage")
+        ok(game.observe_panel.last_seal_count == sealed_expect, "every sealed row hides under pressed wax (count pinned to data)")
+        ok(game.observe_panel.last_ruling_count >= 6, "the ledger rules every field")
+        game.observe_exit()
+        await _frames(10)
+        # --- the plaque: the prompt carries a physical key --------------------
+        game.transition_to("act2")
+        await _room("act2")
+        game.player.global_position = Vector2(1480, 600)
+        await _frames(30)
+        ok(game.hud._prompt != "", "the door offers its verb")
+        ok(game.hud.last_prompt_keycap, "the verb arrives on a plaque with a keycap")
