@@ -47,6 +47,7 @@ func _run() -> void:
         await _performers()
         await _world_responds()
         await _the_record_is_a_thing()
+        await _the_air_itself()
         print("=== %d checks, %d failures ===" % [checks, fails])
         get_tree().quit(1 if fails > 0 else 0)
 
@@ -1240,3 +1241,135 @@ func _the_record_is_a_thing() -> void:
         await _frames(30)
         ok(game.hud._prompt != "", "the door offers its verb")
         ok(game.hud.last_prompt_keycap, "the verb arrives on a plaque with a keycap")
+
+func _the_air_itself() -> void:
+        ## WB-10: the aural atmosphere — layered beds, the whisper that rises
+        ## with the HUNTED model, the world muffling as reality thins, sound
+        ## placed ON the elements, and the ground answering the ear.
+        print("[WB-10 THE AIR ITSELF]")
+        var saved_stage: int = GameState.stage
+        # --- THE ROOM'S AIR IS A STACK ---------------------------------
+        var bed_acts := {
+                "act1": ["machine", "fire", "void"],
+                "act2": ["machine", "void", ""],
+                "act3": ["wind", "cityfar", ""],
+                "act4": ["void", "machine", ""],
+                "act5": ["choir", "fire", ""],
+                "act6": ["void", "machine", ""],
+                "act7": ["machine", "fire", ""],
+                "act8": ["choir", "void", ""],
+                "act9": ["wind", "void", ""],
+        }
+        for act in bed_acts.keys():
+                game.transition_to(act)
+                await _room(act)
+                await get_tree().create_timer(2.6, true, false, true).timeout
+                var beds: Array = bed_acts[act]
+                ok(AudioManager._current_ambient == beds[0], "%s layer A carries the primary bed (%s)" % [act, beds[0]])
+                ok(AudioManager._current_ambient_b == beds[1], "%s layer B carries the secondary bed (%s)" % [act, beds[1]])
+                ok(AudioManager._current_ambient_c == beds[2], "%s layer C carries the deep bed (%s)" % [act, beds[2]])
+                var a_lin := db_to_linear(AudioManager._ambient.volume_db)
+                var a_tgt: float = (Rooms.ROOMS[act].get("ambient", []) as Array)[0].get("vol", 0.4)
+                ok(absf(a_lin - a_tgt) < 0.03, "%s the primary bed has faded to its data volume" % act)
+        # --- THE WHISPER RISES WITH THE MODEL ----------------------------
+        AudioManager.update_degradation(2)
+        ok(absf(AudioManager._whisper_target - 0.0) < 0.001, "S2: the whisper has not yet breathed")
+        ok(not AudioManager._ambient_d.playing, "S2: the whisper sleeps")
+        AudioManager.update_degradation(3)
+        ok(absf(AudioManager._whisper_target - 0.10) < 0.001, "S3: the whisper leans in (0.10)")
+        ok(AudioManager._ambient_d.playing, "S3: the whisper breathes")
+        ok(AudioManager._ambient_d.bus == "Dread", "the whisper rides its own unfiltered Dread bus")
+        AudioManager.update_degradation(6)
+        ok(absf(AudioManager._whisper_target - 0.40) < 0.001, "S6: the whisper is a presence (0.40)")
+        var dread_bus := AudioServer.get_bus_index("Dread")
+        ok(AudioServer.get_bus_effect_count(dread_bus) == 0, "the Dread bus carries no filter — the whisper cuts through the muffling")
+        # --- THE WORLD'S AIR MUFFLES -------------------------------------
+        ok(absf(AudioManager._ambient_lp.cutoff_hz - 2000.0) < 0.01, "S6: the world's air has closed to 2000 Hz")
+        AudioManager.update_degradation(4)
+        ok(absf(AudioManager._ambient_lp.cutoff_hz - 5000.0) < 0.01, "S4: the air muffles to 5000 Hz")
+        ok(AudioManager._ambient_lp.cutoff_hz < AudioManager._music_lp.cutoff_hz, "the world muffles faster than the score")
+        AudioManager.update_degradation(saved_stage)
+        # --- SOUND PLACED ON THE ELEMENTS ---------------------------------
+        var ss_counts := {
+                "act1": [5, 3], "act2": [6, 10], "act3": [5, 0], "act4": [2, 8],
+                "act5": [11, 0], "act6": [5, 3], "act7": [5, 0], "act8": [11, 8],
+                "act9": [4, 0],
+        }
+        for act in ss_counts.keys():
+                game.transition_to(act)
+                await _room(act)
+                var ss := game.soundscape
+                var want: Array = ss_counts[act]
+                ok(ss != null, "%s carries a soundscape" % act)
+                ok(ss.loop_count() == want[0], "%s hangs %d positional loop emitters" % [act, want[0]])
+                ok(ss.tick_count() == want[1], "%s keeps %d timed one-shot voices" % [act, want[1]])
+                var fire_kinds := ["brazier", "candles", "candelabra", "chandelier", "censer", "censer_swing", "bowl"]
+                var all_placed := true
+                var dedupe_holds := true
+                for e in ss.emitters:
+                        var n: AudioStreamPlayer2D = e["node"]
+                        if not (n is AudioStreamPlayer2D and n.playing and n.bus == "Ambient"):
+                                all_placed = false
+                        if int(n.max_distance) != 640:
+                                all_placed = false
+                        if e["kind"] == "warm_light":
+                                for other in ss.emitters:
+                                        if fire_kinds.has(other["kind"]) and (e["pos"] as Vector2).distance_to(other["pos"]) <= 110.0:
+                                                dedupe_holds = false
+                ok(all_placed, "%s every emitter is a live positional player on the Ambient bus" % act)
+                ok(dedupe_holds, "%s warm lights never double a brazier's voice" % act)
+        # --- the undercity weeps from its damp spots ----------------------
+        game.transition_to("act2")
+        await _room("act2")
+        ok(game.soundscape.tick_count() >= game.floorcraft.get_damp_spots().size(), "every damp spot keeps its own drip voice")
+        ok(game.soundscape._world_life != null, "the vermin's squeak hook is wired to the world's life")
+        ok(game.world_life.has_method("bolted_scuttler"), "a bolting vermin can be found for its squeak")
+        # --- THE GROUND ANSWERS THE EAR ----------------------------------
+        await _step_sample_check("act5", "sfx_foot_carpet", "the chapel runner muffles the boots")
+        await _step_sample_check("act7", "sfx_foot_metal", "the engine plating rings under the boots")
+        await _step_sample_check("act2", "sfx_foot_wet", "the undercity damp splashes under the boots")
+        game.transition_to("act1")
+        await _room("act1")
+        _quiet_step_pool()
+        game.player._play_footstep(-10.0)
+        var first := _playing_step_path()
+        _quiet_step_pool()
+        game.player._play_footstep(-10.0)
+        var second := _playing_step_path()
+        ok(first != "" and second != "" and first != second, "stone alternates two voices so no two steps are twins")
+        # --- THE FAR FIELD SPEAKS RARELY ---------------------------------
+        var ev_acts := {
+                "act1": 1, "act2": 1, "act3": 3, "act4": 1, "act5": 3,
+                "act6": 1, "act7": 2, "act8": 2, "act9": 2,
+        }
+        for act in ev_acts.keys():
+                game.transition_to(act)
+                await _room(act)
+                ok(AudioManager._event_palette.size() == ev_acts[act], "%s far-field palette carries %d voices" % [act, ev_acts[act]])
+                ok(AudioManager._event_min_delay >= 4.0 and AudioManager._event_max_delay > AudioManager._event_min_delay, "%s the world never hurries its events" % act)
+                ok(AudioManager._event_timer > 0.0 and AudioManager._event_timer <= AudioManager._event_max_delay, "%s the next event waits within its window" % act)
+        game.transition_to("act1")
+        await _room("act1")
+
+func _quiet_step_pool() -> void:
+        for p in AudioManager._sfx_pool:
+                p.stop()
+                p.stream = null
+
+func _playing_step_path() -> String:
+        for p in AudioManager._sfx_pool:
+                if p.playing and p.stream != null:
+                        return p.stream.resource_path
+        return ""
+
+func _step_sample_check(act: String, want_part: String, label: String) -> void:
+        game.transition_to(act)
+        await _room(act)
+        _quiet_step_pool()
+        game.player._play_footstep(-10.0)
+        var path := ""
+        for p in AudioManager._sfx_pool:
+                if p.playing and p.stream != null:
+                        path = p.stream.resource_path
+                        break
+        ok(path.contains(want_part), label)

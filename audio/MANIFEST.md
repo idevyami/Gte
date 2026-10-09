@@ -1,6 +1,7 @@
 # ENTITY_000 — Audio Library Manifest
 
-Generated procedurally by `tools/gen_audio.ts` (Task 2-b, audio agent).
+Generated procedurally by `tools/gen_audio.ts` (Task 2-b, audio agent), extended by
+`gen_audio_p2.ts` (options & depth) and `gen_audio_p3.ts` (WB-10, the air itself).
 Format: 44100 Hz, 16-bit PCM, mono WAV. Identity: ancient + sacred + mechanical + lonely + damaged.
 
 - **Loops** are phase-locked (base frequencies complete integer cycles per loop) and tail/head
@@ -9,7 +10,7 @@ Format: 44100 Hz, 16-bit PCM, mono WAV. Identity: ancient + sacred + mechanical 
   it is a quiet hypnotic bed layered under scenes).
 - The game AudioManager loads exactly these paths relative to `res://audio/`.
 
-**Files:** 50 &nbsp;|&nbsp; **Total duration:** 185.97 s (3m 6s)
+**Files:** 66 &nbsp;|&nbsp; **Total duration:** 230.92 s (3m 51s)
 
 ## music/ — score layers (seamless loops unless noted)
 
@@ -35,6 +36,9 @@ Format: 44100 Hz, 16-bit PCM, mono WAV. Identity: ancient + sacred + mechanical 
 | `ambient/amb_choir_loop.wav` | 12.00 s | loop | 0.35 | Cathedral distance — very quiet airy noise bed + slow detuned sines. |
 | `ambient/amb_fire_loop.wav` | 6.00 s | loop | 0.35 | Fire / braziers — soft noise bed + lowpassed crackle impulses (seam-safe). |
 | `ambient/amb_void_loop.wav` | 10.00 s | loop | 0.35 | Void / liminal spaces — 40 Hz pulse, faint gated 2 kHz tone, wrongness. |
+| `ambient/amb_whisper_loop.wav` | 8.00 s | loop | 0.35 | **WB-10** The dread bed — three breath-syllable swells of bandpassed noise + beating high shimmer; rides the unfiltered Dread bus, volume driven by the HUNTED stage (0 at S1–2 → 0.40 at S6). |
+| `ambient/amb_cityfar_loop.wav` | 12.00 s | loop | 0.35 | **WB-10** The city heard from a rooftop — brown murmur + crowd shimmer + one soft far bell at 7 s; layer B of the exteriors. |
+| `ambient/amb_hiss_loop.wav` | 6.00 s | loop | 0.35 | **WB-10** Vent steam — highpassed noise with breathing wobble; POSITIONAL at vent mouths. |
 
 ## sfx/ — interface, world, combat, entities (one-shots unless noted)
 
@@ -75,6 +79,19 @@ Format: 44100 Hz, 16-bit PCM, mono WAV. Identity: ancient + sacred + mechanical 
 | `sfx/sfx_reveal.wav` | 2.00 s | one-shot | 0.80 | Major discovery — low swell, one pure bell, faint choir. Awe. |
 | `sfx/sfx_blip.wav` | 0.035 s | one-shot | 0.22 | Dialogue typewriter tick — felt-soft 250 Hz body + air; played at ~-20 dB every 2nd character. (P2 addendum) |
 | `sfx/sfx_heartbeat.wav` | 0.92 s | loop | 0.30 | Low-HP heartbeat — lub 52→38 Hz at 0.05 s, dub 58→44 Hz at 0.30 s; tails silent before the seam. (P2 addendum) |
+| `sfx/sfx_drip.wav` | 0.35 s | one-shot | 0.80 | **WB-10** Close water plunk — glide 1150→390 Hz + landing tick; POSITIONAL, one voice per undercity damp spot. |
+| `sfx/sfx_squeak.wav` | 0.09 s | one-shot | 0.50 | **WB-10** Vermin squeak — rising chirp 2050→2950 Hz; played AT a bolting scuttler, 50% of flights. |
+| `sfx/sfx_page_rustle.wav` | 0.50 s | one-shot | 0.80 | **WB-10** Paper flutter — 17 Hz tremolo'd bandpassed noise; POSITIONAL at records/shelves/logbooks. |
+| `sfx/sfx_chain_creak.wav` | 0.70 s | one-shot | 0.80 | **WB-10** Chain creak — three drifting inharmonic grains + rattle; POSITIONAL at hanging chains/cages. |
+| `sfx/sfx_bell_far.wav` | 3.00 s | one-shot | 0.80 | **WB-10** Distant bell toll — damped minor partials (220.5–663 Hz); POSITIONAL at bells, far-field event. |
+| `sfx/sfx_gust.wav` | 2.50 s | one-shot | 0.80 | **WB-10** Wind gust swell — filter-swept noise, rise-fall; far-field event for exteriors/engine. |
+| `sfx/sfx_choir_swell.wav` | 3.50 s | one-shot | 0.45 | **WB-10** Faint choir swell — detuned A-minor stack + air; far-field event for chapel/city/reliquary. |
+| `sfx/sfx_clank_far.wav` | 1.20 s | one-shot | 0.80 | **WB-10** Distant machine clank + echo repeat at 0.42 s; far-field event for interiors. |
+| `sfx/sfx_organ_chord.wav` | 4.00 s | one-shot | 0.50 | **WB-10** Far organ chord — slow-attack 5-partial stack + wind; rare chapel event. |
+| `sfx/sfx_foot_stone.wav` | 0.12 s | one-shot | 0.80 | **WB-10** Hard stone step variant — click transient + 98→70 Hz thump; stone districts ALTERNATE this with the soft step. |
+| `sfx/sfx_foot_metal.wav` | 0.16 s | one-shot | 0.80 | **WB-10** Engine plating step — ringing partial stack (617/1168/1891 Hz) + thump; the act7 ground. |
+| `sfx/sfx_foot_carpet.wav` | 0.14 s | one-shot | 0.80 | **WB-10** Chapel runner step — cloth-muffled, no click, warm 66→52 Hz body; the act5 ground. |
+| `sfx/sfx_foot_wet.wav` | 0.18 s | one-shot | 0.80 | **WB-10** Undercity damp step — closing-filter splash + scatter tail; the act2/act4 ground. |
 
 ---
 

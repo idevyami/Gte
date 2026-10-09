@@ -53,6 +53,7 @@ var penitent: NPC = null
 var monument: EntityNode = null
 var ambient: AmbientFX = null
 var foreground: Foreground = null
+var soundscape: SoundScape = null
 
 # per-district world grade: a whisper of temperature on the SCENERY
 # renderers only (architecture, backdrop, air) — actors, UI and combat FX
@@ -349,6 +350,14 @@ func load_room(id: String) -> void:
         world_life.setup(id, String(room_data.get("backdrop", "")), room_size,
                 room_data.get("lights", []), null, floorcraft.get_damp_spots(), light_floor)
         world.add_child(world_life)
+        # THE AIR ITSELF (WB-10): every noise-making element the craft passes
+        # placed now SPEAKS FROM ITS PLACE — positional emitters hung on the
+        # braziers, machines, chains, vents and damp spots. They ride the
+        # Ambient bus, so they muffle with the world's air as reality thins.
+        # (Emitters must spawn INSIDE the tree or their play() never lands.)
+        soundscape = SoundScape.new()
+        world.add_child(soundscape)
+        soundscape.setup(id, room_data, floorcraft.get_damp_spots(), world_life)
         ambient = AmbientFX.new()
         ambient.setup(id, room_size, camera)
         world.add_child(ambient)
@@ -447,8 +456,16 @@ func load_room(id: String) -> void:
 
         # --- presentation
         AudioManager.play_music(String(room_data.get("music", "")))
-        var amb: Dictionary = room_data.get("ambient", {})
-        AudioManager.play_ambient(String(amb.get("id", "")), float(amb.get("vol", 0.4)))
+        # the room's air is a STACK now (A primary / B secondary / C deep);
+        # legacy single-dict data still maps onto layer A
+        var amb_data: Variant = room_data.get("ambient", {})
+        if amb_data is Array:
+                AudioManager.play_ambient_layers(amb_data)
+        else:
+                AudioManager.play_ambient(String((amb_data as Dictionary).get("id", "")),
+                        float((amb_data as Dictionary).get("vol", 0.4)))
+        # the far field: the district's rare voice (a bell, a gust, a clank)
+        AudioManager.configure_events(room_data.get("events", []))
         # entry presentation: cinematic title card first; system lines and the
         # objective wait their turn so the card plays clean
         cinema.room_card(room_title, int(room_data.get("act", 0)))

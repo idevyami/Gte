@@ -39,6 +39,7 @@ var land_squash := 0.0        # 0..1 landing squash, decays; the sprite reads it
 var _was_on_floor := true
 var _fall_peak := 0.0
 var _step_side := 0
+var _step_variant := 0        # stone alternates two samples so no two steps are twins
 var _roll_puff_t := 0.0
 var _shape: CollisionShape2D
 var _stand_extents := Vector2(11, 24)
@@ -131,12 +132,13 @@ func _tick_timers(delta: float) -> void:
         _hurt_flash = maxf(0.0, _hurt_flash - delta)
         if is_on_floor():
                 _coyote = E0.P_COYOTE
-        # footsteps
+        # footsteps — THE GROUND ANSWERS THE EAR: each district's floor
+        # speaks its own material under the boots
         if is_on_floor() and absf(velocity.x) > 40.0 and not _rolling:
                 _step_accum += absf(velocity.x) * delta
                 if _step_accum > 34.0:
                         _step_accum = 0.0
-                        AudioManager.play_sfx("sfx_step", -10.0)
+                        _play_footstep(-10.0)
                         # every other footfall kicks a small puff
                         _step_side = 1 - _step_side
                         if _step_side == 1:
@@ -147,6 +149,28 @@ func _apply_gravity(delta: float) -> void:
         if not is_on_floor():
                 var g := E0.P_FALL_GRAVITY if velocity.y > 0.0 else E0.P_GRAVITY
                 velocity.y = minf(E0.P_MAX_FALL, velocity.y + g * delta)
+
+func _play_footstep(vol_db := -10.0) -> void:
+        ## THE GROUND ANSWERS THE EAR — the district's floor material decides
+        ## the sample: stone (two alternating voices), the engine's ringing
+        ## plating, the chapel's muffled runner, the undercity's damp.
+        var material := "stone"
+        var game := get_parent()
+        while game != null and not game is Game:
+                game = game.get_parent()
+        if game != null and game.room_data != null:
+                material = String(game.room_data.get("step_material", "stone"))
+        match material:
+                "metal":
+                        AudioManager.play_sfx("sfx_foot_metal", vol_db + 2.0)
+                "carpet":
+                        AudioManager.play_sfx("sfx_foot_carpet", vol_db)
+                "wet":
+                        AudioManager.play_sfx("sfx_foot_wet", vol_db + 1.0)
+                _:
+                        # stone alternates the soft and hard voices
+                        _step_variant = 1 - _step_variant
+                        AudioManager.play_sfx("sfx_foot_stone" if _step_variant == 1 else "sfx_step", vol_db)
 
 func _handle_movement(delta: float) -> void:
         if _rolling:
@@ -164,7 +188,7 @@ func _handle_movement(delta: float) -> void:
                 if is_on_floor() and absf(velocity.x) > 190.0 and dir * velocity.x < 0.0:
                         FX.burst(global_position + Vector2(-facing * 6.0, -2), "dust", PI if facing > 0 else 0.0, 6)
                         land_squash = maxf(land_squash, 0.22)
-                        AudioManager.play_sfx("sfx_step", -4.0)
+                        _play_footstep(-4.0)
                 velocity.x = move_toward(velocity.x, dir * E0.P_MAX_SPEED, E0.P_ACCEL * control * delta)
                 if not input_locked:
                         facing = 1 if dir > 0 else -1

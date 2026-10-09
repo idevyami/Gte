@@ -333,5 +333,12 @@ func any_scuttler_fleeing() -> bool:
                         return true
         return false
 
+func bolted_scuttler() -> Vector2:
+        ## The position of the first scuttler mid-flight (for its squeak).
+        for s in _scuttlers:
+                if String(s["state"]) == "flee":
+                        return Vector2(float(s["x"]), float(s["y"]))
+        return Vector2.ZERO
+
 func ripple_count() -> int:
         return _ripples.size()
