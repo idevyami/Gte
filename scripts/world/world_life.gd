@@ -25,6 +25,27 @@ var _t := 0.0
 
 const SCUTTLER_DISTRICTS := ["undercity", "city", "archive", "aftermath", "vessels"]
 
+# ------------------------------------------------------------------ thinning
+# (THE WORLD THINS — life flees first; pure statics, smoke-pinned)
+
+const MOTH_LEAVE_FLOOR := 0.25      # no moth leaves before this thinning
+const MOTH_LEAVE_CEIL := 0.70        # by this thinning the flames stand alone
+
+static func moth_leave_floor() -> float:
+        return MOTH_LEAVE_FLOOR
+
+static func moth_leave_ceil() -> float:
+        return MOTH_LEAVE_CEIL
+
+static func flee_radius(th: float) -> float:
+        ## The vermin's nerve shortens as reality thins: the vessel is
+        ## felt from further and further away (150 → 280 px).
+        return 150.0 + 130.0 * clampf(th, 0.0, 1.0)
+
+static func flee_speed(th: float) -> float:
+        ## And the flight itself is faster (250 → 375 px/s).
+        return 250.0 * (1.0 + 0.50 * clampf(th, 0.0, 1.0))
+
 func set_player(p: Node2D) -> void:
         ## Called after spawn — the world needs a body to respond to.
         _player = p
@@ -59,6 +80,12 @@ func setup(p_key: String, p_district: String, p_room_size: Vector2, p_lights: Ar
                 var pos: Vector2 = l["pos"]
                 var n := 2 + (rng.randi() % 3)
                 for i in n:
+                        # THE WORLD THINS: each moth carries its own nerve —
+                        # the thinning at which IT gives up and goes. The
+                        # departure is a WAVE (staggered thresholds), never
+                        # a pop; and when the world re-asserts itself the
+                        # moths RETURN to their flames.
+                        var away := Vector2(1.0 if pos.x > room_size.x * 0.5 else -1.0, -0.85).normalized()
                         _moths.append({
                                 "home": pos,
                                 "rx": rng.randf_range(9.0, 22.0),
@@ -69,6 +96,10 @@ func setup(p_key: String, p_district: String, p_room_size: Vector2, p_lights: Ar
                                 "flap": rng.randf_range(11.0, 19.0),
                                 "burst": Vector2.ZERO,
                                 "warm": 0.85 + rng.randf() * 0.3,
+                                "leave_th": MOTH_LEAVE_FLOOR + rng.randf() * (MOTH_LEAVE_CEIL - MOTH_LEAVE_FLOOR),
+                                "alpha": 1.0,
+                                "mstate": "orbit",   # orbit | leaving | returning
+                                "away": away,
                         })
         # --- scuttlers: the vermin of the strata (only where vermin live)
         _scuttlers.clear()
@@ -108,16 +139,37 @@ func _process(delta: float) -> void:
                 ppos = _player.global_position
                 pv = _player.velocity
                 grounded = _player.is_on_floor()
-        # --- moths: orbit, scatter from the passing body, resettle
+        # --- moths: orbit, scatter from the passing body, resettle —
+        #     and LEAVE FIRST when the world thins (the smallest life is
+        #     the most honest barometer of reality)
+        var th := GameState.thinning()
         for m in _moths:
                 var home: Vector2 = m["home"]
-                if ppos.distance_to(home) < 100.0:
-                        # the air moves: burst away from the body
-                        var away: Vector2 = (Vector2(home.x, home.y - 6.0) - ppos + Vector2(0.001, 0.001)).normalized()
-                        m["burst"] = (m["burst"] as Vector2).lerp(away * 52.0, 1.0 - exp(-9.0 * delta))
-                else:
-                        # the air stills: resettle onto the orbit
+                var ms := String(m["mstate"])
+                if ms == "orbit":
+                        if th > float(m["leave_th"]):
+                                # past this moth's nerve: it goes, up and out
+                                m["mstate"] = "leaving"
+                        elif ppos.distance_to(home) < 100.0:
+                                # the air moves: burst away from the body
+                                var away2: Vector2 = (Vector2(home.x, home.y - 6.0) - ppos + Vector2(0.001, 0.001)).normalized()
+                                m["burst"] = (m["burst"] as Vector2).lerp(away2 * 52.0, 1.0 - exp(-9.0 * delta))
+                        else:
+                                # the air stills: resettle onto the orbit
+                                m["burst"] = (m["burst"] as Vector2).lerp(Vector2.ZERO, 1.0 - exp(-1.6 * delta))
+                if String(m["mstate"]) == "leaving":
+                        # it flies its one decisive exit, fading as it goes
+                        m["burst"] = (m["burst"] as Vector2).lerp((m["away"] as Vector2) * 78.0, 1.0 - exp(-2.5 * delta))
+                        m["alpha"] = maxf(0.0, float(m["alpha"]) - delta / 1.1)
+                        if th < float(m["leave_th"]) - 0.08:
+                                m["mstate"] = "returning"   # the world re-asserts
+                elif String(m["mstate"]) == "returning":
                         m["burst"] = (m["burst"] as Vector2).lerp(Vector2.ZERO, 1.0 - exp(-1.6 * delta))
+                        m["alpha"] = minf(1.0, float(m["alpha"]) + delta / 1.6)
+                        if float(m["alpha"]) >= 1.0:
+                                m["mstate"] = "orbit"
+                        elif th > float(m["leave_th"]):
+                                m["mstate"] = "leaving"     # thinned again mid-return
         # --- scuttlers: patrol the back edge, flee the vessel, vanish, return
         var rng := RandomNumberGenerator.new()
         rng.seed = hash("wl:" + key)
@@ -128,13 +180,13 @@ func _process(delta: float) -> void:
                                 if float(s["x"]) < 40.0 or float(s["x"]) > room_size.x - 40.0:
                                         s["dir"] = -float(s["dir"])
                                         s["x"] = clampf(float(s["x"]), 40.0, room_size.x - 40.0)
-                                # a passing body within 150px = flight
-                                if absf(ppos.x - float(s["x"])) < 150.0 and absf(ppos.y - floor_y) < 90.0:
+                                # a passing body inside the (thinned) nerve radius = flight
+                                if absf(ppos.x - float(s["x"])) < flee_radius(th) and absf(ppos.y - floor_y) < 90.0:
                                         s["state"] = "flee"
                                         s["dir"] = 1.0 if ppos.x < float(s["x"]) else -1.0
                                         s["timer"] = rng.randf_range(1.1, 1.9)
                         "flee":
-                                s["x"] = float(s["x"]) + float(s["dir"]) * 250.0 * delta
+                                s["x"] = float(s["x"]) + float(s["dir"]) * flee_speed(th) * delta
                                 s["timer"] = float(s["timer"]) - delta
                                 if float(s["timer"]) <= 0.0 or float(s["x"]) < 20.0 or float(s["x"]) > room_size.x - 20.0:
                                         s["state"] = "gone"
@@ -189,6 +241,9 @@ func _draw() -> void:
         var wa := _wake_a()
         # --- moths: pale wings around every flame
         for m in _moths:
+                var malpha: float = float(m["alpha"])
+                if malpha <= 0.012:
+                        continue            # gone with the thinning — undrawn
                 var home: Vector2 = m["home"]
                 var rx: float = m["rx"]
                 var ry: float = m["ry"]
@@ -199,9 +254,10 @@ func _draw() -> void:
                 var p := home + Vector2(
                         cos(_t * sp + ph) * rx + sin(_t * sp2 + ph * 1.7) * rx * 0.3,
                         sin(_t * sp2 + ph) * ry) + burst
-                var flap := absf(sin(_t * float(m["flap"]) + ph))
+                var leaving := String(m["mstate"]) == "leaving"
+                var flap := absf(sin(_t * float(m["flap"]) * (1.45 if leaving else 1.0) + ph))
                 var warm: float = m["warm"]
-                var col := Color(E0.PARCH.r * warm, E0.PARCH.g * warm, E0.PARCH.b * 0.95, (0.55 + 0.35 * flap) * wa)
+                var col := Color(E0.PARCH.r * warm, E0.PARCH.g * warm, E0.PARCH.b * 0.95, (0.55 + 0.35 * flap) * wa * malpha)
                 # two wing triangles beating around a bone body
                 var wing := 1.4 + 1.5 * flap
                 draw_colored_polygon(PackedVector2Array([
@@ -214,7 +270,7 @@ func _draw() -> void:
                         p + Vector2(2.6 + wing, -1.6 - wing * 0.6),
                         p + Vector2(1.2 + wing * 0.4, 0.8),
                 ]), Color(col.r, col.g, col.b, col.a * 0.8))
-                draw_circle(p, 0.9, Color(E0.BONE.r, E0.BONE.g, E0.BONE.b, 0.8 * wa))
+                draw_circle(p, 0.9, Color(E0.BONE.r, E0.BONE.g, E0.BONE.b, 0.8 * wa * malpha))
         # --- scuttlers: the vermin of the floor's back edge
         # (READABILITY LAW: a 9px body must survive a dark floor — the body
         # carries a pale dorsal highlight, bone eye-glints big enough to
@@ -311,6 +367,40 @@ func _ellipse_local(c: Vector2, rx: float, ry: float, col: Color) -> void:
 
 func moth_count() -> int:
         return _moths.size()
+
+func moth_leave_thresholds() -> Array:
+        ## THE WORLD THINS: every moth's nerve threshold (smoke law —
+        ## staggered inside the floor/ceiling band, so the departure is
+        ## a wave and the population law is derivable).
+        var out: Array = []
+        for m in _moths:
+                out.append(float(m["leave_th"]))
+        return out
+
+func moth_population_target(th: float) -> int:
+        ## How many moths this room holds at thinning th (pure count over
+        ## the staggered nerves — full at/below the floor, none at/above
+        ## the ceiling; smoke law).
+        var n := 0
+        for m in _moths:
+                if th <= float(m["leave_th"]):
+                        n += 1
+        return n
+
+func visible_moths() -> int:
+        ## How many moths are drawn right now (alpha > 0.05 — the leaving
+        ## fade and the returning settle are both in flight).
+        var n := 0
+        for m in _moths:
+                if float(m["alpha"]) > 0.05:
+                        n += 1
+        return n
+
+func any_moth_leaving() -> bool:
+        for m in _moths:
+                if String(m["mstate"]) == "leaving":
+                        return true
+        return false
 
 func moth_count_at_light(pos: Vector2) -> int:
         var n := 0

@@ -74,7 +74,11 @@ func _process(delta: float) -> void:
         var baseline_tear: float = [0.0, 0.02, 0.05, 0.09, 0.16, 0.26][clampi(stage - 1, 0, 5)]
         var grain: float = [0.035, 0.05, 0.065, 0.08, 0.1, 0.13][clampi(stage - 1, 0, 5)]
         _observe_grade = lerpf(_observe_grade, _grade_target, minf(1.0, delta * 6.0))
-        _ca = lerpf(_ca, 0.15 if _reading_depth > 0 else 1.0, minf(1.0, delta * 6.0))
+        # THE WORLD THINS: the lens fails a little further as reality thins
+        # (CA grows with the thinning; a reading surface still overrides —
+        # body text always reads clean)
+        var ca_world := 1.0 + 0.35 * GameState.thinning()
+        _ca = lerpf(_ca, 0.15 if _reading_depth > 0 else ca_world, minf(1.0, delta * 6.0))
         _post_mat.set_shader_parameter("grain_amount", grain)
         _post_mat.set_shader_parameter("vignette_strength", 0.42 + 0.05 * stage)
         _post_mat.set_shader_parameter("tearing", baseline_tear + _tear_pulse)

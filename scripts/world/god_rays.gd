@@ -85,19 +85,36 @@ func beam_count() -> int:
         ## get their focal beams — undercity/city included since WB-8).
         return _beams.size()
 
+# ------------------------------------------------------------------ thinning
+# (THE WORLD THINS — the rays pale; pure static, smoke-pinned)
+
+static func pale(th: float) -> float:
+        ## The sky's light loses its certainty as reality thins (1 → 0.45).
+        return clampf(1.0 - 0.55 * clampf(th, 0.0, 1.0), 0.0, 1.0)
+
+static func uncertainty(th: float) -> float:
+        ## And the shafts themselves grow uncertain — their breadth wobbles
+        ## wider (0 → 0.35 extra sway amplitude).
+        return 0.35 * clampf(th, 0.0, 1.0)
+
 func _draw() -> void:
         if _beams.is_empty():
                 return
         var col_base: Color = PRESETS[key]["col"]
         var scroll := _camera.global_position if _camera else Vector2.ZERO
         var tex := get_beam_texture()
+        # THE WORLD THINS: the rays pale and grow uncertain — the sky itself
+        # loses its conviction as reality thins
+        var th := GameState.thinning()
+        var pk := pale(th)
+        var uk := uncertainty(th)
         for b in _beams:
                 var x: float = b["x"] - scroll.x * 0.12
-                var w: float = b["w"]
+                var w: float = b["w"] * (1.0 + uk * sin(_t * 0.9 + float(b["ph"]) * 2.3))
                 var slant: float = b["slant"]
                 var h: float = b["h"]
                 var breathe := 0.72 + 0.28 * sin(_t * 0.16 + float(b["ph"]))
-                var col := Color(col_base.r, col_base.g, col_base.b, float(b["a"]) * breathe)
+                var col := Color(col_base.r, col_base.g, col_base.b, float(b["a"]) * breathe * pk)
                 # one filtered gradient quad per beam, sheared by its slant:
                 # draw_set_transform rotation approximates the shear
                 draw_set_transform(Vector2(x, -80.0), atan(slant), Vector2(w, h))

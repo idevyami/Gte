@@ -49,6 +49,7 @@ func _run() -> void:
         await _the_record_is_a_thing()
         await _the_air_itself()
         await _the_arrival()
+        await _the_world_thins()
         print("=== %d checks, %d failures ===" % [checks, fails])
         get_tree().quit(1 if fails > 0 else 0)
 
@@ -1458,3 +1459,190 @@ func _the_arrival() -> void:
         ok(absf(game.camera.zoom.x - 1.0) < 0.02, "the lens settles as the room wakes")
         game.transition_to("act1")
         await _room("act1")
+
+func _the_world_thins() -> void:
+        ## WB-12: as the HUNTED stages drain consistency, the WORLD ITSELF
+        ## loses conviction — the lights gutter and miss beats, the ground
+        ## decays in the same breath, the air chills, the moths leave first
+        ## and return when the world re-asserts, the rays pale, the grade
+        ## drains while the vessel stays real. A DRIFT, never a switch.
+        print("[WB-12 THE WORLD THINS]")
+        game.new_game()
+        GameState.stage = 1
+        GameState.force_thinning(-1.0)
+        await _room("act1")
+        await _skip_dialogue_now()
+        await _settle_playing(2.0)
+        # --- THE STAGE LAW -------------------------------------------------
+        var law := GameState.THINNING_BY_STAGE
+        ok(absf(law[0]) < 0.001 and absf(law[1]) < 0.001 and absf(law[2] - 0.25) < 0.001
+                        and absf(law[3] - 0.45) < 0.001 and absf(law[4] - 0.70) < 0.001
+                        and absf(law[5] - 1.0) < 0.001,
+                        "the thinning follows the stages (0/0/.25/.45/.70/1)")
+        ok(GameState.thinning() < 0.05, "a fresh world is itself")
+        # --- THE DRIFT LAW (act1 does not hunt — nothing spawns) ----------
+        GameState.stage = 6
+        await _wait_real(3.2)
+        ok(GameState.thinning() > 0.70, "stage 6 thins the world (a drift, not a switch)")
+        GameState.stage = 1
+        await _wait_real(3.2)
+        ok(GameState.thinning() < 0.30, "restored consistency re-asserts the world (bidirectional)")
+        # --- THE PROOF HOOK ------------------------------------------------
+        GameState.force_thinning(0.80)
+        ok(absf(GameState.thinning() - 0.80) < 0.001, "the proof hook pins the thinning instantly")
+        GameState.force_thinning(-1.0)
+        # --- THE SHARED DECAY LAW (statics) --------------------------------
+        var pos := Vector2(320.0, 240.0)
+        ok(absf(Lights.thin_at(pos, 0.4, 0.0, 12.34) - 1.0) < 0.0001, "an unthinned source draws at full conviction")
+        ok(absf(Lights.thin_at(pos, 0.4, 0.80, 12.34) - Lights.thin_at(pos, 0.4, 0.80, 12.34)) < 0.00001,
+                        "the decay is deterministic (same args, same value)")
+        var mono := true
+        var t_s := 0.0
+        while t_s < 6.0:
+                if Lights.thin_at(pos, 0.4, 0.90, t_s) > Lights.thin_at(pos, 0.4, 0.50, t_s) + 0.00001 \
+                                or Lights.thin_at(pos, 0.4, 0.50, t_s) > Lights.thin_at(pos, 0.4, 0.20, t_s) + 0.00001:
+                        mono = false
+                t_s += 0.05
+        ok(mono, "the decay deepens monotonically with the thinning")
+        var gate_holds := true
+        t_s = 0.0
+        while t_s < 6.0:
+                if absf(Lights.thin_at(pos, 0.5, 0.55, t_s) - (1.0 - Lights.THIN_CONVICT * 0.55)) > 0.0001:
+                        gate_holds = false
+                t_s += 0.1
+        ok(gate_holds, "no flame misses a beat before the gate")
+        var missed := false
+        var floor_holds := true
+        t_s = 0.0
+        while t_s < 8.0:
+                var f := Lights.thin_at(pos, 0.5, 1.0, t_s)
+                if f < 1.0 - Lights.THIN_CONVICT - 0.0001:
+                        missed = true
+                if f < Lights.THIN_MISS_FLOOR - 0.001:
+                        floor_holds = false
+                t_s += 0.05
+        ok(missed, "at full thin a flame sometimes misses its beat")
+        ok(floor_holds, "a missed beat gutters low but never dies")
+        var static_clean := true
+        t_s = 0.0
+        while t_s < 6.0:
+                if absf(Lights.thin_at(pos, 0.0, 1.0, t_s) - (1.0 - Lights.THIN_CONVICT)) > 0.0001:
+                        static_clean = false
+                t_s += 0.1
+        ok(static_clean, "machine veins only dim — they never miss")
+        ok(absf(Lights.agitation(0.3, 0.0) - 1.0) < 0.001 and absf(Lights.agitation(0.3, 1.0) - 1.9) < 0.001,
+                        "living flames grow agitated with the thinning (1 → 1.9)")
+        # --- THE AIR CHILLS (statics) --------------------------------------
+        ok(absf(AmbientFX.mote_dim(0.0) - 1.0) < 0.001 and absf(AmbientFX.mote_dim(1.0) - 0.55) < 0.001,
+                        "the motes lose their glimmer (1 → 0.55)")
+        ok(absf(AmbientFX.mote_slow(1.0) - 0.65) < 0.001 and absf(AmbientFX.mist_gain(1.0) - 1.5) < 0.001
+                        and absf(AmbientFX.ash_heavy(1.0) - 1.25) < 0.001 and absf(AmbientFX.weather_churn(1.0) - 1.6) < 0.001,
+                        "the air thickens, the haze gathers, the ash falls heavier, the weather churns")
+        # --- THE RAYS PALE / THE GRADE DRAINS (statics) --------------------
+        ok(absf(GodRays.pale(0.0) - 1.0) < 0.001 and absf(GodRays.pale(1.0) - 0.45) < 0.001
+                        and absf(GodRays.uncertainty(1.0) - 0.35) < 0.001,
+                        "the sky's light loses its certainty (1 → 0.45, uncertain breadth)")
+        ok(absf(Game.grade_drain(0.0) - 1.0) < 0.001 and absf(Game.grade_drain(1.0) - 0.90) < 0.001
+                        and absf(Game.grade_desat(1.0) - 0.12) < 0.001,
+                        "the grade drains (1 → 0.90) and desaturates (→ 0.12 toward gray)")
+        # --- LIFE'S NERVE (statics) ----------------------------------------
+        ok(absf(WorldLife.flee_radius(0.0) - 150.0) < 0.001 and absf(WorldLife.flee_radius(1.0) - 280.0) < 0.001
+                        and absf(WorldLife.flee_speed(1.0) - 375.0) < 0.001,
+                        "the vermin's nerve shortens (150 → 280px) and the flight quickens (→ 375)")
+        # --- THE ONE-THINNING LAW (instance: flame and ground as one) -----
+        GameState.force_thinning(0.0)
+        await _frames(2)
+        var all_full := true
+        for i in game.lights.lights.size():
+                if absf(game.lights.thinning_factor(i) - 1.0) > 0.0001:
+                        all_full = false
+        ok(all_full, "an unthinned room draws every source at conviction")
+        GameState.force_thinning(1.0)
+        await _frames(2)
+        var bounded := true
+        var same_breath := true
+        for i in game.lights.lights.size():
+                var f2 := game.lights.thinning_factor(i)
+                if f2 > 1.0 - Lights.THIN_CONVICT + 0.001 or f2 < Lights.THIN_MISS_FLOOR - 0.001:
+                        bounded = false
+                if absf(game.floor_lights.thinning_factor(i) - f2) > 0.0001:
+                        same_breath = false
+        ok(bounded, "a fully thinned source draws inside the legibility band")
+        ok(same_breath, "the ground loses the fire in the same breath (one thinning per position)")
+        var miss_seen := false
+        var miss_t := 0.0
+        while miss_t < 2.4:
+                for i in game.lights.lights.size():
+                        var l: Dictionary = game.lights.lights[i]
+                        if float(l.get("flicker", 0.0)) > 0.15 and game.lights.thinning_factor(i) < 0.5:
+                                miss_seen = true
+                miss_t += 0.12
+                await _wait_real(0.12)
+        ok(miss_seen, "a living flame is caught mid-miss in the running world")
+        # --- THE GRADE DRAINS, THE VESSEL DOES NOT -------------------------
+        var graded: Node2D = game._graded_nodes[0]
+        var lum_thin := (graded.modulate.r + graded.modulate.g + graded.modulate.b) / 3.0
+        ok(not (game.player in game._graded_nodes), "the vessel is never graded — he stays real while the world fails")
+        GameState.force_thinning(0.0)
+        await _frames(3)
+        var lum_home := (graded.modulate.r + graded.modulate.g + graded.modulate.b) / 3.0
+        ok(lum_home > lum_thin + 0.005, "the drained grade returns home with the world")
+        # --- THE LENS FAILS LAST (CA grows; reading still overrides) -------
+        GameState.force_thinning(1.0)
+        await _wait_real(1.0)
+        ok(FX._ca > 1.25, "the lens fails further as reality thins (CA grows)")
+        FX.push_reading()
+        await _wait_real(0.6)
+        ok(FX._ca < 0.30, "a reading surface still steadies the lens at full thin")
+        FX.pop_reading()
+        GameState.force_thinning(-1.0)
+        # --- LIFE FLEES FIRST (the chapel's flames) ------------------------
+        game.transition_to("act5")
+        await _room("act5")
+        await _skip_dialogue_now()
+        await _settle_playing(1.5)
+        await _wait_real(1.0)
+        var moths0 := game.world_life.moth_count()
+        ok(moths0 > 0, "the chapel's flames carry moths")
+        var ths := game.world_life.moth_leave_thresholds()
+        var nerves_staggered := true
+        for v in ths:
+                if float(v) < WorldLife.MOTH_LEAVE_FLOOR - 0.0001 or float(v) > WorldLife.MOTH_LEAVE_CEIL + 0.0001:
+                        nerves_staggered = false
+        ok(nerves_staggered and ths.size() == moths0, "every moth carries a nerve staggered inside the band")
+        ok(game.world_life.moth_population_target(0.24) == moths0, "the full population holds below the floor")
+        ok(game.world_life.moth_population_target(0.71) == 0, "the flames stand alone at the ceiling")
+        GameState.force_thinning(0.85)
+        await _wait_real(0.5)
+        ok(game.world_life.any_moth_leaving(), "the moths leave first as reality thins")
+        await _wait_real(1.6)
+        ok(game.world_life.visible_moths() == 0, "by full leave the flames stand alone")
+        GameState.force_thinning(0.0)
+        await _wait_real(2.4)
+        ok(game.world_life.visible_moths() == moths0, "the moths return when the world re-asserts itself")
+        GameState.force_thinning(-1.0)
+        GameState.stage = 1
+
+func _wait_real(t: float) -> void:
+        await get_tree().create_timer(t, true, false, true).timeout
+
+func _settle_playing(t: float) -> void:
+        ## The intro dialogue can open a few frames AFTER the room reports
+        ## 'playing' — skip anything that opens and hold until the game is
+        ## genuinely settled in the playing state (WB-12 laws read live
+        ## renderer behaviour, so the state must be real).
+        var elapsed := 0.0
+        while elapsed < t:
+                if game.dialogue_box.active:
+                        game.dialogue_box.chars_shown = 99999
+                        game.dialogue_box.advance()
+                await get_tree().process_frame
+                elapsed += get_process_delta_time()
+        while game.dialogue_box.active:
+                game.dialogue_box.chars_shown = 99999
+                game.dialogue_box.advance()
+                await _frames(2)
+        for i in 10:
+                if game.state == "playing":
+                        break
+                await _frames(1)

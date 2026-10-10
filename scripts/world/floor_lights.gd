@@ -7,6 +7,9 @@
 ## spill, a hot core pool, a sheen line catching the dressed course edge,
 ## a vertical smear under cone lights, and a fixture grounding mark (sconce
 ## bracket / conduit node) so no glow is ever sourceless.
+## THE WORLD THINS (WB-12): the pools decay through the SAME pure function
+## their flames do (Lights.thin_at) — the ground loses the fire in the
+## same breath the fire loses itself, and a missed beat drops its pool too.
 class_name FloorLights
 extends Node2D
 
@@ -83,14 +86,21 @@ func _draw() -> void:
                 var col: Color = l["color"]
                 var flicker: float = float(l.get("flicker", 0.0))
                 var ph := pos.x * 0.13 + pos.y * 0.07
+                var th := GameState.thinning()
                 var k := 1.0
                 if flicker > 0.0:
-                        k = 1.0 - flicker * (0.4 + 0.6 * absf(sin(_t * 7.0 + ph)))
+                        k = 1.0 - flicker * (0.4 + 0.6 * absf(sin(_t * 7.0 + ph))) \
+                                        * Lights.agitation(flicker, th)
+                        k = clampf(k, 0.25, 1.0)
                 # THE ARRIVAL: the pool multiplies by the SAME wake factor its
                 # source draws with (Wake.delay_for is a pure function of
                 # position — ground and flame catch in the same breath)
                 if _wake != null and not _wake.done():
                         k *= _wake.factor_at(pos)
+                # THE WORLD THINS: the pool multiplies by the SAME decay its
+                # flame draws with (Lights.thin_at is the one shared law)
+                if th > 0.001:
+                        k *= Lights.thin_at(pos, flicker, th, _t)
                 # the flame dances: the pool wobbles beneath its source
                 var wob_x := sin(_t * 6.3 + ph) * 2.4 * flicker
                 var breathe := 1.0 + 0.06 * sin(_t * 2.3 + ph) * (0.3 + flicker)
@@ -152,3 +162,11 @@ func current_factor(i: int) -> float:
         if _wake == null or i < 0 or i >= lights.size():
                 return 1.0
         return _wake.factor_at(lights[i]["pos"])
+
+func thinning_factor(i: int) -> float:
+        ## THE WORLD THINS: the decay this pool draws with right now —
+        ## routes through the SAME shared law its flame uses (Lights.thin_at).
+        if i < 0 or i >= lights.size():
+                return 1.0
+        var l: Dictionary = lights[i]
+        return Lights.thin_at(l["pos"], float(l.get("flicker", 0.0)), GameState.thinning(), _t)

@@ -103,10 +103,15 @@ func setup(key: String, p_room_size: Vector2, p_camera: Camera2D, p_wake: Wake =
 
 func _process(delta: float) -> void:
         _t += delta
+        # THE WORLD THINS: the air chills — the motes drift slower, the ash
+        # falls heavier and straighter, the room's weather churns (all pure
+        # functions of the shared thinning — smoke-pinned statics)
+        var th := GameState.thinning()
+        var mslow := mote_slow(th)
         for m in _motes:
                 var p: Vector2 = m["pos"]
-                p.y += float(m["vy"]) * delta
-                p.x += sin(_t * 0.35 + float(m["ph"])) * 2.0 * delta
+                p.y += float(m["vy"]) * mslow * delta
+                p.x += sin(_t * 0.35 + float(m["ph"])) * 2.0 * mslow * delta
                 if p.y < -20.0:
                         p.y = room_size.y * 0.8 + 20.0
                         p.x = randf() * room_size.x
@@ -124,7 +129,7 @@ func _process(delta: float) -> void:
                                         m["pos"] = mp + d.normalized() * 60.0 * delta
         for m in _fg_ash:
                 var p: Vector2 = m["pos"]
-                p += (m["v"] as Vector2) * delta
+                p += (m["v"] as Vector2) * ash_heavy(th) * delta
                 if p.y > room_size.y + 24.0:
                         p.y = -24.0
                         p.x = randf() * room_size.x
@@ -137,7 +142,7 @@ func _process(delta: float) -> void:
                         for m in _special:
                                 var p: Vector2 = m["pos"]
                                 p += (m["v"] as Vector2) * delta
-                                p.x += sin(_t * 0.8 + float(m["ph"])) * 8.0 * delta
+                                p.x += sin(_t * 0.8 + float(m["ph"])) * 8.0 * weather_churn(th) * delta
                                 if p.y < -18.0:
                                         p.y = room_size.y + 14.0
                                         p.x = randf() * room_size.x
@@ -155,7 +160,7 @@ func _process(delta: float) -> void:
                         for m in _special:
                                 var pp: Vector2 = m["pos"]
                                 pp.y += float(m["vy"]) * delta
-                                pp.x += sin(_t * float(m["spin"]) + float(m["ph"])) * 20.0 * delta
+                                pp.x += sin(_t * float(m["spin"]) + float(m["ph"])) * 20.0 * weather_churn(th) * delta
                                 if pp.y > room_size.y + 16.0:
                                         pp.y = -16.0
                                         pp.x = randf() * room_size.x
@@ -181,12 +186,42 @@ func air_alpha() -> float:
                 return 1.0
         return _wake.air_alpha()
 
+# ------------------------------------------------------------------ thinning
+# (THE WORLD THINS — the air chills; pure statics, smoke-pinned)
+
+static func mote_dim(th: float) -> float:
+        ## The dust motes lose their glimmer as reality thins — the air's
+        ## life drains (1 at home, 0.55 at the thinnest).
+        return clampf(1.0 - 0.45 * clampf(th, 0.0, 1.0), 0.0, 1.0)
+
+static func mote_slow(th: float) -> float:
+        ## The air thickens: the motes drift slower (1 → 0.65).
+        return clampf(1.0 - 0.35 * clampf(th, 0.0, 1.0), 0.0, 1.0)
+
+static func mist_gain(th: float) -> float:
+        ## The ground haze gathers as the world thins (1 → 1.5).
+        return 1.0 + 0.50 * clampf(th, 0.0, 1.0)
+
+static func ash_heavy(th: float) -> float:
+        ## The foreground ash falls heavier (1 → 1.25) — a thickening sky.
+        return 1.0 + 0.25 * clampf(th, 0.0, 1.0)
+
+static func weather_churn(th: float) -> float:
+        ## The room's own weather grows restless (1 → 1.6) — embers churn,
+        ## papers whip, incense doubles back.
+        return 1.0 + 0.60 * clampf(th, 0.0, 1.0)
+
 func _draw() -> void:
         # THE ARRIVAL: every airborne alpha rides the air ramp — the room's
         # matter is not born present, it CONDENSES as the space wakes
         var aa := air_alpha()
         if aa <= 0.004:
                 return                  # nothing has condensed yet
+        # THE WORLD THINS: the chilled air rides every airborne alpha
+        var th := GameState.thinning()
+        var mdim := mote_dim(th)
+        var mgain := mist_gain(th)
+        var ash_straight := 1.0 - 0.40 * th      # heavier ash falls straighter
         # --- dust motes: bright specks hanging in the air (behind actors feel,
         #     drawn softly so they read as atmosphere, not noise)
         var cam := _camera.global_position if _camera else Vector2.ZERO
@@ -195,9 +230,9 @@ func _draw() -> void:
         for m in _motes:
                 var p: Vector2 = m["pos"]
                 var twinkle := 0.6 + 0.4 * sin(_t * 1.3 + float(m["ph"]))
-                var col := Color(E0.PARCH.r, E0.PARCH.g, E0.PARCH.b, float(m["a"]) * twinkle * aa)
+                var col := Color(E0.PARCH.r, E0.PARCH.g, E0.PARCH.b, float(m["a"]) * twinkle * aa * mdim)
                 draw_circle(p, float(m["r"]), col)
-                draw_circle(p, float(m["r"]) * 2.2, Color(E0.PARCH.r, E0.PARCH.g, E0.PARCH.b, float(m["a"]) * twinkle * aa * 0.25))
+                draw_circle(p, float(m["r"]) * 2.2, Color(E0.PARCH.r, E0.PARCH.g, E0.PARCH.b, float(m["a"]) * twinkle * aa * mdim * 0.25))
         # --- floor mist: layered soft bands drifting along the ground,
         #     PARTING around the vessel's body (the world responds)
         for b in _mist_bands:
@@ -207,7 +242,7 @@ func _draw() -> void:
                 var band_h := 46.0
                 for k in 5:
                         var t := float(k) / 4.0
-                        var col := Color(E0.PARCH.r, E0.PARCH.g, E0.PARCH.b, float(b["a"]) * (1.0 - t * 0.8) * aa)
+                        var col := Color(E0.PARCH.r, E0.PARCH.g, E0.PARCH.b, float(b["a"]) * (1.0 - t * 0.8) * aa * mgain)
                         var off := (t - 0.5) * 30.0
                         var x0 := vp_l - 80.0 + drift * (1.0 - t * 0.5) + off + sp * _t * 0.4
                         x0 = fmod(x0, 320.0) - 320.0
@@ -221,7 +256,7 @@ func _draw() -> void:
         # --- foreground ash: falls in front of everything, deliberately faint
         for m in _fg_ash:
                 var p: Vector2 = m["pos"]
-                var drift := sin(_t * 0.9 + float(m["ph"])) * 5.0
+                var drift := sin(_t * 0.9 + float(m["ph"])) * 5.0 * ash_straight
                 draw_circle(p + Vector2(drift, 0.0), float(m["r"]), Color(E0.BONE.r, E0.BONE.g, E0.BONE.b, float(m["a"]) * aa))
         # --- the room's own weather ---
         match _special_kind:

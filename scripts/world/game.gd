@@ -199,6 +199,10 @@ func new_game() -> void:
         GameState.new_game()
         _visited_rooms.clear()         # a new vessel — the city forgets
         _dead_handled = false
+        # the record's last page closes with the run (a fresh vessel must
+        # never inherit the ended record's claim on the lens — smoke-pinned)
+        if end_screen and end_screen.visible:
+                end_screen._leave()
         state = "playing"
         load_room("act1")
         _spawn_player_at(Vector2(room_data["spawn"].x, room_data["spawn"].y))
@@ -650,15 +654,37 @@ func _apply_world_grade(breath: float) -> void:
         ## scenery renderers; actor skins own their modulate chain and are
         ## never in this list. THE ARRIVAL: the grade also rides the wake —
         ## the room begins held-dark (0.86) and exhales to full presence.
+        ## THE WORLD THINS: the grade DRAINS — the scenery loses luminance
+        ## and color conviction as reality thins, while the actors (never
+        ## in this list) keep their presence: the vessel stays real while
+        ## the world fails around him.
         if _graded_nodes.is_empty():
                 return
         var l := 1.0 + (breath - 0.5) * 0.024
         if wake != null and not wake.done():
                 l *= wake.grade_k()
+        var th := GameState.thinning()
+        l *= grade_drain(th)
         var tint := Color(_grade_base.r * l, _grade_base.g * l, _grade_base.b * l, 1.0)
+        var desat := grade_desat(th)
+        if desat > 0.001:
+                var lum := (tint.r + tint.g + tint.b) / 3.0
+                tint = tint.lerp(Color(lum, lum, lum, 1.0), desat)
         for n in _graded_nodes:
                 if is_instance_valid(n):
                         n.modulate = tint
+
+# ------------------------------------------------------------------ thinning
+# (THE WORLD THINS — the grade drains; pure statics, smoke-pinned)
+
+static func grade_drain(th: float) -> float:
+        ## The scenery's luminance conviction (1 → 0.90 — the world dims
+        ## but the play space stays legible).
+        return clampf(1.0 - 0.10 * clampf(th, 0.0, 1.0), 0.0, 1.0)
+
+static func grade_desat(th: float) -> float:
+        ## The scenery's color conviction (0 → 0.12 toward gray).
+        return 0.12 * clampf(th, 0.0, 1.0)
 
 # ------------------------------------------------------------------ process
 func _process(delta: float) -> void:

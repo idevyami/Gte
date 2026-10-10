@@ -58,6 +58,36 @@ var correction_timer := 0.0
 var censor_timer := 0.0
 var censor_active: Node = null
 
+# --- THE WORLD THINS (WB-12) --------------------------------------------------
+## As consistency drains through the HUNTED stages, reality itself loses
+## conviction — not as a switch but as a DRIFT. The aural side rose in
+## WB-10 (the whisper bed); this is the shared value the world's renderers
+## read: 0 = the world is itself, 1 = reality at its thinnest. Smoothed in
+## _process (time constant ~1.8s) so stage changes read as the air turning,
+## never as a cut. BIDIRECTIONAL: restore consistency and the world
+## re-asserts itself at the same drift.
+const THINNING_BY_STAGE := [0.0, 0.0, 0.25, 0.45, 0.70, 1.0]
+var _thinning := 0.0
+var _force_thinning := -1.0      # proof/test hook; < 0 = live
+
+func thinning() -> float:
+        ## The world's current thinning, 0..1 (smoothed; smoke law).
+        return _thinning
+
+func force_thinning(v: float) -> void:
+        ## Proof/test hook: pins the thinning instantly (deterministic
+        ## framing for proofs). Pass -1 to return to live stage-driven drift.
+        _force_thinning = clampf(v, -1.0, 1.0)
+        if _force_thinning >= 0.0:
+                _thinning = _force_thinning
+
+func _process(delta: float) -> void:
+        var target: float = _force_thinning if _force_thinning >= 0.0 \
+                else float(THINNING_BY_STAGE[clampi(stage - 1, 0, 5)])
+        _thinning = lerpf(_thinning, target, 1.0 - exp(-delta * 0.55))
+        if absf(_thinning - target) < 0.0005:
+                _thinning = target
+
 signal consistency_low_warning
 
 # --- Settings (persisted user://settings.json; P2 options pass) ------------------
@@ -131,6 +161,8 @@ func _reset_run() -> void:
         correction_timer = 0.0
         censor_timer = 0.0
         censor_active = null
+        _thinning = 0.0
+        _force_thinning = -1.0
 
 func new_game() -> void:
         _reset_run()
