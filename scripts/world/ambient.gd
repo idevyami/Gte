@@ -9,6 +9,7 @@ extends Node2D
 var room_size := Vector2(1280, 720)
 var _camera: Camera2D
 var _room_key := ""
+var _wake: Wake = null
 
 var _motes: Array = []        # slow bright specks in the light
 var _fg_ash: Array = []       # foreground flakes
@@ -17,10 +18,11 @@ var _special: Array = []      # per-act air: updrafts / drips / embers / papers
 var _special_kind := ""      # which phenomenon this room breathes
 var _t := 0.0
 
-func setup(key: String, p_room_size: Vector2, p_camera: Camera2D) -> void:
+func setup(key: String, p_room_size: Vector2, p_camera: Camera2D, p_wake: Wake = null) -> void:
         _room_key = key
         room_size = p_room_size
         _camera = p_camera
+        _wake = p_wake
         var rng := RandomNumberGenerator.new()
         rng.seed = hash("ambient:" + key)
         _motes.clear()
@@ -171,7 +173,20 @@ func mist_push(x: float) -> float:
                 return 0.0
         return signf(dx) * (150.0 - absf(dx)) * 0.45
 
+func air_alpha() -> float:
+        ## THE ARRIVAL (WB-11): the room's airborne matter thickens into
+        ## existence — 0 when the vessel has just stepped through, 1 once
+        ## the air is fully there. Pure function of wake.t (smoke law).
+        if _wake == null or _wake.done():
+                return 1.0
+        return _wake.air_alpha()
+
 func _draw() -> void:
+        # THE ARRIVAL: every airborne alpha rides the air ramp — the room's
+        # matter is not born present, it CONDENSES as the space wakes
+        var aa := air_alpha()
+        if aa <= 0.004:
+                return                  # nothing has condensed yet
         # --- dust motes: bright specks hanging in the air (behind actors feel,
         #     drawn softly so they read as atmosphere, not noise)
         var cam := _camera.global_position if _camera else Vector2.ZERO
@@ -180,9 +195,9 @@ func _draw() -> void:
         for m in _motes:
                 var p: Vector2 = m["pos"]
                 var twinkle := 0.6 + 0.4 * sin(_t * 1.3 + float(m["ph"]))
-                var col := Color(E0.PARCH.r, E0.PARCH.g, E0.PARCH.b, float(m["a"]) * twinkle)
+                var col := Color(E0.PARCH.r, E0.PARCH.g, E0.PARCH.b, float(m["a"]) * twinkle * aa)
                 draw_circle(p, float(m["r"]), col)
-                draw_circle(p, float(m["r"]) * 2.2, Color(E0.PARCH.r, E0.PARCH.g, E0.PARCH.b, float(m["a"]) * twinkle * 0.25))
+                draw_circle(p, float(m["r"]) * 2.2, Color(E0.PARCH.r, E0.PARCH.g, E0.PARCH.b, float(m["a"]) * twinkle * aa * 0.25))
         # --- floor mist: layered soft bands drifting along the ground,
         #     PARTING around the vessel's body (the world responds)
         for b in _mist_bands:
@@ -192,7 +207,7 @@ func _draw() -> void:
                 var band_h := 46.0
                 for k in 5:
                         var t := float(k) / 4.0
-                        var col := Color(E0.PARCH.r, E0.PARCH.g, E0.PARCH.b, float(b["a"]) * (1.0 - t * 0.8))
+                        var col := Color(E0.PARCH.r, E0.PARCH.g, E0.PARCH.b, float(b["a"]) * (1.0 - t * 0.8) * aa)
                         var off := (t - 0.5) * 30.0
                         var x0 := vp_l - 80.0 + drift * (1.0 - t * 0.5) + off + sp * _t * 0.4
                         x0 = fmod(x0, 320.0) - 320.0
@@ -207,7 +222,7 @@ func _draw() -> void:
         for m in _fg_ash:
                 var p: Vector2 = m["pos"]
                 var drift := sin(_t * 0.9 + float(m["ph"])) * 5.0
-                draw_circle(p + Vector2(drift, 0.0), float(m["r"]), Color(E0.BONE.r, E0.BONE.g, E0.BONE.b, float(m["a"])))
+                draw_circle(p + Vector2(drift, 0.0), float(m["r"]), Color(E0.BONE.r, E0.BONE.g, E0.BONE.b, float(m["a"]) * aa))
         # --- the room's own weather ---
         match _special_kind:
                 "updraft":
@@ -216,19 +231,19 @@ func _draw() -> void:
                                 var p: Vector2 = m["pos"]
                                 var sway := sin(_t * 1.1 + float(m["ph"])) * 3.0
                                 var tw := 0.6 + 0.4 * sin(_t * 2.1 + float(m["ph"]))
-                                draw_circle(p + Vector2(sway, 0.0), float(m["r"]), Color(E0.BONE.r, E0.BONE.g, E0.BONE.b, float(m["a"]) * tw))
+                                draw_circle(p + Vector2(sway, 0.0), float(m["r"]), Color(E0.BONE.r, E0.BONE.g, E0.BONE.b, float(m["a"]) * tw * aa))
                 "incense":
                         for m in _special:
                                 var p: Vector2 = m["pos"]
                                 var tw := 0.5 + 0.5 * sin(_t * 0.9 + float(m["ph"]))
-                                draw_circle(p, float(m["r"]), Color(E0.GOLD.r, E0.GOLD.g, E0.GOLD.b, float(m["a"]) * tw * 0.8))
-                                draw_circle(p, float(m["r"]) * 2.4, Color(E0.GOLD.r, E0.GOLD.g, E0.GOLD.b, float(m["a"]) * tw * 0.2))
+                                draw_circle(p, float(m["r"]), Color(E0.GOLD.r, E0.GOLD.g, E0.GOLD.b, float(m["a"]) * tw * 0.8 * aa))
+                                draw_circle(p, float(m["r"]) * 2.4, Color(E0.GOLD.r, E0.GOLD.g, E0.GOLD.b, float(m["a"]) * tw * 0.2 * aa))
                 "embers":
                         for m in _special:
                                 var p: Vector2 = m["pos"]
                                 var gut := maxf(0.0, sin(_t * 3.3 + float(m["ph"])))
                                 var sway := sin(_t * 1.4 + float(m["ph"])) * 4.0
-                                var col := Color(E0.CRIMSON.r * 1.4 + 0.25, E0.CRIMSON.g * 1.1 + 0.18, E0.CRIMSON.b * 0.7 + 0.05, float(m["a"]) * (0.4 + 0.6 * gut))
+                                var col := Color(E0.CRIMSON.r * 1.4 + 0.25, E0.CRIMSON.g * 1.1 + 0.18, E0.CRIMSON.b * 0.7 + 0.05, float(m["a"]) * (0.4 + 0.6 * gut) * aa)
                                 var at := p + Vector2(sway, 0.0)
                                 # motion streak: the ember drags its own light
                                 # upward — a fleck in flight, not a static dot
@@ -242,18 +257,18 @@ func _draw() -> void:
                                 var x: float = m["x"]
                                 var y: float = m["y"]
                                 var fl: float = m["floor"]
-                                draw_line(Vector2(x, y - 9.0), Vector2(x, y - 2.0), Color(E0.CYAN.r, E0.CYAN.g, E0.CYAN.b, 0.10), 1.0)
-                                draw_circle(Vector2(x, y), 1.4, Color(E0.CYAN.r, E0.CYAN.g, E0.CYAN.b, 0.30))
+                                draw_line(Vector2(x, y - 9.0), Vector2(x, y - 2.0), Color(E0.CYAN.r, E0.CYAN.g, E0.CYAN.b, 0.10 * aa), 1.0)
+                                draw_circle(Vector2(x, y), 1.4, Color(E0.CYAN.r, E0.CYAN.g, E0.CYAN.b, 0.30 * aa))
                                 # landing ripple only in the last stretch of the fall
                                 var dist := fl - y
                                 if dist < 40.0 and dist > 0.0:
                                         var near := 1.0 - clampf(dist / 40.0, 0.0, 1.0)
                                         var rr := 2.0 + near * 9.0
-                                        draw_circle(Vector2(x, fl), rr, Color(E0.CYAN.r, E0.CYAN.g, E0.CYAN.b, 0.10 * near))
+                                        draw_circle(Vector2(x, fl), rr, Color(E0.CYAN.r, E0.CYAN.g, E0.CYAN.b, 0.10 * near * aa))
                 "papers":
                         for m in _special:
                                 var p: Vector2 = m["pos"]
                                 var tilt := sin(_t * float(m["spin"]) + float(m["ph"]))
                                 draw_set_transform(p, tilt * 0.5, Vector2.ONE)
-                                draw_rect(Rect2(-4.5, -6.0, 9.0, 12.0), Color(E0.PARCH.r * 0.85, E0.PARCH.g * 0.85, E0.PARCH.b * 0.82, 0.34))
+                                draw_rect(Rect2(-4.5, -6.0, 9.0, 12.0), Color(E0.PARCH.r * 0.85, E0.PARCH.g * 0.85, E0.PARCH.b * 0.82, 0.34 * aa))
                                 draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)

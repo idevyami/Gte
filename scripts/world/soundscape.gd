@@ -64,17 +64,20 @@ const WARM_LIGHT_DEDUPE_R := 110.0
 const HEARING_R := 640.0
 
 var room_id := ""
-var emitters: Array = []        # [{node, kind, pos, radius, kind_id}]
-var _ticks: Array = []          # [{node, pos, sfx, vol, t, next}]
+var emitters: Array = []        # [{node, kind, pos, radius, kind_id, vol_base, fade_delay}]
+var _ticks: Array = []          # [{node, pos, sfx, vol, t, next, gate}]
 var _world_life: Node = null
+var _wake: Wake = null
 var _squeak_cd := 0.0
 var _was_fleeing := false
+var _settled := false
 var _t := 0.0
 var debug_draw := false
 
-func setup(p_room_id: String, room_data: Dictionary, damp_spots: Array, p_world_life: Node = null) -> void:
+func setup(p_room_id: String, room_data: Dictionary, damp_spots: Array, p_world_life: Node = null, p_wake: Wake = null) -> void:
         room_id = p_room_id
         _world_life = p_world_life
+        _wake = p_wake
         var rng := RandomNumberGenerator.new()
         rng.seed = hash("soundscape:" + p_room_id)
         emitters.clear()
@@ -127,12 +130,21 @@ func _spawn_loop(pos: Vector2, kind: String, loop_id: String, vol_db: float, rng
         p.bus = "Ambient"
         p.stream = stream
         p.position = pos
-        p.volume_db = vol_db + rng.randf_range(-1.5, 1.5)
+        var vol_base := vol_db + rng.randf_range(-1.5, 1.5)
+        p.volume_db = vol_base
         p.max_distance = HEARING_R
         p.area_mask = 1
         add_child(p)
         p.play()
-        emitters.append({"node": p, "kind": kind, "pos": pos, "radius": HEARING_R, "kind_id": loop_id})
+        # THE ARRIVAL: no voice is born at full volume — each starts muted
+        # and rises when its place has caught (staggered by distance from
+        # the vessel's entry, the same near-first law the lights obey)
+        var fade_delay := 0.0
+        if _wake != null:
+                fade_delay = _wake.delay_for(pos)
+                p.volume_db = vol_base - 16.0
+        emitters.append({"node": p, "kind": kind, "pos": pos, "radius": HEARING_R,
+                        "kind_id": loop_id, "vol_base": vol_base, "fade_delay": fade_delay})
 
 func _spawn_tick(pos: Vector2, kind: String, sfx: String, vol_db: float, lo: float, hi: float, rng: RandomNumberGenerator) -> void:
         var p := AudioStreamPlayer2D.new()
@@ -142,13 +154,34 @@ func _spawn_tick(pos: Vector2, kind: String, sfx: String, vol_db: float, lo: flo
         p.volume_db = vol_db
         p.max_distance = HEARING_R
         add_child(p)
+        var first := rng.randf_range(lo, hi * 0.6)
+        var gate := 0.0
+        if _wake != null:
+                # THE ARRIVAL: no bell tolls, no chain creaks, before its
+                # place has woken — the first utterance waits for the catch
+                gate = _wake.delay_for(pos) + 0.3
+                first = maxf(first, gate)
         _ticks.append({"node": p, "kind": kind, "pos": pos, "sfx": sfx, "vol": vol_db,
-                        "t": rng.randf_range(lo, hi * 0.6), "next": [lo, hi]})
+                        "t": first, "next": [lo, hi], "gate": gate})
 
 func _process(delta: float) -> void:
         _t += delta
         if _squeak_cd > 0.0:
                 _squeak_cd -= delta
+        # --- THE ARRIVAL: the room's voices assemble — each loop rises when
+        #     its place has caught, then holds its full voice once settled
+        if _wake != null:
+                if not _wake.done():
+                        for e in emitters:
+                                var n2: AudioStreamPlayer2D = e["node"]
+                                var vb: float = e["vol_base"]
+                                n2.volume_db = lerpf(vb - 16.0, vb, _wake.sound_fade(e["pos"]))
+                elif not _settled:
+                        # the wake is over — every voice snaps to full (a
+                        # one-time guard against float drift at the boundary)
+                        _settled = true
+                        for e in emitters:
+                                (e["node"] as AudioStreamPlayer2D).volume_db = float(e["vol_base"])
         # --- the world's elements keep their own time ---
         for tk in _ticks:
                 tk["t"] -= delta
@@ -193,6 +226,30 @@ func loop_count() -> int:
 
 func tick_count() -> int:
         return _ticks.size()
+
+func emitter_gain_frac(i: int) -> float:
+        ## 0 = still muted (the room just began waking), 1 = full voice.
+        ## (smoke law probe — linear domain, relative to its target)
+        if i < 0 or i >= emitters.size():
+                return 1.0
+        var e: Dictionary = emitters[i]
+        var n: AudioStreamPlayer2D = e["node"]
+        var vb: float = e["vol_base"]
+        if vb <= -60.0:
+                return 1.0
+        var lin := db_to_linear(n.volume_db)
+        var tgt := db_to_linear(vb)
+        var mute := db_to_linear(vb - 16.0)
+        if tgt <= mute:
+                return 1.0
+        return clampf((lin - mute) / (tgt - mute), 0.0, 1.0)
+
+func tick_gate(i: int) -> float:
+        ## When this tick's voice is first ALLOWED to speak (its place's
+        ## catch moment + a breath). No utterance precedes its gate.
+        if i < 0 or i >= _ticks.size():
+                return 0.0
+        return float(_ticks[i].get("gate", 0.0))
 
 func _draw() -> void:
         ## THE SOUND MAP — the aural landscape, drawn for proofs. The rings are

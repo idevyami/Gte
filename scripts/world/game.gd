@@ -55,6 +55,13 @@ var ambient: AmbientFX = null
 var foreground: Foreground = null
 var soundscape: SoundScape = null
 
+# THE ARRIVAL (WB-11): the room-entry wake — no space is born pre-lit.
+# Each room gets a Wake conductor on load; a room already visited wakes
+# QUICK because the city remembers the vessel (session memory, cleared
+# with each new game).
+var wake: Wake = null
+static var _visited_rooms := {}
+
 # per-district world grade: a whisper of temperature on the SCENERY
 # renderers only (architecture, backdrop, air) — actors, UI and combat FX
 # keep their exact approved colors. Values stay within ±7% of white and
@@ -190,6 +197,7 @@ func teardown() -> void:
 
 func new_game() -> void:
         GameState.new_game()
+        _visited_rooms.clear()         # a new vessel — the city forgets
         _dead_handled = false
         state = "playing"
         load_room("act1")
@@ -240,6 +248,14 @@ func load_room(id: String) -> void:
         room_title = String(room_data.get("title", ""))
         room_size = room_data.get("size", Vector2(1280, 720))
         GameState.current_room = id
+
+        # --- THE ARRIVAL: build the wake conductor FIRST — every renderer
+        #     built below asks it when its elements catch. First visit is the
+        #     full choreography; a revisit is quick (the room remembers).
+        var spawn_pos := room_data.get("spawn", Vector2(120, 620)) as Vector2
+        var full_wake := not _visited_rooms.has(id)
+        _visited_rooms[id] = true
+        wake = Wake.make(spawn_pos, full_wake, room_size)
 
         # --- static geometry
         var floors: Array = room_data.get("floors", [])
@@ -321,7 +337,7 @@ func load_room(id: String) -> void:
         var light_floor := -1.0
         if not floors.is_empty():
                 light_floor = (floors[0] as Rect2).position.y
-        lights.setup(room_data.get("lights", []), light_floor)
+        lights.setup(room_data.get("lights", []), light_floor, wake)
         world.add_child(lights)
         # THE GROUND ANSWERS THE FIRE (WB-8): the floor's light response drawn
         # ON the walking surface — the old spill lived at z=-5 under FloorCraft's
@@ -341,7 +357,7 @@ func load_room(id: String) -> void:
                 var ddp: Vector2 = dd.get("pos", Vector2.ZERO)
                 fl_anchors.append({"x": ddp.x, "y": ddp.y})
         floor_lights = FloorLights.new()
-        floor_lights.setup(room_data.get("lights", []), light_floor, fl_anchors)
+        floor_lights.setup(room_data.get("lights", []), light_floor, fl_anchors, wake)
         world.add_child(floor_lights)
         # THE WORLD RESPONDS (WB-8): moths at every flame, vermin on the back
         # edge, ripples where boots meet the weep spots — the near-plane life
@@ -349,6 +365,7 @@ func load_room(id: String) -> void:
         world_life = WorldLife.new()
         world_life.setup(id, String(room_data.get("backdrop", "")), room_size,
                 room_data.get("lights", []), null, floorcraft.get_damp_spots(), light_floor)
+        world_life.set_wake(wake)
         world.add_child(world_life)
         # THE AIR ITSELF (WB-10): every noise-making element the craft passes
         # placed now SPEAKS FROM ITS PLACE — positional emitters hung on the
@@ -357,9 +374,9 @@ func load_room(id: String) -> void:
         # (Emitters must spawn INSIDE the tree or their play() never lands.)
         soundscape = SoundScape.new()
         world.add_child(soundscape)
-        soundscape.setup(id, room_data, floorcraft.get_damp_spots(), world_life)
+        soundscape.setup(id, room_data, floorcraft.get_damp_spots(), world_life, wake)
         ambient = AmbientFX.new()
-        ambient.setup(id, room_size, camera)
+        ambient.setup(id, room_size, camera, wake)
         world.add_child(ambient)
         # volumetric shafts for the lit rooms (chapel / reliquary / engine / aftermath)
         var rays := GodRays.new()
@@ -453,9 +470,19 @@ func load_room(id: String) -> void:
         camera.setup(player, room_size)
         if world_life:
                 world_life.set_player(player)
+        # THE ARRIVAL: on a first visit the lens leans back a touch, then
+        # settles as the room wakes (a quiet widening of the first glance —
+        # never on revisits, and never during the wake's thrift cadence)
+        if full_wake:
+                camera.zoom = Vector2(1.05, 1.05)
+                camera.zoom_target = 1.0
+                camera.zoom_speed = 0.85
 
         # --- presentation
         AudioManager.play_music(String(room_data.get("music", "")))
+        # THE ARRIVAL: first visits swell the beds slowly (the air assembles
+        # with the wake); revisits get there quick
+        AudioManager.configure_wake(full_wake)
         # the room's air is a STACK now (A primary / B secondary / C deep);
         # legacy single-dict data still maps onto layer A
         var amb_data: Variant = room_data.get("ambient", {})
@@ -621,10 +648,13 @@ func _spawn_player_at(pos: Vector2) -> void:
 func _apply_world_grade(breath: float) -> void:
         ## breath ∈ [0,1] — the slow luminance cycle. Applied as modulate on
         ## scenery renderers; actor skins own their modulate chain and are
-        ## never in this list.
+        ## never in this list. THE ARRIVAL: the grade also rides the wake —
+        ## the room begins held-dark (0.86) and exhales to full presence.
         if _graded_nodes.is_empty():
                 return
         var l := 1.0 + (breath - 0.5) * 0.024
+        if wake != null and not wake.done():
+                l *= wake.grade_k()
         var tint := Color(_grade_base.r * l, _grade_base.g * l, _grade_base.b * l, 1.0)
         for n in _graded_nodes:
                 if is_instance_valid(n):
@@ -645,6 +675,8 @@ func _process(delta: float) -> void:
                         _hunted(delta)
                         _combat_music(delta)
                         _apply_hidden_state()
+                        if wake != null:
+                                wake.tick(delta)
                         _grade_t += delta * 0.7
                         _apply_world_grade(0.5 + 0.5 * sin(_grade_t))
                 "dialogue":

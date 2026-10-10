@@ -68,6 +68,8 @@ var _ambient_target := 0.0
 var _ambient_b_target := 0.0
 var _ambient_c_target := 0.0
 var _whisper_target := 0.0
+var _layer_rate := 1.6         # bed swell speed — slow on a first arrival
+                                # (the room's air assembles), quick on a revisit
 var _combat_overlay: AudioStreamPlayer
 var _heartbeat: AudioStreamPlayer
 var _event: AudioStreamPlayer           # far-field ambient events
@@ -256,6 +258,12 @@ func play_ambient(id: String, vol := 0.5) -> void:
         _layer_b("", 0.0)
         _layer_c("", 0.0)
 
+## THE ARRIVAL (WB-11): a first-visit room swells its beds slowly (the
+## air assembles with the wake); a room that remembers the vessel gets
+## there faster. Called by game.load_room before the layers change.
+func configure_wake(full: bool) -> void:
+        _layer_rate = 0.85 if full else 2.4
+
 ## THE FAR FIELD: the district's rare events (a bell, a gust, a far clank).
 ## min/max bound the scheduler's silence; the world never hurries.
 func configure_events(palette: Array, min_delay := 18.0, max_delay := 55.0) -> void:
@@ -402,13 +410,13 @@ func _process(delta: float) -> void:
         m = lerpf(m, _music_target, minf(1.0, delta * 2.2))
         _music.volume_db = linear_to_db(maxf(0.001, m))
         var a := db_to_linear(_ambient.volume_db)
-        a = lerpf(a, _ambient_target, minf(1.0, delta * 1.6))
+        a = lerpf(a, _ambient_target, minf(1.0, delta * _layer_rate))
         _ambient.volume_db = linear_to_db(maxf(0.001, a))
         var b := db_to_linear(_ambient_b.volume_db)
-        b = lerpf(b, _ambient_b_target, minf(1.0, delta * 1.6))
+        b = lerpf(b, _ambient_b_target, minf(1.0, delta * _layer_rate))
         _ambient_b.volume_db = linear_to_db(maxf(0.001, b))
         var c := db_to_linear(_ambient_c.volume_db)
-        c = lerpf(c, _ambient_c_target, minf(1.0, delta * 1.6))
+        c = lerpf(c, _ambient_c_target, minf(1.0, delta * _layer_rate))
         _ambient_c.volume_db = linear_to_db(maxf(0.001, c))
         var d := db_to_linear(_ambient_d.volume_db)
         d = lerpf(d, _whisper_target, minf(1.0, delta * 0.5))

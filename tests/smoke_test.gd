@@ -48,6 +48,7 @@ func _run() -> void:
         await _world_responds()
         await _the_record_is_a_thing()
         await _the_air_itself()
+        await _the_arrival()
         print("=== %d checks, %d failures ===" % [checks, fails])
         get_tree().quit(1 if fails > 0 else 0)
 
@@ -1373,3 +1374,87 @@ func _step_sample_check(act: String, want_part: String, label: String) -> void:
                         path = p.stream.resource_path
                         break
         ok(path.contains(want_part), label)
+
+# ------------------------------------------------------------------ WB-11
+func _skip_dialogue_now() -> void:
+        while game.dialogue_box.active:
+                game.dialogue_box.chars_shown = 99999
+                game.dialogue_box.advance()
+                await _frames(2)
+
+func _the_arrival() -> void:
+        ## WB-11: the room-entry wake — no space is born pre-lit. The lights
+        ## catch NEAR-FIRST from where the vessel stands, each catch flares,
+        ## the ground answers in the same breath, the air condenses into
+        ## presence, the voices assemble staggered, the grade exhales from
+        ## held-dark — and a revisited room wakes QUICK because it remembers.
+        print("[WB-11 THE ARRIVAL]")
+        game.new_game()                      # fresh room memory
+        await _room("act1")
+        await _skip_dialogue_now()
+        ok(game.wake != null, "the room carries a wake conductor")
+        ok(game.wake.full, "a first visit is a full wake")
+        ok(absf(game.wake.span - Wake.SPAN_FULL) < 0.001, "the full wake spans its choreography")
+        # --- THE IGNITION ORDER FOLLOWS THE VESSEL ------------------------
+        # act1: light 0 (160,850) stands near the spawn (140,974);
+        # light 2 (1430,130) waits at the top of the ascent shaft
+        var d_near := game.lights.ignition_delay(0)
+        var d_far := game.lights.ignition_delay(2)
+        ok(d_near >= 0.0 and d_near <= game.wake.span * 0.85, "every ignition waits inside the span")
+        ok(d_far > d_near, "the far source catches after the near one (the near-first law)")
+        ok(absf(game.floor_lights.ignition_delay(2) - d_far) < 0.0001, "the ground derives the same ignition as its flame")
+        # --- PRE-IGNITION: EMBERS ------------------------------------------
+        game.wake.t = 0.0
+        ok(game.lights.current_factor(2) < 0.3, "an unlit source waits as an ember")
+        ok(game.floor_lights.current_factor(2) < 0.3, "its pool waits with it")
+        ok(game.ambient.air_alpha() < 0.05, "the air begins absent")
+        ok(game.wake.grade_k() < 0.9, "the room begins held-dark")
+        # --- THE EMBER GATHERS ---------------------------------------------
+        var gutter := game.lights.current_factor_at(d_far - 0.05, 2)
+        ok(gutter >= Wake.EMBER - 0.0001 and gutter <= Wake.EMBER + 0.081, "the ember gutters as its catch gathers")
+        # --- THE CATCH FLARES ----------------------------------------------
+        game.wake.t = d_near + 0.03
+        ok(game.lights.current_factor(0) > 1.2, "the catch flares past settled")
+        ok(absf(game.floor_lights.current_factor(0) - game.lights.current_factor(0)) < 0.0001,
+                        "the ground answers the catch in the same breath")
+        ok(game.lights.current_factor(2) < 0.3, "the far source is still an ember while the near one flares")
+        # --- SETTLED PRESENCE ----------------------------------------------
+        game.wake.t = game.wake.span + 1.0
+        ok(absf(game.lights.current_factor(0) - 1.0) < 0.001, "the flare settles to full presence")
+        ok(absf(game.lights.current_factor(2) - 1.0) < 0.001, "every source reaches presence by span's end")
+        ok(game.ambient.air_alpha() > 0.95, "the air has condensed into presence")
+        ok(absf(game.wake.grade_k() - 1.0) < 0.001, "the grade has exhaled to full")
+        # --- THE VOICES ASSEMBLE STAGGERED ---------------------------------
+        game.transition_to("act5")
+        await _room("act5")
+        await _skip_dialogue_now()
+        game.wake.t = 0.0
+        await _frames(2)             # one process pass applies the muted gain
+        ok(game.soundscape.emitter_gain_frac(0) < 0.05, "the room's voices begin muted")
+        game.wake.t = game.wake.span + 1.0
+        await _frames(3)             # the settled snap lands
+        ok(game.soundscape.emitter_gain_frac(0) > 0.95, "the voices reach their full place")
+        var gates_hold := true
+        for i in game.soundscape.tick_count():
+                var tpos: Vector2 = game.soundscape._ticks[i]["pos"]
+                if game.soundscape.tick_gate(i) < game.wake.delay_for(tpos) - 0.0001:
+                        gates_hold = false
+        ok(gates_hold, "no voice speaks before its place has caught")
+        # --- A REVISITED ROOM WAKES QUICK ----------------------------------
+        game.transition_to("act1")
+        await _room("act1")
+        await _skip_dialogue_now()
+        ok(not game.wake.full, "a revisited room wakes quick")
+        ok(absf(game.wake.span - Wake.SPAN_QUICK) < 0.001, "the room remembers the vessel (quick span)")
+        ok(absf(AudioManager._layer_rate - 2.4) < 0.001, "a remembered room swells its beds quick")
+        # --- THE LENS LEANS BACK ON A FIRST ARRIVAL ------------------------
+        game.transition_to("act2")
+        await _room("act2")
+        await _skip_dialogue_now()
+        ok(game.wake.full, "an unvisited room wakes full")
+        ok(absf(AudioManager._layer_rate - 0.85) < 0.001, "a first arrival swells its beds slowly")
+        ok(game.camera.zoom.x > 1.01, "the lens leans back on a first arrival")
+        await get_tree().create_timer(2.6, true, false, true).timeout
+        ok(absf(game.camera.zoom.x - 1.0) < 0.02, "the lens settles as the room wakes")
+        game.transition_to("act1")
+        await _room("act1")

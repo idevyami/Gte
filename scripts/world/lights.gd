@@ -5,11 +5,16 @@
 ##   — a squashed radial pool where the light lands on the floor plane
 ##   — an optional downward cone (chapel candles, the martyr's arena)
 ## Flicker handled by low-frequency redraw.
+## THE ARRIVAL (WB-11): with a Wake, no source is born lit — each waits as
+## an ember, catches with a flare when its distance-order moment arrives
+## (near-first from where the vessel stands), and settles. Redraw runs
+## every frame while the wake lives, then returns to its thrift cadence.
 class_name Lights
 extends Node2D
 
 var lights: Array = []
 var floor_y := -1.0
+var _wake: Wake = null
 
 static var _glow_tex: ImageTexture
 
@@ -26,9 +31,10 @@ static func get_glow_texture() -> ImageTexture:
                 _glow_tex = ImageTexture.create_from_image(img)
         return _glow_tex
 
-func setup(p_lights: Array, p_floor_y := -1.0) -> void:
+func setup(p_lights: Array, p_floor_y := -1.0, p_wake: Wake = null) -> void:
         lights = p_lights
         floor_y = p_floor_y
+        _wake = p_wake
         var mat := CanvasItemMaterial.new()
         mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
         material = mat
@@ -38,7 +44,10 @@ func setup(p_lights: Array, p_floor_y := -1.0) -> void:
 var _t := 0.0
 func _process(delta: float) -> void:
         _t += delta
-        if fmod(_t, 0.2) < delta:
+        if _wake != null and not _wake.done():
+                # the wake lives at frame rate — every catch must read
+                queue_redraw()
+        elif fmod(_t, 0.2) < delta:
                 queue_redraw()
 
 func _draw() -> void:
@@ -52,6 +61,11 @@ func _draw() -> void:
                 var k := 1.0
                 if flicker > 0.0:
                         k = 1.0 - flicker * (0.4 + 0.6 * absf(sin(_t * 7.0 + pos.x * 0.13)))
+                # THE ARRIVAL: the source multiplies by its wake factor —
+                # ember, catch-flare, settled presence (same pure function
+                # the floor pools use, so ground and flame move as one)
+                if _wake != null and not _wake.done():
+                        k *= _wake.factor_at(pos)
                 # --- radial falloff: one filtered gradient quad
                 draw_texture_rect(glow, Rect2(pos - Vector2(r, r), Vector2(r * 2.0, r * 2.0)), false,
                         Color(col.r, col.g, col.b, 0.34 * k))
@@ -70,3 +84,29 @@ func _draw() -> void:
                         draw_texture_rect(beam, Rect2(Vector2(-0.5, 0.0), Vector2(1.0, 1.0)), false,
                                 Color(col.r, col.g, col.b, 0.16 * k))
                         draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+# ------------------------------------------------------------------ probes
+# (smoke laws: the arrival is pinned, not hoped for)
+
+func ignition_delay(i: int) -> float:
+        if _wake == null or i < 0 or i >= lights.size():
+                return 0.0
+        return _wake.delay_for(lights[i]["pos"])
+
+func current_factor(i: int) -> float:
+        ## The wake intensity multiplier this source draws with right now
+        ## (pure function of wake.t — no draw dependency).
+        if _wake == null or i < 0 or i >= lights.size():
+                return 1.0
+        return _wake.factor_at(lights[i]["pos"])
+
+func current_factor_at(p_t: float, i: int) -> float:
+        ## The same multiplier at an arbitrary wake moment (probe for the
+        ## ember-gutter law — no state is touched).
+        if _wake == null or i < 0 or i >= lights.size():
+                return 1.0
+        var keep := _wake.t
+        _wake.t = p_t
+        var f := _wake.factor_at(lights[i]["pos"])
+        _wake.t = keep
+        return f

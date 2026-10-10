@@ -12,6 +12,7 @@ var key := ""
 var district := ""
 var room_size := Vector2(1280, 720)
 var floor_y := 660.0
+var _wake: Wake = null
 
 var _player: Node2D = null
 var _moths: Array = []          # per-flame orbiters
@@ -27,6 +28,16 @@ const SCUTTLER_DISTRICTS := ["undercity", "city", "archive", "aftermath", "vesse
 func set_player(p: Node2D) -> void:
         ## Called after spawn — the world needs a body to respond to.
         _player = p
+
+func set_wake(w: Wake) -> void:
+        ## THE ARRIVAL (WB-11): the near-plane life wakes with the air —
+        ## moths and vermin condense into presence as the room does.
+        _wake = w
+
+func _wake_a() -> float:
+        if _wake == null or _wake.done():
+                return 1.0
+        return _wake.air_alpha()
 
 func setup(p_key: String, p_district: String, p_room_size: Vector2, p_lights: Array,
                 p_player: Node2D, p_damp: Array, p_floor_y: float) -> void:
@@ -175,6 +186,7 @@ func _footfall(pos: Vector2) -> void:
                         break
 
 func _draw() -> void:
+        var wa := _wake_a()
         # --- moths: pale wings around every flame
         for m in _moths:
                 var home: Vector2 = m["home"]
@@ -189,7 +201,7 @@ func _draw() -> void:
                         sin(_t * sp2 + ph) * ry) + burst
                 var flap := absf(sin(_t * float(m["flap"]) + ph))
                 var warm: float = m["warm"]
-                var col := Color(E0.PARCH.r * warm, E0.PARCH.g * warm, E0.PARCH.b * 0.95, 0.55 + 0.35 * flap)
+                var col := Color(E0.PARCH.r * warm, E0.PARCH.g * warm, E0.PARCH.b * 0.95, (0.55 + 0.35 * flap) * wa)
                 # two wing triangles beating around a bone body
                 var wing := 1.4 + 1.5 * flap
                 draw_colored_polygon(PackedVector2Array([
@@ -202,7 +214,7 @@ func _draw() -> void:
                         p + Vector2(2.6 + wing, -1.6 - wing * 0.6),
                         p + Vector2(1.2 + wing * 0.4, 0.8),
                 ]), Color(col.r, col.g, col.b, col.a * 0.8))
-                draw_circle(p, 0.9, Color(E0.BONE.r, E0.BONE.g, E0.BONE.b, 0.8))
+                draw_circle(p, 0.9, Color(E0.BONE.r, E0.BONE.g, E0.BONE.b, 0.8 * wa))
         # --- scuttlers: the vermin of the floor's back edge
         # (READABILITY LAW: a 9px body must survive a dark floor — the body
         # carries a pale dorsal highlight, bone eye-glints big enough to
@@ -224,7 +236,7 @@ func _draw() -> void:
                 # ASH-VERMIN (the readability law, WB-7's lesson): the city's
                 # rats are PALE — creatures of the ashfall, bone-dusted, a
                 # pale silhouette on dark stone. Dark-on-dark was invisible.
-                var body_col := Color(E0.BONE.r * 0.62, E0.BONE.g * 0.60, E0.BONE.b * 0.54, 0.97)
+                var body_col := Color(E0.BONE.r * 0.62, E0.BONE.g * 0.60, E0.BONE.b * 0.54, 0.97 * wa)
                 # body
                 _ellipse_local(cp, 4.2 * SC, 2.0 * SC, body_col)
                 # darker dorsal stripe — the fur parts along the spine

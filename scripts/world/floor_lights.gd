@@ -14,6 +14,7 @@ var lights: Array = []
 var floor_y := -1.0
 var _anchors: Array = []       # decor/prop/npc positions (fixtures skip art)
 var _t := 0.0
+var _wake: Wake = null
 
 static var _glow_tex: ImageTexture
 
@@ -29,10 +30,11 @@ static func get_glow_texture() -> ImageTexture:
                 _glow_tex = ImageTexture.create_from_image(img)
         return _glow_tex
 
-func setup(p_lights: Array, p_floor_y: float, p_anchors: Array) -> void:
+func setup(p_lights: Array, p_floor_y: float, p_anchors: Array, p_wake: Wake = null) -> void:
         lights = p_lights
         floor_y = p_floor_y
         _anchors = p_anchors
+        _wake = p_wake
         z_index = 0               # the ground plane — above floorcraft's
                                   # slabs, under every actor
         set_process(true)
@@ -64,8 +66,11 @@ func _has_fixture_near(x: float, y: float) -> bool:
 
 func _process(delta: float) -> void:
         _t += delta
-        # ~9 fps: the flame dance reads, the cost stays on the floor
-        if fmod(_t, 0.11) < delta:
+        if _wake != null and not _wake.done():
+                # the wake lives at frame rate — pools must catch with their flames
+                queue_redraw()
+        elif fmod(_t, 0.11) < delta:
+                # ~9 fps: the flame dance reads, the cost stays on the floor
                 queue_redraw()
 
 func _draw() -> void:
@@ -81,6 +86,11 @@ func _draw() -> void:
                 var k := 1.0
                 if flicker > 0.0:
                         k = 1.0 - flicker * (0.4 + 0.6 * absf(sin(_t * 7.0 + ph)))
+                # THE ARRIVAL: the pool multiplies by the SAME wake factor its
+                # source draws with (Wake.delay_for is a pure function of
+                # position — ground and flame catch in the same breath)
+                if _wake != null and not _wake.done():
+                        k *= _wake.factor_at(pos)
                 # the flame dances: the pool wobbles beneath its source
                 var wob_x := sin(_t * 6.3 + ph) * 2.4 * flicker
                 var breathe := 1.0 + 0.06 * sin(_t * 2.3 + ph) * (0.3 + flicker)
@@ -129,3 +139,16 @@ func _draw() -> void:
                                         E0.ASH.darkened(0.30))
                                 draw_circle(Vector2(pos.x, pos.y), 1.6,
                                         Color(col.r, col.g, col.b, 0.75 * k))
+
+# ------------------------------------------------------------------ probes
+# (smoke laws: the ground answers the flame's arrival in the same breath)
+
+func ignition_delay(i: int) -> float:
+        if _wake == null or i < 0 or i >= lights.size():
+                return 0.0
+        return _wake.delay_for(lights[i]["pos"])
+
+func current_factor(i: int) -> float:
+        if _wake == null or i < 0 or i >= lights.size():
+                return 1.0
+        return _wake.factor_at(lights[i]["pos"])
