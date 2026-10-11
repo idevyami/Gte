@@ -264,6 +264,16 @@ func play_ambient(id: String, vol := 0.5) -> void:
 func configure_wake(full: bool) -> void:
         _layer_rate = 0.85 if full else 2.4
 
+## THE THRESHOLD (WB-13): the leaving room's air dies slowly under a deep
+## crossing — the beds sink toward silence at a funeral pace instead of
+## cutting at the seam. The arriving room's load_room restores the targets
+## and the wake pace, so the new air rises as the new world wakes.
+func begin_crossing() -> void:
+        _ambient_target = 0.0
+        _ambient_b_target = 0.0
+        _ambient_c_target = 0.0
+        _layer_rate = 1.15
+
 ## THE FAR FIELD: the district's rare events (a bell, a gust, a far clank).
 ## min/max bound the scheduler's silence; the world never hurries.
 func configure_events(palette: Array, min_delay := 18.0, max_delay := 55.0) -> void:

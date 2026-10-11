@@ -50,6 +50,7 @@ func _run() -> void:
         await _the_air_itself()
         await _the_arrival()
         await _the_world_thins()
+        await _the_threshold()
         print("=== %d checks, %d failures ===" % [checks, fails])
         get_tree().quit(1 if fails > 0 else 0)
 
@@ -58,7 +59,13 @@ func _frames(n: int) -> void:
                 await get_tree().process_frame
 
 func _room(expected: String, max_frames := 300) -> void:
-        for i in max_frames:
+        ## Headless runs unthrottled (143fps measured) — a frame budget no
+        ## longer bounds real time, and THE THRESHOLD's deep crossings live
+        ## in REAL time (~2.6s of dark + fade). The wait is bounded by wall
+        ## clock instead (scaled by the caller's frame patience).
+        var cap_ms: int = maxi(6000, max_frames * 40)
+        var t0 := Time.get_ticks_msec()
+        while Time.get_ticks_msec() - t0 < cap_ms:
                 if game.room_id == expected and game.state == "playing":
                         return
                 if game.dialogue_box.active:
@@ -286,9 +293,12 @@ func _boss() -> void:
                 game.player.hp = E0.P_MAX_HP
                 EventBus.player_health_changed.emit(game.player.hp, game.player.max_hp)
         game.transition_to("act8")
-        for i in 300:
-                if i % 60 == 0:
-                        print("    [act8 poll] i=", i, " room=", game.room_id, " state=", game.state, " trans=", game._transitioning, " hp=", game.player.hp)
+        # wall-clock bounded (headless is unthrottled; deep crossings live
+        # in real time — see _room)
+        var t_act8 := Time.get_ticks_msec()
+        while Time.get_ticks_msec() - t_act8 < 12000:
+                if (Time.get_ticks_msec() - t_act8) % 1000 < 17:
+                        print("    [act8 poll] room=", game.room_id, " state=", game.state, " trans=", game._transitioning, " hp=", game.player.hp)
                 if game.room_id == "act8" and game.state == "playing":
                         break
                 if game.dialogue_box.active:
@@ -1169,10 +1179,16 @@ func _the_record_is_a_thing() -> void:
         game.player.hp = 100
         await _frames(40)
         ok(game.hud.last_tube.get("cracked", true) == false, "healed glass mends (no cracks)")
-        # the mount sways with the camera, then eases home
+        # the mount sways with the camera, then eases home (deterministic:
+        # the vessel stands mid-room where the camera has room to pan —
+        # near the spawn the clamp pins the lens and no sway can build)
+        game.player.global_position = Vector2(1100, 620)
+        game.player.velocity = Vector2.ZERO
+        await _wait_real(0.8)
+        game.hud._sway = Vector2.ZERO
         var sway0: Vector2 = game.hud.last_sway
         Input.action_press("move_right")
-        await _frames(40)
+        await _wait_real(0.8)
         Input.action_release("move_right")
         var sway_moved: bool = game.hud.last_sway.length() > 0.05
         ok(sway_moved or sway0.length() > 0.05, "the instrument mount lags the camera (inertia)")
@@ -1625,6 +1641,138 @@ func _the_world_thins() -> void:
 
 func _wait_real(t: float) -> void:
         await get_tree().create_timer(t, true, false, true).timeout
+
+# ------------------------------------------------------------------ WB-13
+func _the_threshold() -> void:
+        print("[THE THRESHOLD — WB-13]")
+        # --- THE EDGE DATA: every golden crossing carries a rubric + a real herald
+        var golden: Array = []
+        for id in Rooms.ROOMS.keys():
+                for e in Rooms.ROOMS[id].get("exits", []):
+                        golden.append(Threshold.edge(id, String(e["to"])))
+        ok(golden.size() == 8, "the golden path is eight crossings")
+        var rubric_ok := true
+        var herald_ok := true
+        for e in golden:
+                var r: String = String(Threshold.RUBRICS.get(e, ""))
+                if r.is_empty() or r.length() > 64:
+                        rubric_ok = false
+                var h: Dictionary = Threshold.HERALDS.get(e, {})
+                if h.is_empty() or not FileAccess.file_exists("res://audio/sfx/sfx_" + String(h.get("id", "")) + ".wav"):
+                        herald_ok = false
+        ok(rubric_ok, "every golden crossing carries a census rubric (<=64 chars)")
+        ok(herald_ok, "every golden crossing's herald resolves to a real voice")
+        ok(Threshold.is_golden("act1", "act2") and Threshold.is_golden("act8", "act9"), "the authored sequence is golden")
+        ok(not Threshold.is_golden("act3", "act7"), "a teleport is not a passage (never deep)")
+        # --- THE THREE BEATS, as pure functions of t
+        var th := Threshold.make("act4", "act5", true)
+        ok(th.rubric == Threshold.RUBRICS["act4>act5"], "the between carries its edge's rubric")
+        ok(th.herald_id == "bell_far", "the chapel is heard before it is seen")
+        th.t = 0.0
+        ok(th.fade_k() < 0.001, "the crossing begins in the lit world")
+        th.t = th.leave_end() * 0.5
+        ok(th.fade_k() > 0.2 and th.fade_k() < 0.95, "the leaving folds toward black (midway)")
+        th.t = th.leave_end()
+        ok(th.fade_k() > 0.985, "the leaving ends in full black")
+        th.t = th.leave_end() + 0.5
+        ok(th.fade_k() > 0.985 and th.rubric_alpha() > 0.5, "the between holds full black with the rubric risen")
+        th.t = th.black_end() - 0.1
+        ok(th.rubric_alpha() < 0.4, "the rubric falls before the coming")
+        th.t = th.span()
+        ok(th.fade_k() < 0.02 and th.done(), "the coming opens back to the lit world")
+        # --- THE WALK IN THE DARK
+        var steps: Array = th.step_times()
+        var steps_ok := steps.size() == Threshold.STEP_COUNT
+        for i in steps.size():
+                if i > 0:
+                        var gap := float(steps[i]) - float(steps[i - 1])
+                        if gap < 0.3 or gap > 0.55:
+                                steps_ok = false
+        ok(steps_ok and float(steps[0]) >= 0.1 and float(steps[steps.size() - 1]) < th.black_end(),
+                "the vessel keeps walking in the dark (3 steps, his own rhythm)")
+        ok(th.herald_time() > th.leave_end() + 0.15 and th.herald_time() < th.black_end() - 0.2,
+                "the herald sounds inside the between")
+        ok(th.letter_alpha(0, 40) >= th.letter_alpha(39, 40), "the inscription travels left to right")
+        ok(th.rubric_track() >= Threshold.TRACK_IN and th.rubric_track() <= Threshold.TRACK_OUT, "the record's hand widens within its bounds")
+        # --- THE QUICK CROSSING keeps the city's plain fade
+        var q := Threshold.make("act1", "act2", false)
+        q.t = q.span() * 0.5
+        ok(q.rubric_alpha() == 0.0, "a quick crossing never shows the rubric")
+        ok(absf(Threshold.QUICK_OUT - 0.35) < 0.001 and absf(Threshold.QUICK_IN - 0.40) < 0.001,
+                "a quick crossing keeps the plain city fade")
+        # --- THE DEPARTING FLOOR SPEAKS
+        ok(Threshold.step_sample(Rooms.ROOMS["act1"]) == "sfx_step", "the womb's stone speaks in the dark")
+        ok(Threshold.step_sample(Rooms.ROOMS["act2"]) == "sfx_foot_wet", "the undercity's damp speaks in the dark")
+        ok(Threshold.step_sample(Rooms.ROOMS["act7"]) == "sfx_foot_metal", "the engine's plating speaks in the dark")
+        ok(Threshold.step_sample(Rooms.ROOMS["act5"]) == "sfx_foot_carpet", "the chapel's runner speaks in the dark")
+        # --- INTEGRATION: the living crossing
+        game.new_game()
+        await _settle_playing(1.0)
+        game.transition_to("act2")
+        var seen_black := false
+        var seen_rubric := false
+        var beds_sunk := false
+        var t0 := Time.get_ticks_msec()
+        while Time.get_ticks_msec() - t0 < 6000:
+                if game.threshold != null and game.threshold.deep:
+                        if FX.is_faded():
+                                seen_black = true
+                        if game.threshold.rubric_alpha() > 0.5:
+                                seen_rubric = true
+                        if AudioManager._ambient_target == 0.0:
+                                beds_sunk = true
+                if game.room_id == "act2" and game.state == "playing":
+                        break
+                await get_tree().process_frame
+        ok(seen_black, "the live crossing holds full black")
+        ok(seen_rubric, "the live crossing inscribes the rubric")
+        ok(beds_sunk, "the leaving room's air dies slowly (beds sink, never cut)")
+        ok(game._crossed_edges.has("act1>act2"), "the record remembers the crossing")
+        await _room("act2")
+        ok(AudioManager._ambient_target > 0.0, "the arriving air rises with the wake")
+        ok(game.wake != null and game.wake.full, "a deep crossing lands in a full wake (threshold feeds arrival)")
+        # --- A CROSSING ALREADY IN THE RECORD IS QUICK
+        game.transition_to("act1")
+        await _room("act1")
+        game.transition_to("act2")
+        var stayed_quick := true
+        var t1 := Time.get_ticks_msec()
+        while Time.get_ticks_msec() - t1 < 4000:
+                if game.threshold != null and game.threshold.deep:
+                        stayed_quick = false
+                if game.room_id == "act2" and game.state == "playing":
+                        break
+                await get_tree().process_frame
+        ok(stayed_quick, "a crossing already in the record is quick")
+        # --- THE WHISPER CROSSES WITH THE VESSEL (dread is never room-cut)
+        GameState.consistency = 60
+        GameState.stage = E0.stage_for(60)
+        AudioManager.update_degradation(GameState.stage)
+        var whisper_before: float = AudioManager._whisper_target
+        game.transition_to("act3")
+        var whisper_mid: float = -1.0
+        var t2 := Time.get_ticks_msec()
+        while Time.get_ticks_msec() - t2 < 6000:
+                if game.threshold != null and game.threshold.deep and game.threshold.rubric_alpha() > 0.5:
+                        whisper_mid = AudioManager._whisper_target
+                        break
+                if game.room_id == "act3" and game.state == "playing":
+                        break
+                await get_tree().process_frame
+        ok(absf(whisper_mid - whisper_before) < 0.001,
+                "the whisper bed crosses with the vessel (stage-driven, never room-cut)")
+        await _room("act3")
+        await _settle_playing(0.6)
+        GameState.consistency = 100
+        GameState.stage = 1
+        AudioManager.update_degradation(1)
+        # --- THE RECORD ANNOTATES EACH VESSEL'S CROSSINGS ANEW
+        game.new_game()
+        await _settle_playing(0.6)
+        ok(game._crossed_edges.is_empty(), "a new vessel — the record annotates his crossings anew")
+        # --- THE RUBRIC WRITES ON THE BLACK (above the fade)
+        var card_parent: CanvasLayer = game.threshold_card.get_parent() as CanvasLayer
+        ok(card_parent != null and card_parent.layer > 95, "the rubric writes ON the black (above the fade)")
 
 func _settle_playing(t: float) -> void:
         ## The intro dialogue can open a few frames AFTER the room reports

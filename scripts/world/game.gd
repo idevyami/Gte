@@ -62,6 +62,16 @@ var soundscape: SoundScape = null
 var wake: Wake = null
 static var _visited_rooms := {}
 
+# THE THRESHOLD (WB-13): the crossing between acts. A first crossing of
+# an edge is DEEP — the leaving, the between (census rubric + the
+# arriving space's herald heard through the black), the coming. A
+# crossing the record has already annotated is QUICK. Edge memory is
+# session-scoped, cleared with each new game (a new vessel — the record
+# annotates HIS crossings anew).
+var threshold: Threshold = null
+var threshold_card: ThresholdCard = null
+static var _crossed_edges := {}
+
 # per-district world grade: a whisper of temperature on the SCENERY
 # renderers only (architecture, backdrop, air) — actors, UI and combat FX
 # keep their exact approved colors. Values stay within ±7% of white and
@@ -170,6 +180,14 @@ func _build_ui() -> void:
         ui_layer.add_child(end_screen)
         cinema = Cinema.new()
         ui_layer.add_child(cinema)
+        # THE THRESHOLD: the census rubric writes ON the black — its layer
+        # sits ABOVE FX's fade (95) so the record annotates the dark itself
+        var threshold_layer := CanvasLayer.new()
+        threshold_layer.layer = 97
+        add_child(threshold_layer)
+        threshold_card = ThresholdCard.new()
+        threshold_card.game = self
+        threshold_layer.add_child(threshold_card)
         reading_panel = ReadingPanel.new()
         reading_panel.game = self
         ui_layer.add_child(reading_panel)
@@ -198,6 +216,7 @@ func teardown() -> void:
 func new_game() -> void:
         GameState.new_game()
         _visited_rooms.clear()         # a new vessel — the city forgets
+        _crossed_edges.clear()         # ...and the record annotates HIS crossings anew
         _dead_handled = false
         # the record's last page closes with the run (a fresh vessel must
         # never inherit the ended record's claim on the lens — smoke-pinned)
@@ -1012,17 +1031,69 @@ func transition_to(next_room: String) -> void:
                 player.input_locked = true
         if dialogue_box and dialogue_box.active:
                 dialogue_box.close()
-        FX.fade_out(0.35)
-        await get_tree().create_timer(0.4, true, false, true).timeout
-        load_room(next_room)
-        state = "playing"
-        FX.fade_in(0.4)
-        await get_tree().create_timer(0.45, true, false, true).timeout
+        # THE THRESHOLD: the first crossing of a GOLDEN edge (the nine acts
+        # in their authored sequence) is annotated by the record — a deep
+        # crossing with a between; a crossing already in the record, or a
+        # teleport that is not a passage, is the plain quick fade
+        var edge := Threshold.edge(room_id, next_room)
+        var deep := Threshold.is_golden(room_id, next_room) and not _crossed_edges.has(edge)
+        _crossed_edges[edge] = true
+        threshold = Threshold.make(room_id, next_room, deep)
+        if deep:
+                await _run_threshold_crossing(next_room)
+        else:
+                FX.fade_out(Threshold.QUICK_OUT)
+                await get_tree().create_timer(Threshold.QUICK_OUT + 0.05, true, false, true).timeout
+                load_room(next_room)
+                state = "playing"
+                FX.fade_in(Threshold.QUICK_IN)
+                await get_tree().create_timer(Threshold.QUICK_IN + 0.05, true, false, true).timeout
         _transitioning = false
+        threshold = null
         if not _pending_room.is_empty():
                 var queued := _pending_room
                 _pending_room = ""
                 transition_to(queued)
+
+## THE THRESHOLD (WB-13): the deep crossing, beat by beat.
+##   THE LEAVING — the screen folds to black, the old room's air dies
+##   slowly (never cuts), and the vessel KEEPS WALKING: his footsteps
+##   sound on in the dark, on the material of the ground he just left,
+##   each a little further away.
+##   THE BETWEEN — full black holds; the census rubric inscribes glyph
+##   by glyph at the center of the dark; one distant herald of the
+##   ARRIVING space is heard through it.
+##   THE COMING — the fade opens into the new room's wake (WB-11 owns
+##   everything from the first lit frame onward).
+func _run_threshold_crossing(next_room: String) -> void:
+        # THE LEAVING: the air dies slowly under the crossing
+        AudioManager.begin_crossing()
+        FX.fade_out(Threshold.LEAVE)
+        var steps: Array = threshold.step_times()
+        var step_i := 0
+        var herald_fired := false
+        var elapsed := 0.0
+        # drive the leaving + the between at frame rate so the dark steps
+        # and the herald land at their authored instants
+        while elapsed < threshold.black_end():
+                await get_tree().process_frame
+                elapsed += get_process_delta_time()
+                threshold.t = elapsed
+                if step_i < steps.size() and elapsed >= float(steps[step_i]):
+                        step_i += 1
+                        if player and is_instance_valid(player) and player.has_method("_play_footstep"):
+                                # the departing district's own floor speaks —
+                                # each step a little deeper into the dark
+                                player._play_footstep(-12.0 - 3.0 * float(step_i))
+                if not herald_fired and elapsed >= threshold.herald_time():
+                        herald_fired = true
+                        AudioManager.play_sfx(threshold.herald_id, threshold.herald_db)
+        # THE COMING: the new world loads under the opening fade; its wake
+        # and its rising air own everything from here
+        load_room(next_room)
+        state = "playing"
+        FX.fade_in(Threshold.COME)
+        await get_tree().create_timer(Threshold.COME + 0.08, true, false, true).timeout
 
 # ------------------------------------------------------------------ dialogue
 func start_dialogue(key: String) -> void:
