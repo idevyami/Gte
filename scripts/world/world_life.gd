@@ -20,6 +20,9 @@ var _scuttlers: Array = []      # back-edge vermin
 var _ripples: Array = []        # expanding step rings
 var _droplets: Array = []       # splash flecks
 var _damp: Array = []           # weep spots {x,y,rx}
+var _pages: Array = []          # archive litter {x,y,cd} — kicked a-flutter
+var _flutters: Array = []       # live kicked pages {pos,v,t,dur,rot,vr}
+var _flutters_kicked := 0       # census for the smoke law
 var _step_x := -99999.0         # last step position (step detection)
 var _t := 0.0
 
@@ -54,6 +57,15 @@ func set_wake(w: Wake) -> void:
         ## THE ARRIVAL (WB-11): the near-plane life wakes with the air —
         ## moths and vermin condense into presence as the room does.
         _wake = w
+
+func set_page_spots(p_pages: Array) -> void:
+        ## THE VESSEL'S TRACE (WB-14): the archive's spilled records —
+        ## walking through the litter kicks a page into the air.
+        _pages.clear()
+        for p in p_pages:
+                var spot: Dictionary = p.duplicate()
+                spot["cd"] = 0.0
+                _pages.append(spot)
 
 func _wake_a() -> float:
         if _wake == null or _wake.done():
@@ -212,6 +224,17 @@ func _process(delta: float) -> void:
         for r in _ripples:
                 r["t"] = float(r["t"]) + delta * 1.4
         _ripples = _ripples.filter(func(r): return float(r["t"]) < 1.0)
+        # --- THE VESSEL'S TRACE: kicked pages live their short flight —
+        #     a slow arc, a tumble, a settle back into the litter
+        for spot in _pages:
+                if float(spot["cd"]) > 0.0:
+                        spot["cd"] = maxf(0.0, float(spot["cd"]) - delta)
+        for fl in _flutters:
+                fl["t"] = float(fl["t"]) + delta
+                fl["pos"] = (fl["pos"] as Vector2) + (fl["v"] as Vector2) * delta
+                fl["v"] = (fl["v"] as Vector2) + Vector2(-12.0 * (fl["v"] as Vector2).x * delta, 105.0 * delta)
+                fl["rot"] = float(fl["rot"]) + float(fl["vr"]) * delta
+        _flutters = _flutters.filter(func(f): return float(f["t"]) < float(f["dur"]))
         for d in _droplets:
                 d["pos"] = (d["pos"] as Vector2) + (d["v"] as Vector2) * delta
                 d["v"] = (d["v"] as Vector2) + Vector2(0, 260) * delta
@@ -220,7 +243,8 @@ func _process(delta: float) -> void:
         queue_redraw()
 
 func _footfall(pos: Vector2) -> void:
-        ## A boot lands. In the weeping strata it lands in water.
+        ## A boot lands. In the weeping strata it lands in water; in the
+        ## archive it lands in the litter of records.
         for spot in _damp:
                 var sx: float = spot["x"]
                 var sy: float = spot["y"]
@@ -235,6 +259,31 @@ func _footfall(pos: Vector2) -> void:
                                                 "v": Vector2(cos(ang) * (18.0 + 12.0 * float(i)), sin(ang) * 46.0),
                                                 "t": 0.0,
                                         })
+                        break
+        # THE VESSEL'S TRACE: a boot through the archive's litter kicks a
+        # page into the air — the record answers the boot (cooldown-bounded
+        # so a standstill shuffle does not scatter the whole floor). The
+        # y-test anchors on the FEET (center + 24): the litter lives in
+        # the walking strip, well below the capsule's middle.
+        var feet_y := pos.y + 24.0
+        for spot in _pages:
+                if float(spot["cd"]) > 0.0:
+                        continue
+                if absf(pos.x - float(spot["x"])) < 26.0 and absf(feet_y - float(spot["y"])) < 34.0:
+                        spot["cd"] = 1.6
+                        _flutters_kicked += 1
+                        var rng := RandomNumberGenerator.new()
+                        rng.seed = hash("flutter:" + key + "%.1f" % pos.x)
+                        var dir := 1.0 if rng.randf() < 0.5 else -1.0
+                        _flutters.append({
+                                "pos": Vector2(float(spot["x"]), float(spot["y"]) - 3.0),
+                                "v": Vector2(dir * rng.randf_range(26.0, 64.0), -rng.randf_range(66.0, 118.0)),
+                                "t": 0.0,
+                                "dur": rng.randf_range(0.8, 1.15),
+                                "rot": rng.randf_range(-0.4, 0.4),
+                                "vr": dir * rng.randf_range(2.2, 5.0),
+                        })
+                        AudioManager.play_sfx("page_rustle", -14.0)
                         break
 
 func _draw() -> void:
@@ -354,6 +403,26 @@ func _draw() -> void:
                 var dt: float = d["t"]
                 draw_circle(d["pos"], 1.1,
                         Color(E0.CYAN.r * 1.3, E0.CYAN.g * 1.3, E0.CYAN.b, (1.0 - dt * 2.0) * 0.8))
+        # --- THE VESSEL'S TRACE: kicked records in their short flight —
+        #     bright paper tumbling on a slow arc, reading as A PAGE
+        for fl in _flutters:
+                var ft: float = fl["t"]
+                var fd: float = fl["dur"]
+                var fa := 1.0 if ft < fd * 0.65 else 1.0 - (ft - fd * 0.65) / (fd * 0.35)
+                fa *= wa
+                if fa <= 0.01:
+                        continue
+                var fpos: Vector2 = fl["pos"]
+                draw_set_transform(fpos, float(fl["rot"]), Vector2.ONE)
+                # the sheet — bright enough to read as paper in the dark
+                draw_rect(Rect2(-5.5, -7.0, 11.0, 14.0),
+                        Color(E0.PARCH.r * 1.12, E0.PARCH.g * 1.10, E0.PARCH.b * 1.05, 0.95 * fa))
+                # the catching edge + a ruled line — a record, not a scrap
+                draw_rect(Rect2(-5.5, -7.0, 11.0, 1.6),
+                        Color(E0.BONE.r, E0.BONE.g, E0.BONE.b, 0.6 * fa))
+                draw_rect(Rect2(-5.5, -7.0 + 5.0, 11.0, 0.8),
+                        Color(0.16, 0.14, 0.12, 0.5 * fa))
+                draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 func _ellipse_local(c: Vector2, rx: float, ry: float, col: Color) -> void:
         var pts := PackedVector2Array()
@@ -444,3 +513,11 @@ func bolted_scuttler() -> Vector2:
 
 func ripple_count() -> int:
         return _ripples.size()
+
+func flutter_count() -> int:
+        ## THE VESSEL'S TRACE: how many records the boots have kicked
+        ## a-flutter this room (the census for the smoke law).
+        return _flutters_kicked
+
+func live_flutters() -> int:
+        return _flutters.size()

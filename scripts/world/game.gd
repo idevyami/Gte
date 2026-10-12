@@ -15,6 +15,7 @@ var decor_renderer: Decor
 var lights: Lights
 var floor_lights: FloorLights = null
 var world_life: WorldLife = null
+var traces: Traces = null
 
 var ui_layer: CanvasLayer
 var hud: HUD
@@ -306,6 +307,14 @@ func load_room(id: String) -> void:
         floorcraft = FloorCraft.new()
         floorcraft.setup(id, floors, plats, _terrain_style(id), String(room_data.get("backdrop", "")))
         world.add_child(floorcraft)
+        # THE VESSEL'S TRACE (WB-14): the world's memory of the passage —
+        # prints in the district's own material, painted ON the walking
+        # surface, under every light, decor and actor. The Engine's floor
+        # records nothing (it does not need to count).
+        traces = Traces.new()
+        traces.setup(id, String(room_data.get("trace_material",
+                _trace_fallback(String(room_data.get("step_material", "stone"))))))
+        world.add_child(traces)
         # architectural framing: every door gets its carved arch — the portal
         # TOWERS over the door it frames (the painting is 414x300, so width
         # drives height; a 160-tall door needs a ~300-wide arch), and the
@@ -388,6 +397,7 @@ func load_room(id: String) -> void:
         world_life = WorldLife.new()
         world_life.setup(id, String(room_data.get("backdrop", "")), room_size,
                 room_data.get("lights", []), null, floorcraft.get_damp_spots(), light_floor)
+        world_life.set_page_spots(floorcraft.get_page_spots())
         world_life.set_wake(wake)
         world.add_child(world_life)
         # THE AIR ITSELF (WB-10): every noise-making element the craft passes
@@ -493,6 +503,8 @@ func load_room(id: String) -> void:
         camera.setup(player, room_size)
         if world_life:
                 world_life.set_player(player)
+        if ambient:
+                ambient.set_player(player)
         # THE ARRIVAL: on a first visit the lens leans back a touch, then
         # settles as the room wakes (a quiet widening of the first glance —
         # never on revisits, and never during the wake's thrift cadence)
@@ -534,6 +546,19 @@ func _terrain_style(id: String) -> String:
         if id.begins_with("act7"):
                 return "metal"
         return "stone"
+
+func _trace_fallback(step_material: String) -> String:
+        ## Rooms that predate WB-14 map their footstep material to a trace
+        ## material: the damp keeps wet prints, the runner presses, the
+        ## Engine's plating records nothing, bare stone carries dust.
+        match step_material:
+                "wet":
+                        return "wet"
+                "carpet":
+                        return "carpet"
+                "metal":
+                        return "none"
+        return "dust"
 
 func _add_static_rect(r: Rect2, one_way: bool) -> void:
         var body := StaticBody2D.new()

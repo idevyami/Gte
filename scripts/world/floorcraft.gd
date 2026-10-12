@@ -24,6 +24,7 @@ var plats: Array = []
 var _floor_surfaces: Array = []   # per-floor: slabs, skirt, dressing, lip
 var _ledges: Array = []           # per-platform: blocks, corbels, chips
 var _damp_spots: Array = []       # undercity weep spots (world-life ripples)
+var _page_spots: Array = []       # archive litter (world-life flutters)
 
 var _tex: Texture2D = null
 
@@ -49,6 +50,7 @@ func _generate() -> void:
         _floor_surfaces.clear()
         _ledges.clear()
         _damp_spots.clear()
+        _page_spots.clear()
         var rng := RandomNumberGenerator.new()
         rng.seed = hash("floorcraft:" + key)
         for r in floors:
@@ -68,6 +70,13 @@ func _generate() -> void:
                                         "x": float(d["x"]),
                                         "y": r2.position.y + dep * 0.7,
                                         "rx": float(d["rx"]),
+                                })
+                        elif String(d["kind"]) == "page":
+                                # the archive's spilled records — walking
+                                # through them kicks a page into the air
+                                _page_spots.append({
+                                        "x": float(d["x"]),
+                                        "y": r2.position.y + dep * 0.56 + float(d.get("off", 0.0)),
                                 })
         queue_redraw()
 
@@ -924,3 +933,8 @@ func has_skirt_trim(kind: String) -> bool:
 func get_damp_spots() -> Array:
         ## The undercity weep spots — world-life ripples where the vessel steps.
         return _damp_spots
+
+func get_page_spots() -> Array:
+        ## The archive's spilled records — world-life flutters where the
+        ## vessel walks through the litter.
+        return _page_spots

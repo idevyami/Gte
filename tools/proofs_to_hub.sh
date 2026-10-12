@@ -67,10 +67,24 @@ names = [
     "wb10_01_womb_sound_map", "wb10_02_undercity_drip_arcs",
     "wb10_03_city_far_field", "wb10_04_chapel_eleven_flames",
     "wb10_05_engine_the_heart_hums", "wb10_06_reliquary_bell_and_chains",
+    # WB-11: the arrival
+    "wb11_01_womb_dark", "wb11_02_womb_catching",
+    "wb11_03_womb_sweep", "wb11_04_womb_awake",
+    "wb11_05_chapel_catching", "wb11_06_chapel_awake",
+    # WB-12: the world thins
+    "wb12_01_chapel_home", "wb12_02_chapel_thinning",
+    "wb12_03_chapel_thin", "wb12_04_moths_leaving",
+    "wb12_05_chapel_vessel_stays_real",
+    "wb12_06_undercity_home", "wb12_07_undercity_thin",
     # WB-13: the threshold
     "wb13_01_leaving_mid_fold", "wb13_02_between_inscribing",
     "wb13_03_between_risen", "wb13_04_coming_into_the_wake",
     "wb13_05_settled",
+    # WB-14: the vessel's trace
+    "wb14_01_ash_path", "wb14_02_ash_toe_kick",
+    "wb14_03_landing_star", "wb14_04_roll_smear",
+    "wb14_05_wet_glisten", "wb14_06_chapel_nap",
+    "wb14_07_page_flutter", "wb14_08_engine_clean",
 ]
 for n in names:
     p = os.path.join(src, n + ".png")

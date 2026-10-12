@@ -51,6 +51,7 @@ func _run() -> void:
         await _the_arrival()
         await _the_world_thins()
         await _the_threshold()
+        await _the_vessels_trace()
         print("=== %d checks, %d failures ===" % [checks, fails])
         get_tree().quit(1 if fails > 0 else 0)
 
@@ -1641,6 +1642,189 @@ func _the_world_thins() -> void:
 
 func _wait_real(t: float) -> void:
         await get_tree().create_timer(t, true, false, true).timeout
+
+# ------------------------------------------------------------------ WB-14
+func _the_vessels_trace() -> void:
+        print("[THE VESSEL'S TRACE — WB-14]")
+        # --- THE MATERIAL LAW: every act's floor knows what it records
+        var want_mat := {
+                "act1": "dust", "act2": "wet", "act3": "ash", "act4": "wet",
+                "act5": "carpet", "act6": "dust", "act7": "none",
+                "act8": "dust", "act9": "ash",
+        }
+        for act in want_mat.keys():
+                var rd: Dictionary = Rooms.ROOMS[act]
+                ok(String(rd.get("trace_material", "")) == want_mat[act],
+                        "%s records its passage in %s" % [act, want_mat[act]])
+        ok(game._trace_fallback("wet") == "wet" and game._trace_fallback("metal") == "none",
+                "rooms that predate the pass map their step material to a trace material")
+        # --- THE RING: prints weather, the ring is bounded
+        var tr := Traces.new()
+        tr.setup("smoke", "ash")
+        for i in 140:
+                tr.stamp_foot(Vector2(100.0 + float(i) * 3.0, 500.0), 1.0)
+        ok(tr.count() == Traces.CAP, "the ring is bounded — a path, not a ledger (%d)" % tr.count())
+        # the alternation law: no two consecutive prints share a side
+        tr.setup("smoke", "ash")
+        tr.stamp_foot(Vector2.ZERO, 1.0)
+        tr.stamp_foot(Vector2.ZERO, 1.0)
+        ok(int(tr.print_at(0)["side"]) != int(tr.print_at(1)["side"]),
+                "left and right alternate — a stride, not a hop")
+        # the wet law: wet prints DRY (fade to a damp shadow, then leave)
+        tr.setup("smoke", "wet")
+        tr.stamp_foot(Vector2.ZERO, 1.0)
+        var p0: Dictionary = tr.print_at(0)
+        var a0 := tr.alpha_factor(p0)
+        tr.simulate(6.0)
+        var a_dry := tr.alpha_factor(p0)
+        tr.simulate(9.5)
+        var a_gone := tr.alpha_factor(p0)
+        ok(a0 > a_dry and a_dry > a_gone and a_dry < a0 * 0.5,
+                "the undercity's wet prints dry to a shadow, then leave (%.2f -> %.2f -> %.2f)" % [a0, a_dry, a_gone])
+        ok(a_gone < 0.2, "by the end of its life the print has almost left")
+        # the carpet law: pressed nap recovers continuously, reads LIGHTER
+        tr.setup("smoke", "carpet")
+        tr.stamp_foot(Vector2.ZERO, 1.0)
+        var pc: Dictionary = tr.print_at(0)
+        ok(bool(pc["lighten"]), "the chapel runner reads LIGHTER where pressed")
+        var ac0 := tr.alpha_factor(pc)
+        tr.simulate(4.5)
+        ok(tr.alpha_factor(pc) < ac0, "the nap recovers as the room forgets")
+        # the ash law: ash HOLDS its record before it leaves
+        tr.setup("smoke", "ash")
+        tr.stamp_foot(Vector2.ZERO, 1.0)
+        var pa: Dictionary = tr.print_at(0)
+        tr.simulate(10.0)
+        ok(tr.alpha_factor(pa) > 0.97, "the ash quarter holds its census (no fade before 62% of life)")
+        # the toe-kick law: ash piles at the trailing boot's toe
+        tr.setup("smoke", "ash")
+        tr.stamp_foot(Vector2.ZERO, 1.0)
+        tr.stamp_foot(Vector2(20.0, 0.0), 1.0)
+        ok(bool(tr.print_at(0)["kick"]) and not bool(tr.print_at(1)["kick"]),
+                "the ash district kicks piles at the trailing boot's toe (alternating)")
+        # --- THE ENGINE RECORDS NOTHING
+        game.transition_to("act7")
+        await _room("act7")
+        ok(game.traces != null and game.traces.material_name == "none",
+                "the Engine's floor is maintained clean")
+        var n0 := game.traces.count()
+        game.player.velocity.x = 220.0
+        await _frames(40)
+        ok(game.traces.count() == n0,
+                "a walked Engine floor records nothing — it does not need to count")
+        # --- THE LIVE PRINT LAW: walking writes the path
+        game.transition_to("act3")
+        await _room("act3")
+        ok(game.traces != null and game.traces.material_name == "ash",
+                "the ash quarter records its passage in ash")
+        var n_before := game.traces.count()
+        Input.action_press("move_right")
+        var t0 := Time.get_ticks_msec()
+        while Time.get_ticks_msec() - t0 < 1600:
+                await get_tree().process_frame
+        Input.action_release("move_right")
+        ok(game.traces.count() > n_before + 6,
+                "a walked street writes its prints (%d -> %d)" % [n_before, game.traces.count()])
+        var feet_x := game.player.global_position.x
+        var near_print := 0
+        for i in game.traces.count():
+                var pr: Dictionary = game.traces.print_at(i)
+                if absf(float(pr["x"]) - feet_x) < 260.0:
+                        near_print += 1
+        ok(near_print >= 6, "the prints fall where the boots fell (near the vessel)")
+        # --- THE WET DISTRICT: the undercity keeps wet prints that glisten
+        game.transition_to("act2")
+        await _room("act2")
+        ok(game.traces.material_name == "wet", "the weeping stone keeps wet prints")
+        Input.action_press("move_right")
+        var t1 := Time.get_ticks_msec()
+        while Time.get_ticks_msec() - t1 < 1200:
+                await get_tree().process_frame
+        Input.action_release("move_right")
+        ok(game.traces.count_kind("foot") >= 5, "the undercity's boots write wet prints")
+        var glistens := 0
+        for i in game.traces.count():
+                if game.traces.has_glisten(game.traces.print_at(i)):
+                        glistens += 1
+        ok(glistens > 0, "fresh wet prints glisten at the leading edge")
+        # --- THE LANDING LAW: a hard fall leaves a scuff-star
+        # (lift the vessel CLEAR of the floor — is_on_floor() reports the
+        # last physics result, so a 4px nudge never registers as airborne)
+        _skip_dialogue_now()
+        game.player.velocity.y = 420.0
+        game.player.global_position.y -= 60.0
+        await get_tree().create_timer(0.5, true, false, true).timeout
+        _skip_dialogue_now()
+        var lands := game.traces.count_kind("land")
+        ok(lands >= 1, "a hard landing leaves a scuff-star (count %d)" % lands)
+        if lands > 0:
+                var pl: Dictionary = game.traces.print_at(0)
+                for i in game.traces.count():
+                        if String(game.traces.print_at(i)["kind"]) == "land":
+                                pl = game.traces.print_at(i)
+                                break
+                ok(int(pl["star"]) >= 4, "the scuff-star radiates thrown material")
+        # --- THE ROLL LAW: the roll drags a smear
+        # (edge-detected input does not survive the headless frame order —
+        # the buffer is armed directly, as the golden path does for jumps)
+        _skip_dialogue_now()
+        game.player._roll_press = 0.14
+        await get_tree().create_timer(0.6, true, false, true).timeout
+        _skip_dialogue_now()
+        ok(game.traces.count_kind("smear") >= 1,
+                "the roll drags a smear through the material")
+        var path_w := 0.0
+        for i in game.traces.count():
+                var sm: Dictionary = game.traces.print_at(i)
+                if String(sm["kind"]) == "smear":
+                        path_w = maxf(path_w, float(sm["w"]))
+        ok(path_w > 60.0, "the roll's whole path is ONE long drag (%.0fpx, not debris dashes)" % path_w)
+        # --- THE CHAPEL: the runner's nap presses
+        game.transition_to("act5")
+        await _room("act5")
+        ok(game.traces.material_name == "carpet", "the chapel floor is the runner")
+        Input.action_press("move_right")
+        var t2 := Time.get_ticks_msec()
+        while Time.get_ticks_msec() - t2 < 1200:
+                await get_tree().process_frame
+        Input.action_release("move_right")
+        ok(game.traces.count_kind("foot") >= 4, "the chapel's boots press the nap")
+        # --- THE ARCHIVE ANSWERS THE BOOT: walking the litter kicks pages
+        game.transition_to("act6")
+        await _room("act6")
+        ok(game.floorcraft.get_page_spots().size() >= 4,
+                "the archive floor keeps its spilled records (%d)" % game.floorcraft.get_page_spots().size())
+        # walk THROUGH the litter: teleport beside a page spot (standing
+        # height kept — the y law anchors on the feet) and stride across it
+        var ps: Dictionary = game.floorcraft.get_page_spots()[0]
+        game.player.global_position = Vector2(float(ps["x"]) - 30.0, game.player.global_position.y)
+        game.player.velocity = Vector2.ZERO
+        await _frames(2)
+        var kicks0 := game.world_life.flutter_count()
+        Input.action_press("move_right")
+        var t3 := Time.get_ticks_msec()
+        while Time.get_ticks_msec() - t3 < 1100:
+                await get_tree().process_frame
+        Input.action_release("move_right")
+        ok(game.world_life.flutter_count() > kicks0,
+                "a boot through the litter kicks a page a-flutter (%d -> %d)" % [kicks0, game.world_life.flutter_count()])
+        # --- THE AIR YIELDS: a brisk walk stirs the air; a standstill stills it
+        game.transition_to("act1")
+        await _room("act1")
+        Input.action_press("move_right")
+        var t4 := Time.get_ticks_msec()
+        while Time.get_ticks_msec() - t4 < 1400:
+                await get_tree().process_frame
+        Input.action_release("move_right")
+        var stirred: float = game.ambient.air_stir()
+        ok(stirred > 0.15, "a brisk walk stirs the air (stir %.2f)" % stirred)
+        var t5 := Time.get_ticks_msec()
+        while Time.get_ticks_msec() - t5 < 2600:
+                await get_tree().process_frame
+        ok(game.ambient.air_stir() < stirred * 0.5,
+                "the air stills when the vessel stands (%.2f -> %.2f)" % [stirred, game.ambient.air_stir()])
+        ok(game.ambient.mist_push(game.player.global_position.x + 600.0) == 0.0,
+                "the ground haze holds far from the body (WB-8 law unbroken)")
 
 # ------------------------------------------------------------------ WB-13
 func _the_threshold() -> void:

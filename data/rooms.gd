@@ -16,6 +16,7 @@ const ROOMS := {
                 "music": "amb_a",
                 "ambient": [{"id": "machine", "vol": 0.45}, {"id": "fire", "vol": 0.20}, {"id": "void", "vol": 0.12}],
                 "step_material": "stone",
+                "trace_material": "dust",   # the womb's stone carries a fine settling dust
                 "events": ["clank_far"],
                 "hunts": false,
                 "spawn": Vector2(140, 974),
@@ -91,6 +92,7 @@ const ROOMS := {
                 "music": "amb_a",
                 "ambient": [{"id": "machine", "vol": 0.38}, {"id": "void", "vol": 0.28}],
                 "step_material": "wet",
+                "trace_material": "wet",    # the weeping stone keeps wet prints that dry
                 "events": ["clank_far"],
                 "hunts": false,
                 "spawn": Vector2(120, 634),
@@ -174,6 +176,7 @@ const ROOMS := {
                 "music": "amb_a",
                 "ambient": [{"id": "wind", "vol": 0.5}, {"id": "cityfar", "vol": 0.30}],
                 "step_material": "stone",
+                "trace_material": "ash",    # the ash quarter records every boot — swept daily, written hourly
                 "events": ["bell_far", "gust", "choir_swell"],
                 "hunts": false,
                 "spawn": Vector2(120, 814),
@@ -267,6 +270,7 @@ const ROOMS := {
                 "music": "amb_b",
                 "ambient": [{"id": "void", "vol": 0.42}, {"id": "machine", "vol": 0.18}],
                 "step_material": "wet",
+                "trace_material": "wet",    # the undercity's damp keeps the census of every boot
                 "events": ["clank_far"],
                 "hunts": false,
                 "spawn": Vector2(120, 914),
@@ -364,6 +368,7 @@ const ROOMS := {
                 "music": "amb_a",
                 "ambient": [{"id": "choir", "vol": 0.5}, {"id": "fire", "vol": 0.18}],
                 "step_material": "carpet",
+                "trace_material": "carpet",   # the runner's nap presses and recovers
                 "events": ["bell_far", "choir_swell", "organ_chord"],
                 "hunts": false,
                 "spawn": Vector2(120, 814),
@@ -458,6 +463,7 @@ const ROOMS := {
                 "music": "amb_b",
                 "ambient": [{"id": "void", "vol": 0.38}, {"id": "machine", "vol": 0.14}],
                 "step_material": "stone",
+                "trace_material": "dust",   # the archive's floor keeps its own records in dust
                 "events": ["clank_far"],
                 "hunts": true,
                 "spawn": Vector2(120, 814),
@@ -546,6 +552,7 @@ const ROOMS := {
                 "music": "amb_c",
                 "ambient": [{"id": "machine", "vol": 0.55}, {"id": "fire", "vol": 0.26}],
                 "step_material": "metal",
+                "trace_material": "none",   # the Engine's floor is maintained clean — it does not need to count
                 "events": ["clank_far", "gust"],
                 "hunts": true,
                 "spawn": Vector2(120, 814),
@@ -633,6 +640,7 @@ const ROOMS := {
                 "music": "amb_c",
                 "ambient": [{"id": "choir", "vol": 0.34}, {"id": "void", "vol": 0.22}],
                 "step_material": "stone",
+                "trace_material": "dust",   # the sanctuary's dust is old and fine
                 "events": ["bell_far", "choir_swell"],
                 "hunts": false,
                 "spawn": Vector2(120, 814),
@@ -727,6 +735,7 @@ const ROOMS := {
                 "music": "aftermath",
                 "ambient": [{"id": "wind", "vol": 0.38}, {"id": "void", "vol": 0.26}],
                 "step_material": "stone",
+                "trace_material": "ash",    # the aftermath keeps the fall where it lay
                 "events": ["gust", "bell_far"],
                 "hunts": false,
                 "spawn": Vector2(120, 634),

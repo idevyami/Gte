@@ -44,6 +44,8 @@ var _roll_puff_t := 0.0
 var _shape: CollisionShape2D
 var _stand_extents := Vector2(11, 24)
 var _roll_extents := Vector2(11, 9)
+var _trace_cache: Traces = null
+var _roll_start_x := 0.0        # the roll's own path (for the long drag)
 
 func _ready() -> void:
         collision_layer = E0.L_PLAYER
@@ -113,6 +115,10 @@ func _handle_landing() -> void:
                 land_squash = 0.55 + 0.45 * strength
                 FX.burst(global_position + Vector2(0, -2), "dust", 0.0, 8 + int(8 * strength))
                 FX.rumble(0.22 + 0.5 * strength, 0.1 + 0.12 * strength)
+                # a hard landing leaves a scuff-star in the material
+                var trl := _trace_layer()
+                if trl != null:
+                        trl.stamp_land(global_position + Vector2(0, 32), strength)
                 if strength > 0.55:
                         FX.shake(2.0 + 2.0 * strength, 0.14)
                         AudioManager.play_sfx("sfx_land", -6.0)
@@ -139,6 +145,11 @@ func _tick_timers(delta: float) -> void:
                 if _step_accum > 34.0:
                         _step_accum = 0.0
                         _play_footstep(-10.0)
+                        # THE VESSEL'S TRACE (WB-14): the world records the
+                        # stride in its own material — ash, dust, damp or nap
+                        var tr := _trace_layer()
+                        if tr != null:
+                                tr.stamp_foot(global_position + Vector2(0, 32), facing)
                         # every other footfall kicks a small puff
                         _step_side = 1 - _step_side
                         if _step_side == 1:
@@ -149,6 +160,18 @@ func _apply_gravity(delta: float) -> void:
         if not is_on_floor():
                 var g := E0.P_FALL_GRAVITY if velocity.y > 0.0 else E0.P_GRAVITY
                 velocity.y = minf(E0.P_MAX_FALL, velocity.y + g * delta)
+
+func _trace_layer() -> Traces:
+        ## The room's trace canvas — walked from the parents once, cached.
+        if _trace_cache != null:
+                return _trace_cache
+        var node := get_parent()
+        while node != null:
+                if node is Game:
+                        _trace_cache = node.traces
+                        return _trace_cache
+                node = node.get_parent()
+        return null
 
 func _play_footstep(vol_db := -10.0) -> void:
         ## THE GROUND ANSWERS THE EAR — the district's floor material decides
@@ -218,11 +241,21 @@ func _handle_roll(delta: float) -> void:
                 if _roll_t <= 0.0:
                         _rolling = false
                         _set_shape(_stand_extents)
+                        # THE CONTINUOUS DRAG: the roll's whole path becomes
+                        # one long streak (the dash-marks alone read as debris)
+                        var trp := _trace_layer()
+                        if trp != null:
+                                trp.stamp_roll_path(_roll_start_x, global_position.x,
+                                        global_position.y + 30.0, _roll_dir)
                 else:
                         _roll_puff_t -= delta
                         if _roll_puff_t <= 0.0:
                                 _roll_puff_t = 0.09
                                 FX.burst(global_position + Vector2(-_roll_dir * 12.0, -2), "dust", PI if _roll_dir > 0 else 0.0, 3)
+                                # the roll drags a smear through the material
+                                var trs := _trace_layer()
+                                if trs != null:
+                                        trs.stamp_roll(global_position + Vector2(-_roll_dir * 6.0, 30), _roll_dir)
                 return
         if input_locked:
                 return
@@ -232,6 +265,7 @@ func _handle_roll(delta: float) -> void:
                 _roll_t = E0.P_ROLL_TIME
                 _roll_cd = E0.P_ROLL_CD
                 _roll_dir = facing if absf(velocity.x) < 20.0 else (1 if velocity.x > 0 else -1)
+                _roll_start_x = global_position.x
                 _iframes = maxf(_iframes, E0.P_ROLL_TIME + 0.06)
                 _set_shape(_roll_extents)
                 _roll_puff_t = 0.0

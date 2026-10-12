@@ -10,6 +10,8 @@ var room_size := Vector2(1280, 720)
 var _camera: Camera2D
 var _room_key := ""
 var _wake: Wake = null
+var _player: Node2D = null      # THE VESSEL'S TRACE: the air yields to the body
+var _air_stir := 0.0            # how stirred the air still is (decays when still)
 
 var _motes: Array = []        # slow bright specks in the light
 var _fg_ash: Array = []       # foreground flakes
@@ -116,17 +118,39 @@ func _process(delta: float) -> void:
                         p.y = room_size.y * 0.8 + 20.0
                         p.x = randf() * room_size.x
                 m["pos"] = p
-        # THE WORLD RESPONDS (WB-8): a sprinting body pushes the air aside —
-        # the dust swirls out of the vessel's path and settles behind it
-        if _camera != null and _camera.target != null and is_instance_valid(_camera.target):
-                var tgt: Node2D = _camera.target
-                if "velocity" in tgt and absf(tgt.velocity.x) > 110.0:
-                        var pp: Vector2 = tgt.global_position
-                        for m in _motes:
-                                var mp: Vector2 = m["pos"]
-                                var d := mp - pp
-                                if d.length() < 70.0 and d.length() > 0.01:
-                                        m["pos"] = mp + d.normalized() * 60.0 * delta
+        # THE VESSEL'S TRACE (WB-14): the air yields to a moving body —
+        # a brisk walk (not only a sprint) parts the dust, the parting
+        # TRAILS the body (a wake, not a bubble), and the stirred air is
+        # remembered briefly, then stills. The old WB-8 law pushed only
+        # on a hard sprint and only radially; the wake now leans behind
+        # the stride at any walking pace.
+        var body: Node2D = null
+        if _player != null and is_instance_valid(_player):
+                body = _player
+        elif _camera != null and _camera.target != null and is_instance_valid(_camera.target):
+                body = _camera.target
+        if body != null and "velocity" in body and absf(body.velocity.x) > 60.0:
+                var pp: Vector2 = body.global_position
+                var spd := clampf(absf(body.velocity.x) / 230.0, 0.0, 1.0)
+                var pushed := 0
+                for m in _motes:
+                        var mp: Vector2 = m["pos"]
+                        var d := mp - pp
+                        var dl := d.length()
+                        if dl < 84.0 and dl > 0.01:
+                                var radial := d / dl
+                                var wake := Vector2(-signf(body.velocity.x), -0.25).normalized()
+                                m["pos"] = mp + (radial * 52.0 + wake * 30.0) * (0.45 + 0.75 * spd) * delta
+                                pushed += 1
+                for m in _fg_ash:
+                        var ap: Vector2 = m["pos"]
+                        var ad := ap - pp
+                        var adl := ad.length()
+                        if adl < 60.0 and adl > 0.01:
+                                m["pos"] = ap + (ad / adl) * 40.0 * spd * delta
+                _air_stir = minf(1.0, _air_stir + (0.35 + 0.09 * pushed) * (0.4 + 0.6 * spd) * delta * 10.0)
+        else:
+                _air_stir = maxf(0.0, _air_stir - delta * 0.55)
         for m in _fg_ash:
                 var p: Vector2 = m["pos"]
                 p += (m["v"] as Vector2) * ash_heavy(th) * delta
@@ -166,6 +190,16 @@ func _process(delta: float) -> void:
                                         pp.x = randf() * room_size.x
                                 m["pos"] = pp
         queue_redraw()
+
+func set_player(p: Node2D) -> void:
+        ## THE VESSEL'S TRACE (WB-14): the air needs the body it yields to.
+        _player = p
+
+func air_stir() -> float:
+        ## How stirred the air still is — rises while the vessel moves,
+        ## decays when the air stills (smoke law: the room forgets a
+        ## standing body).
+        return _air_stir
 
 func mist_push(x: float) -> float:
         ## How far the mist is displaced at x — the vessel's body opens a
