@@ -148,7 +148,7 @@ func _draw() -> void:
                 var m := String(entry["margin"])
                 var mchars := int(float(m.length()) * _margin_t)
                 var shown := m.substr(0, mchars)
-                _draw_wrapped(shown, Vector2(x, y), E0.serif, 14, Color(E0.PARCH.r, E0.PARCH.g, E0.PARCH.b, 0.66 * _margin_t), max_w - 40.0)
+                _draw_wrapped(shown, Vector2(x, y), E0.serif, 14, Color(E0.PARCH.r, E0.PARCH.g, E0.PARCH.b, 0.82 * _margin_t), max_w - 40.0)
                 y += 40.0
 
         # ---- footer

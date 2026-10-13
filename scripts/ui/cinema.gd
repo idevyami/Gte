@@ -120,7 +120,10 @@ func _plate(cx: float, y: float, w: float, h: float, a: float) -> void:
         for i in rows:
                 var t := (float(i) + 0.5) / float(rows)
                 var fall := sin(t * PI)
-                var alpha := 0.44 * fall * fall * a
+                # WB-17 — the feathered plate peaked too soft; the audit read
+                # the room title as thin type on busy architecture. The band
+                # holds the room a touch darker under the type
+                var alpha := 0.58 * fall * fall * a
                 var ry := y0 + band_h * t - row_h * 0.5
                 var rh := row_h + 1.0
                 draw_rect(Rect2(cx - w * 0.5, ry, w, rh), Color(E0.VOID.r, E0.VOID.g, E0.VOID.b, alpha))
@@ -149,8 +152,9 @@ func _draw_room(vp: Vector2, a: float) -> void:
         var cx := vp.x * 0.5
         var y := vp.y - 168.0
         if E0.mono and not _small.is_empty():
-                var sw := _spaced_width(E0.mono, _small, 11, 3.0)
-                _spaced_text(E0.mono, Vector2(cx - sw * 0.5, y), _small, 11, 3.0, Color(E0.DIM.r, E0.DIM.g, E0.DIM.b, a * 0.9))
+                var sw := _spaced_width(E0.mono, _small, 12, 3.0)
+                _spaced_text(E0.mono, Vector2(cx - sw * 0.5 + 1.0, y + 1.0), _small, 12, 3.0, Color(0, 0, 0, 0.5 * a))
+                _spaced_text(E0.mono, Vector2(cx - sw * 0.5, y), _small, 12, 3.0, Color(E0.PARCH.r, E0.PARCH.g, E0.PARCH.b, a * 0.95))
         if E0.serif:
                 var size := 34
                 var tw := _spaced_width(E0.serif, _big, size, 2.5)
@@ -168,7 +172,7 @@ func _draw_room(vp: Vector2, a: float) -> void:
                         _spaced_text(E0.serif, Vector2(cx - tw * 0.5 + glitch, y + 26.0), _big, size, 2.5, Color(E0.CYAN.r, E0.CYAN.g, E0.CYAN.b, a * 0.25))
                 _spaced_text(E0.serif, Vector2(cx - tw * 0.5 + 2.0, y + 28.0), _big, size, 2.5, Color(0, 0, 0, 0.7 * a))
                 _spaced_text(E0.serif, Vector2(cx - tw * 0.5 + 1.0, y + 27.0), _big, size, 2.5, Color(0, 0, 0, 0.5 * a))
-                _spaced_text(E0.serif, Vector2(cx - tw * 0.5, y + 26.0), _big, size, 2.5, Color(E0.BONE.r, E0.BONE.g, E0.BONE.b, a))
+                _spaced_text(E0.serif, Vector2(cx - tw * 0.5, y + 26.0), _big, size, 2.5, Color(minf(E0.BONE.r + 0.07, 1.0), minf(E0.BONE.g + 0.07, 1.0), minf(E0.BONE.b + 0.05, 1.0), a))
                 # rule grows outward
                 var rk := clampf(_t / 0.9, 0.0, 1.0)
                 var half := tw * 0.5 * rk
@@ -194,9 +198,9 @@ func _draw_boss(vp: Vector2, a: float) -> void:
                 _spaced_text(E0.serif, Vector2(cx - tw * 0.5 + 2.0, y + 2.0), _big, size, 6.0, Color(0, 0, 0, 0.6 * a))
                 _spaced_text(E0.serif, Vector2(cx - tw * 0.5, y), _big, size, 6.0, Color(E0.BONE.r, E0.BONE.g, E0.BONE.b, a))
         if E0.mono and not _small.is_empty():
-                var sw := _spaced_width(E0.mono, _small, 12, 2.0)
-                _spaced_text(E0.mono, Vector2(cx - sw * 0.5 + 1.0, y + 35.0), _small, 12, 2.0, Color(0, 0, 0, 0.5 * a))
-                _spaced_text(E0.mono, Vector2(cx - sw * 0.5, y + 34.0), _small, 12, 2.0, Color(E0.PARCH.r, E0.PARCH.g, E0.PARCH.b, a * 0.85))
+                var sw := _spaced_width(E0.mono, _small, 13, 2.0)
+                _spaced_text(E0.mono, Vector2(cx - sw * 0.5 + 1.0, y + 36.0), _small, 13, 2.0, Color(0, 0, 0, 0.5 * a))
+                _spaced_text(E0.mono, Vector2(cx - sw * 0.5, y + 35.0), _small, 13, 2.0, Color(E0.PARCH.r, E0.PARCH.g, E0.PARCH.b, a * 0.95))
         # crossed rule
         draw_line(Vector2(cx - 210.0, y + 52.0), Vector2(cx - 12.0, y + 52.0), Color(E0.CRIMSON.r, E0.CRIMSON.g, E0.CRIMSON.b, a * 0.7), 1.0)
         draw_line(Vector2(cx + 12.0, y + 52.0), Vector2(cx + 210.0, y + 52.0), Color(E0.CRIMSON.r, E0.CRIMSON.g, E0.CRIMSON.b, a * 0.7), 1.0)

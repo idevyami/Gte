@@ -75,9 +75,16 @@ func _draw() -> void:
         # an unread inscription carries a faint reader's mark — the city
         # wants to be read
         if not GameState.texts_read.has(instance_key):
-                var pulse := 0.35 + 0.25 * sin(anim_t * 2.2)
-                draw_circle(Vector2(0, -64.0), 2.2, Color(E0.CYAN.r, E0.CYAN.g, E0.CYAN.b, pulse))
-                draw_arc(Vector2(0, -64.0), 5.5, 0, TAU, 10, Color(E0.CYAN.r, E0.CYAN.g, E0.CYAN.b, pulse * 0.5), 1.0)
+                # WB-17 — the mark was a mote floating alone in the air (the
+                # audit could not tell what it marked): a touch larger, a
+                # touch stronger, and a pool of the same light on the ground
+                # that anchors it to the thing it belongs to
+                var pulse := 0.42 + 0.30 * sin(anim_t * 2.2)
+                draw_circle(Vector2(0, -64.0), 3.0, Color(E0.CYAN.r, E0.CYAN.g, E0.CYAN.b, pulse))
+                draw_arc(Vector2(0, -64.0), 7.5, 0, TAU, 12, Color(E0.CYAN.r, E0.CYAN.g, E0.CYAN.b, pulse * 0.5), 1.2)
+                draw_set_transform(Vector2(0, 1.5), 0.0, Vector2(1.0, 0.26))
+                draw_circle(Vector2.ZERO, 17.0, Color(E0.CYAN.r, E0.CYAN.g, E0.CYAN.b, 0.07 + 0.05 * pulse))
+                draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 func _seed() -> float:
         return fmod(float(abs(hash(instance_key)) % 1000), 97.0) / 97.0

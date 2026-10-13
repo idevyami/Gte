@@ -59,7 +59,10 @@ class VesselAura:
                 var breath := 1.0 + 0.05 * sin(_t * 1.4)
                 var w := 118.0 * breath
                 var h := 138.0 * breath
-                var a := (0.30 + 0.04 * sin(_t * 1.4 + 1.1)) * _k
+                # WB-17 — the candle burns a touch hotter: the darkest rooms
+                # (the arena, the chantry back, the stacks) still swallowed
+                # him at the old strength
+                var a := (0.36 + 0.05 * sin(_t * 1.4 + 1.1)) * _k
                 draw_set_transform(Vector2(-w * 0.5, -46.0 - h * 0.5), 0.0,
                                 Vector2(w / 128.0, h / 128.0))
                 draw_texture_rect(glow, Rect2(Vector2.ZERO, Vector2(128, 128)), false,
@@ -69,7 +72,16 @@ class VesselAura:
                 draw_set_transform(Vector2(-hw * 0.5, -52.0 - hw * 0.5), 0.0,
                                 Vector2(hw / 128.0, hw / 128.0))
                 draw_texture_rect(glow, Rect2(Vector2.ZERO, Vector2(128, 128)), false,
-                                Color(0.95, 0.85, 0.62, a * 0.55))
+                                Color(0.95, 0.85, 0.62, a * 0.60))
+                # WB-17 — the light POOLS where the vessel stands: the same
+                # candle, spent on the floor. It anchors him to the ground he
+                # walks and lifts the darkest rooms beneath his feet
+                var pw := 150.0 * breath
+                var ph := 34.0 * breath
+                draw_set_transform(Vector2(-pw * 0.5, 20.0 - ph * 0.5), 0.0,
+                                Vector2(pw / 128.0, ph / 128.0))
+                draw_texture_rect(glow, Rect2(Vector2.ZERO, Vector2(128, 128)), false,
+                                Color(0.85, 0.72, 0.50, a * 0.42))
                 draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 func attach(p_player: Player) -> void:
@@ -132,8 +144,9 @@ func sync_state(delta: float) -> void:
 
         # damage / iframe shimmer (same rules the rig used) — over a faint
         # constant self-lift: the vessel is the reader's eye anchor and must
-        # never sink into the world it walks through (the WB-7 readability law)
-        var m := Color(1.10, 1.10, 1.10, 1.0)
+        # never sink into the world it walks through (the WB-7 readability
+        # law; WB-17 lifts him one step further out of the dark)
+        var m := Color(1.15, 1.15, 1.15, 1.0)
         if player.hp > 0 and player.has_iframes() and not player.is_rolling():
                 m.a = 0.45 if fmod(_t * 24.0, 2.0) < 1.0 else 0.85
         if player._hurt_flash > 0.0:

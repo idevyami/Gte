@@ -637,12 +637,56 @@ func _draw_dressing(f: Dictionary, y0: float, depth: float) -> void:
                                 var cx1: float = d["x1"]
                                 var cy := y0 + depth * 0.22
                                 var ch := depth * 0.62
+                                # WB-17 — the runner used to read as one flat
+                                # saturated ribbon with razor edges (the audit
+                                # called it debug geometry). It is woven now:
+                                # a deeper, less neon red; length-wise wear
+                                # where ten thousand processions dragged; and
+                                # edges lost into the stone instead of cut
                                 draw_rect(Rect2(cx0, cy, cx1 - cx0, ch),
-                                        Color(E0.BLOOD.r * 0.9, E0.BLOOD.g * 0.9, E0.BLOOD.b * 0.9, 0.88))
+                                        Color(E0.BLOOD.r * 0.84, E0.BLOOD.g * 0.82, E0.BLOOD.b * 0.86, 0.9))
                                 # woven texture: faint horizontal thread bands
                                 for i in int(ch / 4.0):
                                         draw_rect(Rect2(cx0, cy + float(i) * 4.0, cx1 - cx0, 1.0),
-                                                Color(E0.VOID.r, E0.VOID.g, E0.VOID.b, 0.10))
+                                                Color(E0.VOID.r, E0.VOID.g, E0.VOID.b, 0.12))
+                                # WB-17 round 2 — the first wear pass was below
+                                # perception at gameplay distance; the audit still
+                                # read one flat ribbon. The weave now speaks: a
+                                # tufted nap of short vertical threads, offset
+                                # every row, deep enough to read as fabric
+                                var nap_y := cy + 3.0
+                                var nap_row := 0
+                                while nap_y < cy + ch - 2.0:
+                                        var nap_x := cx0 + 3.0 + (4.0 if nap_row % 2 == 0 else 0.0)
+                                        while nap_x < cx1 - 3.0:
+                                                var nk := 0.05 + 0.05 * float((int(nap_x / 7.0) * 13 + nap_row * 7) % 5) / 5.0
+                                                draw_line(Vector2(nap_x, nap_y), Vector2(nap_x, nap_y + 2.6),
+                                                        Color(E0.VOID.r, E0.VOID.g, E0.VOID.b, nk), 1.0)
+                                                nap_x += 7.0
+                                        nap_y += 4.2
+                                        nap_row += 1
+                                # length-wise wear: each ~90px stretch carries
+                                # its own shade — the pile is not new
+                                var wear_x := cx0
+                                while wear_x < cx1:
+                                        var wear_e := minf(wear_x + 90.0, cx1)
+                                        var wr := int(hash("carpetwear:%d" % int(wear_x / 90.0))) % 100
+                                        if wr < 34:
+                                                draw_rect(Rect2(wear_x, cy, wear_e - wear_x, ch),
+                                                        Color(E0.VOID.r, E0.VOID.g, E0.VOID.b, 0.10 + 0.07 * float(wr % 17) / 17.0))
+                                        elif wr > 78:
+                                                draw_rect(Rect2(wear_x, cy, wear_e - wear_x, ch),
+                                                        Color(E0.BONE.r, E0.BONE.g, E0.BONE.b, 0.06 + 0.04 * float(wr % 13) / 13.0))
+                                        wear_x = wear_e
+                                # edges lost into the stone: two-step fades at
+                                # both lips instead of hard cuts (widened +
+                                # strengthened — round 2)
+                                for fade_y in [cy, cy + ch - 5.0]:
+                                        draw_rect(Rect2(cx0, fade_y, cx1 - cx0, 3.2),
+                                                Color(E0.VOID.r, E0.VOID.g, E0.VOID.b, 0.22))
+                                for fade_y2 in [cy + 2.6, cy + ch - 8.6]:
+                                        draw_rect(Rect2(cx0, fade_y2, cx1 - cx0, 2.8),
+                                                Color(E0.VOID.r, E0.VOID.g, E0.VOID.b, 0.12))
                                 # gold borders, both edges — lit by the censer
                                 # glow, studded so the rhythm reads at distance
                                 for bx in [cx0 + 1.0, cx1 - 4.2]:

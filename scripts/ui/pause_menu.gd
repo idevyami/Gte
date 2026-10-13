@@ -43,6 +43,11 @@ func open() -> void:
         tab = TAB_MEMORY
         records_scroll = 0
         get_tree().paused = true
+        # WB-17 — the modal owns the frame: the system log's fading chips
+        # used to ghost through the veil behind the menu
+        var g := get_tree().get_first_node_in_group("game")
+        if g and g.system_log:
+                g.system_log.visible = false
         if not _reading_pushed:
                 FX.push_reading()
                 _reading_pushed = true
@@ -50,6 +55,9 @@ func open() -> void:
 func close() -> void:
         visible = false
         get_tree().paused = false
+        var g2 := get_tree().get_first_node_in_group("game")
+        if g2 and g2.system_log and g2.active:
+                g2.system_log.visible = true
         if _reading_pushed:
                 FX.pop_reading()
                 _reading_pushed = false
@@ -141,7 +149,9 @@ func _confirm() -> void:
 
 func _draw() -> void:
         var vp := get_viewport_rect().size
-        draw_rect(Rect2(Vector2.ZERO, vp), Color(E0.VOID.r, E0.VOID.g, E0.VOID.b, 0.82))
+        # WB-17 — the veil sat at 0.82 and let the world ghost through; the
+        # modal owns the frame
+        draw_rect(Rect2(Vector2.ZERO, vp), Color(E0.VOID.r, E0.VOID.g, E0.VOID.b, 0.9))
         if screen == 1:
                 _draw_codex(vp)
                 return
@@ -186,7 +196,9 @@ func _draw_codex(vp: Vector2) -> void:
                 var tid: int = t[1]
                 var active: bool = tid == tab
                 if E0.mono:
-                        var col := E0.BONE if active else E0.DIM
+                        # WB-17 — the unselected tab sat at DIM and read as
+                        # disabled; it is simply the other tab
+                        var col := E0.BONE if active else E0.PARCH
                         draw_string(E0.mono, Vector2(tab_x, 114.0), label, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, col)
                         var lw := E0.mono.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x
                         if active:
@@ -266,7 +278,10 @@ func _draw_records(vp: Vector2) -> void:
                 draw_string(E0.mono, Vector2(x + w - E0.mono.get_string_size(type_txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x - 14.0, y - 1.0), type_txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(E0.DIM.r, E0.DIM.g, E0.DIM.b, 0.95))
                 var mem := String(r["memory"])
                 if not mem.is_empty():
-                        draw_string(E0.mono, Vector2(x + 26.0, y + 18.0), mem, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, E0.PARCH)
+                        # WB-17 — the memory line sat at raw PARCH on the dark
+                        # zebra and the audit read it as #666-on-#111; the
+                        # recovered memory is now the brightest line on the card
+                        draw_string(E0.mono, Vector2(x + 26.0, y + 18.0), mem, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, E0.PARCH.lightened(0.24))
                 y += 66.0
         # scroll position
         if rows.size() > visible_rows:

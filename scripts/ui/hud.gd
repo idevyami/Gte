@@ -132,7 +132,7 @@ func _draw() -> void:
                 var cw := mono_b.get_string_size(cons_txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 15).x
                 draw_string(mono_b, Vector2(dial_c.x - cw * 0.5 + 0.8, oy + 108.8), cons_txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color(0.02, 0.02, 0.02, 0.6))
                 draw_string(mono_b, Vector2(dial_c.x - cw * 0.5, oy + 108.0), cons_txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 15, num_col)
-        UICraft.stamp_text(self, mono_s, Vector2(ox + 26.0, oy + 24.0), "CONSISTENCY", Color(E0.BONE.r, E0.BONE.g, E0.BONE.b, 0.75), 10, 0.0, 3)
+        UICraft.stamp_text(self, mono_s, Vector2(ox + 26.0, oy + 24.0), "CONSISTENCY", Color(E0.BONE.r, E0.BONE.g, E0.BONE.b, 0.95), 11, 0.0, 3)
 
         # --- the integrity tube: glass, fluid, meniscus, damage ghost -------------
         var tube_r := Rect2(ox + 124.0, oy + 30.0, 196.0, 13.0)
@@ -141,7 +141,7 @@ func _draw() -> void:
         var cracked := player.hp <= 30
         UICraft.glass_tube(self, tube_r, hp_frac, ghost_frac, _t, cracked)
         last_tube = {"fill": hp_frac, "ghost": ghost_frac, "cracked": cracked}
-        UICraft.stamp_text(self, mono_s, Vector2(ox + 124.0, oy + 24.0), "VESSEL INTEGRITY", Color(E0.BONE.r, E0.BONE.g, E0.BONE.b, 0.75), 10, 0.0, 7)
+        UICraft.stamp_text(self, mono_s, Vector2(ox + 124.0, oy + 24.0), "VESSEL INTEGRITY", Color(E0.BONE.r, E0.BONE.g, E0.BONE.b, 0.95), 11, 0.0, 7)
         # numeral: on its own brass sub-plate — a counter window, not a floating digit
         if mono_b:
                 var hp_txt := "%d" % player.hp
@@ -164,7 +164,10 @@ func _draw() -> void:
                 if filled:
                         seg_col = stage_col if i >= 16 else stage_col.lerp(E0.ASH, 0.25)
                 else:
-                        seg_col = Color(E0.ASH.r, E0.ASH.g, E0.ASH.b, 0.75)
+                        # WB-17 — the empty segments sat at ASH 0.75, one
+                        # breath from the filled ones; the spent ledger now
+                        # reads clearly spent
+                        seg_col = Color(E0.ASH.r, E0.ASH.g, E0.ASH.b, 0.42)
                 draw_rect(Rect2(ox + 124.0 + i * seg_w, strip_y, seg_w - 2.0, 5.0), seg_col)
         # the stage's name, engraved bright enough to survive the corner light —
         # and LIT at the hunting stages (a diegetic instrument never fails to
@@ -267,7 +270,9 @@ func _draw_prompt_plaque(vp: Vector2, mono: FontFile) -> void:
         var kw := 30.0
         var pw := kw + 14.0 + vsize.x + 34.0
         var px := (vp.x - pw) * 0.5
-        var py := vp.y - 158.0
+        # WB-17 — the plaque sat at vp.y-158, directly over the standing
+        # player's head (he walks the lower third); it now clears him
+        var py := vp.y - 206.0
         var plaque := Rect2(px, py, pw, 50.0)
         # stamp-in: a fresh verb lands with weight, then it holds (scale about center)
         var age := clampf(0.6 - _prompt_t, 0.0, 0.18) / 0.18

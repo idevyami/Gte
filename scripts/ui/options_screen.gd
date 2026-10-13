@@ -54,6 +54,11 @@ func open(parent: String) -> void:
         _hold_t = 0.0
         _open_grace = 10
         GameState.options_open = true
+        # WB-17 — the modal owns the frame: the system log's fading chips
+        # used to ghost through the veil behind the settings
+        var g := get_tree().get_first_node_in_group("game")
+        if g and g.system_log:
+                g.system_log.visible = false
         if not _reading_pushed:
                 FX.push_reading()
                 _reading_pushed = true
@@ -61,6 +66,11 @@ func open(parent: String) -> void:
 func close() -> void:
         visible = false
         GameState.options_open = false
+        # restore only when no other modal holds the frame (opening from the
+        # pause menu hands the frame straight back to the pause veil)
+        var g2 := get_tree().get_first_node_in_group("game")
+        if g2 and g2.system_log and g2.active and parent_mode != "pause" and not get_tree().paused:
+                g2.system_log.visible = true
         if _reading_pushed:
                 FX.pop_reading()
                 _reading_pushed = false
@@ -185,7 +195,9 @@ const SECTION_H := 34.0
 
 func _draw() -> void:
         var vp := get_viewport_rect().size
-        draw_rect(Rect2(Vector2.ZERO, vp), Color(E0.VOID.r, E0.VOID.g, E0.VOID.b, 0.9))
+        # WB-17 — 0.9 let the fading world text ghost through behind the
+        # settings; the modal owns the frame now
+        draw_rect(Rect2(Vector2.ZERO, vp), Color(E0.VOID.r, E0.VOID.g, E0.VOID.b, 0.965))
         var cx := vp.x * 0.5
         # header — ruled like the pause title
         var hy := vp.y * 0.14
@@ -305,12 +317,15 @@ func _draw_slider(row: Dictionary, x: float, y: float, sel: bool) -> void:
                 draw_line(Vector2(nx, y - 4.0), Vector2(nx, y + 4.0), Color(E0.ASH.r, E0.ASH.g, E0.ASH.b, 0.55), 1.0)
         # fill
         draw_line(Vector2(x, y), Vector2(x + SLIDER_W * v, y), E0.GOLD, 2.0)
-        # thumb diamond
+        # thumb diamond — WB-17: a touch larger with a dark under-shadow and a
+        # bright core, so the handle reads against the track at a glance
         var th := Vector2(x + SLIDER_W * v, y)
         var tcol := E0.GOLD if sel else Color(E0.GOLD.r, E0.GOLD.g, E0.GOLD.b, 0.6)
         if sel:
                 tcol = E0.GOLD if fmod(anim_t, 1.0) < 0.6 else Color(E0.GOLD.r, E0.GOLD.g, E0.GOLD.b, 0.4)
-        _diamond(th, 4.0, tcol)
+        _diamond(th + Vector2(0.0, 1.2), 6.2, Color(0.02, 0.02, 0.025, 0.55))
+        _diamond(th, 5.4, tcol)
+        _diamond(th, 2.2, Color(E0.BONE.r, E0.BONE.g, E0.BONE.b, 0.55))
         # percentage
         if E0.mono:
                 var pct := "%d%%" % roundi(float(GameState.settings[row["key"]]) * 100.0)

@@ -218,7 +218,11 @@ func _column_painted(pos: Vector2, w: float, h: float, s: float) -> void:
         var base_h := 24.0
         var cap_w := w * 1.58
         draw_texture_rect(_tex("column_cap"), Rect2(pos.x - cap_w * 0.5, pos.y - h, cap_w, cap_h), false, mod)
-        draw_texture_rect(_tex("column_shaft"), Rect2(pos.x - w * 0.5, pos.y - h + cap_h, w, h - cap_h - base_h), false, mod)
+        # the shaft TILES instead of stretching: a 400px column stretched from
+        # a 100px texture smeared into a flat slab (the WB-17 audit read it as
+        # placeholder geometry); tiling keeps real stone variation along the
+        # whole height — each course carries its own joints
+        draw_texture_rect(_tex("column_shaft"), Rect2(pos.x - w * 0.5, pos.y - h + cap_h, w, h - cap_h - base_h), true, mod)
         # carved fluting: dark vertical reeds mask the shaft stretch and read
         # as tooled stone, not a smeared texture
         for i in 3:
@@ -368,6 +372,13 @@ func _mural_painted(pos: Vector2, w: float, h: float) -> void:
         var frame := 7.0
         draw_rect(Rect2(pos.x - frame, pos.y - h - frame, w + frame * 2.0, h + frame * 2.0), E0.DIRTY_STONE)
         draw_texture_rect(_tex("mural"), Rect2(pos.x, pos.y - h, w, h), false)
+        # WB-17 — the painted panel sat too sharp against the wall (the audit
+        # read it as a debug window): a veil of room air over the picture so
+        # it hangs in the chapel's light, a deeper fold toward the floor, and
+        # a catch-light on the frame's top edge
+        draw_rect(Rect2(pos.x, pos.y - h, w, h), Color(E0.VOID.r, E0.VOID.g, E0.VOID.b, 0.09))
+        draw_rect(Rect2(pos.x, pos.y - h * 0.34, w, h * 0.34), Color(E0.VOID.r, E0.VOID.g, E0.VOID.b, 0.07))
+        draw_rect(Rect2(pos.x - frame, pos.y - h - frame, w + frame * 2.0, 1.6), Color(E0.BONE.r, E0.BONE.g, E0.BONE.b, 0.10))
         # top and side shading strips to fold the panel into the wall light
         draw_rect(Rect2(pos.x - frame, pos.y - h - frame, w + frame * 2.0, frame + 3.0), Color(E0.VOID.r, E0.VOID.g, E0.VOID.b, 0.35))
         draw_rect(Rect2(pos.x - frame, pos.y - h - frame, frame, h + frame * 2.0), Color(E0.VOID.r, E0.VOID.g, E0.VOID.b, 0.28))
@@ -757,14 +768,36 @@ func _pew(pos: Vector2, w: float, s: float) -> void:
         ## bench length; the back stands on the -x side so the congregation
         ## faces the altar (+x).
         _contact_shadow(pos, w * 0.56, 0.3 + 0.08 * s)
-        var wood := Color(0.16, 0.12, 0.1).darkened(0.04 * s)
-        var wood_hi := wood.lightened(0.07)
+        # WB-17 — the wood sat at 0.16 and read as grey stone boxes in the
+        # audit; chapel wood is OLD but candle-lit: lifted a step, with a
+        # strong seat highlight (round 3: the dark west end of the chapel
+        # still swallowed them — the top edge now carries a real rim)
+        var wood := Color(0.24, 0.18, 0.145).darkened(0.04 * s)
+        var wood_hi := wood.lightened(0.26)
         # legs
         for lx in [pos.x - w * 0.38, pos.x + w * 0.36]:
-                draw_rect(Rect2(lx, pos.y - 14, 7, 14), wood)
-        # seat
-        draw_rect(Rect2(pos.x - w * 0.5, pos.y - 18, w, 6), wood_hi)
+                draw_rect(Rect2(lx, pos.y - 14, 7, 14), wood.darkened(0.04))
+        # seat: a trapezoid plank that OVERHANGS its base on both ends — the
+        # classic bench silhouette (WB-17: a flush slab read as a grey box)
+        draw_colored_polygon(PackedVector2Array([
+                Vector2(pos.x - w * 0.5 - 3.5, pos.y - 18),
+                Vector2(pos.x + w * 0.5 + 3.5, pos.y - 18),
+                Vector2(pos.x + w * 0.5, pos.y - 12),
+                Vector2(pos.x - w * 0.5, pos.y - 12),
+        ]), wood_hi)
         draw_rect(Rect2(pos.x - w * 0.5, pos.y - 13, w, 4), wood)
+        # back-slats along the -x edge: three uprights in perspective — a row
+        # of pew backs, not one invisible edge-on board
+        for k in 3:
+                var sl_x := pos.x - w * 0.5 + 4.0 + k * (w * 0.36)
+                draw_rect(Rect2(sl_x, pos.y - 36, 4.5, 18), wood.darkened(0.02))
+                draw_rect(Rect2(sl_x, pos.y - 36.8, 4.5, 1.2), Color(E0.BONE.r, E0.BONE.g, E0.BONE.b, 0.20))
+        # the seat's top edge carries a real rim of censer light — polished
+        # by the counted sitting and rising for a thousand services (WB-17
+        # round 3: doubled strength; this is what makes a bench read as a
+        # bench in the chapel's dark end)
+        draw_rect(Rect2(pos.x - w * 0.5 - 3.5, pos.y - 19.2, w + 7.0, 1.6), Color(E0.BONE.r, E0.BONE.g, E0.BONE.b, 0.32 + 0.08 * s))
+        draw_rect(Rect2(pos.x - w * 0.5 - 3.5, pos.y - 17.8, w + 7.0, 1.0), Color(E0.GOLD.r, E0.GOLD.g, E0.GOLD.b, 0.16))
         # back, slightly tilted
         var back_x := pos.x - w * 0.5 + 3.0
         draw_colored_polygon(PackedVector2Array([
@@ -838,6 +871,11 @@ func _window(pos: Vector2, w: float, h: float, s: float) -> void:
         # sill
         draw_rect(Rect2(pos.x - w * 0.5 - 5.0, pos.y - 5.0, w + 10.0, 6.0), frame)
         draw_rect(Rect2(pos.x - w * 0.5 - 5.0, pos.y - 5.0, w + 10.0, 2.0), frame.lightened(0.08))
+        # a soft halo first — the window is a light source in the wall, not a
+        # hole cut into it (two faint breaths, never a hard disc)
+        var halo_c := Color(glass_col.r, glass_col.g, glass_col.b, 0.045 + 0.02 * glow)
+        draw_circle(Vector2(pos.x, pos.y - h * 0.5), maxf(w, h * 0.55) * 0.85, halo_c)
+        draw_circle(Vector2(pos.x, pos.y - h * 0.5), maxf(w, h * 0.55) * 0.55, Color(glass_col.r, glass_col.g, glass_col.b, 0.03 + 0.015 * glow))
         # glass body: rectangle up to the spring line, then the pointed arch
         var spring := pos.y - h * 0.52
         var apex := pos.y - h
@@ -851,6 +889,23 @@ func _window(pos: Vector2, w: float, h: float, s: float) -> void:
                 var bx := -w * 0.5 + w * k
                 arch_pts.append(Vector2(pos.x + bx, spring - lift))
         draw_colored_polygon(arch_pts, glass_col)
+        # WB-17 — the glass used to read as one flat neon sheet with a black
+        # grid (the audit called it placeholder geometry). Depth instead:
+        # the arch lights burn brighter than the lower rows (sky above the
+        # city), and each of the six lower panes carries its own age — a
+        # deterministic per-pane jitter between lighten and darken
+        draw_colored_polygon(arch_pts, Color(glass_col.r, glass_col.g, glass_col.b, minf(0.11, glass_col.a * 0.45)))
+        var row_y := [spring, pos.y - h * 0.30, pos.y - h * 0.14, pos.y - 5.0]
+        for py in 3:
+                var py0: float = row_y[py]
+                var py1: float = row_y[py + 1]
+                for pxi in 2:
+                        var pj := rng.randf_range(-0.05, 0.055)
+                        var px0 := pos.x - w * 0.5 + w * 0.5 * float(pxi)
+                        if pj > 0.0:
+                                draw_rect(Rect2(px0, py0, w * 0.5, py1 - py0), Color(glass_col.r, glass_col.g, glass_col.b, pj))
+                        else:
+                                draw_rect(Rect2(px0, py0, w * 0.5, py1 - py0), Color(E0.VOID.r, E0.VOID.g, E0.VOID.b, -pj))
         # leaded lights: central mullion + two transoms + arch ribs
         var lead := E0.ASH.darkened(0.15)
         draw_line(Vector2(pos.x, spring - h * 0.46), Vector2(pos.x, pos.y - 5.0), lead, 2.5)
@@ -1102,7 +1157,8 @@ func _fan(pos: Vector2, w: float, s: float) -> void:
         # backing housing (behind the blades)
         draw_circle(pos, r + 5.0, E0.CHARCOAL)
         draw_circle(pos, r, E0.VOID)
-        # blades — rotating
+        # blades — rotating (WB-17: lifted a step — at ASH+0.03 they vanished
+        # into the housing and the fan read as a black void on the wall)
         var spin := _t * (0.9 + s * 0.6) + s * 6.0
         draw_set_transform_matrix(Transform2D(spin, pos))
         for i in 4:
@@ -1113,8 +1169,11 @@ func _fan(pos: Vector2, w: float, s: float) -> void:
                         Vector2(cos(a + 0.52) * r * 0.95, sin(a + 0.52) * r * 0.95),
                         Vector2(cos(a + 0.16) * r * 0.18, sin(a + 0.16) * r * 0.18),
                 ])
-                draw_colored_polygon(pts, E0.ASH.lightened(0.03))
+                draw_colored_polygon(pts, E0.ASH.lightened(0.14))
         draw_set_transform_matrix(Transform2D())
+        # a catch-light arc on the shroud's upper rim — the ring reads as
+        # bolted metal, not a hole in the wall
+        draw_arc(pos, r + 3.5, PI * 1.08, PI * 1.92, 14, Color(E0.PARCH.r, E0.PARCH.g, E0.PARCH.b, 0.28), 1.6)
         # hub
         draw_circle(pos, r * 0.16, E0.ASH)
         draw_circle(pos, r * 0.07, E0.GOLD.darkened(0.3))

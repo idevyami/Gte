@@ -33,12 +33,22 @@ func open() -> void:
         _t = 0.0
         visible = true
         GameState.map_open = true
+        # WB-17 — the modal owns the frame: no fading chips ghost through
+        # the map's veil
+        var g := get_tree().get_first_node_in_group("game")
+        if g and g.system_log:
+                g.system_log.visible = false
         FX.push_reading()
         AudioManager.play_sfx("sfx_terminal", -8.0)
 
 func close_map() -> void:
         visible = false
         GameState.map_open = false
+        # restore only when no other modal holds the frame (the pause menu
+        # restores it when IT closes)
+        var g2 := get_tree().get_first_node_in_group("game")
+        if g2 and g2.system_log and g2.active and not GameState.options_open and not get_tree().paused:
+                g2.system_log.visible = true
         FX.pop_reading()
         closed.emit()
 
@@ -144,10 +154,31 @@ func _draw() -> void:
                 if GameState.visited_rooms.has(key):
                         visited_pts.append(route_pts[i])
         if visited_pts.size() >= 2:
-                for i in visited_pts.size() - 1:
-                        var a := (visited_pts[i] + visited_pts[i + 1]) * 0.5 + Vector2(0, 12)
-                        draw_polyline(PackedVector2Array([visited_pts[i], a, visited_pts[i + 1]]),
-                                Color(E0.GOLD.r, E0.GOLD.g, E0.GOLD.b, 0.34 * ease), 1.2)
+                # WB-17 — the route was two hard segments per span and read as
+                # an aliased debug scribble; round 2's per-span quadratics still
+                # kinked where spans met (second-derivative spikes read as
+                # zigzag). It is ONE Catmull-Rom spline now — C1-continuous
+                # through every stratum, no kinks — drawn as a soft gold
+                # under-glow with a crisp anti-aliased core: ink, not polyline
+                var thread := PackedVector2Array()
+                var n := visited_pts.size()
+                for i in n - 1:
+                        var p0: Vector2 = visited_pts[maxi(0, i - 1)]
+                        var p1: Vector2 = visited_pts[i]
+                        var p2: Vector2 = visited_pts[i + 1]
+                        var p3: Vector2 = visited_pts[mini(n - 1, i + 2)]
+                        var steps := 12
+                        var k0 := 0 if i == 0 else 1   # stitch without doubling points
+                        for k in range(k0, steps + 1):
+                                var t := float(k) / float(steps)
+                                var q := 0.5 * ((2.0 * p1) + (-p0 + p2) * t
+                                        + (2.0 * p0 - 5.0 * p1 + 4.0 * p2 - p3) * t * t
+                                        + (-p0 + 3.0 * p1 - 3.0 * p2 + p3) * t * t * t)
+                                # a hand-drawn breath — ink laid by a living wrist
+                                q += Vector2(sin(t * 7.0 + float(i) * 2.3) * 1.4, cos(t * 5.0 + float(i)) * 1.0)
+                                thread.append(q)
+                draw_polyline(thread, Color(E0.GOLD.r, E0.GOLD.g, E0.GOLD.b, 0.12 * ease), 4.2, true)
+                draw_polyline(thread, Color(E0.GOLD.r, E0.GOLD.g, E0.GOLD.b, 0.58 * ease), 2.0, true)
 
         # ---- depth scale on the left edge
         for s in strata:
