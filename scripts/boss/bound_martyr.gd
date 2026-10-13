@@ -48,6 +48,12 @@ func shielded() -> bool:
         return false
 
 # ------------------------------------------------------------------ phases
+func gait_key() -> String:
+        ## THE WEIGHT OF THE BOUND (WB-15): the heaviest thing that walks
+        ## the aftermath — the floor records it deeper than the vessel,
+        ## in a wider stance, and every leap leaves its bruise.
+        return "martyr"
+
 func _act(delta: float) -> void:
         state_t += delta
         gravity_pass(delta)
@@ -98,6 +104,11 @@ func _act(delta: float) -> void:
                                 _slam_damage_check()
                                 state = RECOVER
                                 state_t = 0.0
+                                # THE LEAP'S WITNESS (WB-15): the bound
+                                # body lands — the floor keeps the bruise
+                                var tr := _trace_layer()
+                                if tr != null:
+                                        tr.stamp_land(global_position + Vector2(0.0, 6.0), 1.7)
                                 FX.shake(10.0, 0.5)
                                 FX.rumble(0.85, 0.35)
                                 FX.burst(global_position + Vector2(0, -4), "dust", 0.0, 16)

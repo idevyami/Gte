@@ -12,6 +12,7 @@ var _room_key := ""
 var _wake: Wake = null
 var _player: Node2D = null      # THE VESSEL'S TRACE: the air yields to the body
 var _air_stir := 0.0            # how stirred the air still is (decays when still)
+var _pushes_others := 0         # WB-15: mote pushes by the world's own movers (test hook)
 
 var _motes: Array = []        # slow bright specks in the light
 var _fg_ash: Array = []       # foreground flakes
@@ -118,37 +119,77 @@ func _process(delta: float) -> void:
                         p.y = room_size.y * 0.8 + 20.0
                         p.x = randf() * room_size.x
                 m["pos"] = p
-        # THE VESSEL'S TRACE (WB-14): the air yields to a moving body —
-        # a brisk walk (not only a sprint) parts the dust, the parting
-        # TRAILS the body (a wake, not a bubble), and the stirred air is
-        # remembered briefly, then stills. The old WB-8 law pushed only
-        # on a hard sprint and only radially; the wake now leans behind
-        # the stride at any walking pace.
-        var body: Node2D = null
+        # THE AIR YIELDS TO WHATEVER LIVES (WB-15 extends WB-14): a brisk
+        # walk (not only a sprint) parts the dust, the parting TRAILS the
+        # body (a wake, not a bubble) — and it is not only the vessel the
+        # air answers: the hollow's patrol, the believers' shuffle, the
+        # martyr's charge part it the same way (a little less — they are
+        # lighter claims on the air). The STIRRED AIR is remembered for
+        # the vessel alone: the room forgets a standing body, and his law
+        # is unchanged. The old WB-8 law pushed only on a hard sprint and
+        # only radially; the wake leans behind any walking stride.
+        var stir_body: Node2D = null
         if _player != null and is_instance_valid(_player):
-                body = _player
+                stir_body = _player
         elif _camera != null and _camera.target != null and is_instance_valid(_camera.target):
-                body = _camera.target
-        if body != null and "velocity" in body and absf(body.velocity.x) > 60.0:
+                stir_body = _camera.target
+        var movers: Array = []
+        if stir_body != null:
+                movers.append(stir_body)
+        for node in get_tree().get_nodes_in_group("enemies"):
+                if node != null and is_instance_valid(node):
+                        movers.append(node)
+        var vessel_pushed := 0
+        for body in movers:
+                if body == null or not ("velocity" in body):
+                        continue
+                var bv: Vector2 = body.velocity
+                if absf(bv.x) <= 60.0:
+                        continue
                 var pp: Vector2 = body.global_position
-                var spd := clampf(absf(body.velocity.x) / 230.0, 0.0, 1.0)
-                var pushed := 0
+                var spd := clampf(absf(bv.x) / 230.0, 0.0, 1.0)
+                if body != stir_body:
+                        spd *= 0.8      # the others claim the air a little less
                 for m in _motes:
                         var mp: Vector2 = m["pos"]
                         var d := mp - pp
                         var dl := d.length()
                         if dl < 84.0 and dl > 0.01:
                                 var radial := d / dl
-                                var wake := Vector2(-signf(body.velocity.x), -0.25).normalized()
+                                var wake := Vector2(-signf(bv.x), -0.25).normalized()
                                 m["pos"] = mp + (radial * 52.0 + wake * 30.0) * (0.45 + 0.75 * spd) * delta
-                                pushed += 1
+                                if body == stir_body:
+                                        vessel_pushed += 1
+                                else:
+                                        _pushes_others += 1
+                # the room's own breath parts too — the chapel's incense, the
+                # archive's drifting papers, the pyre's embers (not the drips:
+                # water is not air)
+                if _special_kind == "incense" or _special_kind == "updraft" \
+                                or _special_kind == "embers" or _special_kind == "papers":
+                        for m in _special:
+                                var sp: Vector2 = m["pos"]
+                                var sd := sp - pp
+                                var sdl := sd.length()
+                                if sdl < 84.0 and sdl > 0.01:
+                                        var radial_s := sd / sdl
+                                        var wake_s := Vector2(-signf(bv.x), -0.25).normalized()
+                                        m["pos"] = sp + (radial_s * 44.0 + wake_s * 26.0) * (0.45 + 0.75 * spd) * delta
+                                        if body == stir_body:
+                                                vessel_pushed += 1
+                                        else:
+                                                _pushes_others += 1
                 for m in _fg_ash:
                         var ap: Vector2 = m["pos"]
                         var ad := ap - pp
                         var adl := ad.length()
                         if adl < 60.0 and adl > 0.01:
                                 m["pos"] = ap + (ad / adl) * 40.0 * spd * delta
-                _air_stir = minf(1.0, _air_stir + (0.35 + 0.09 * pushed) * (0.4 + 0.6 * spd) * delta * 10.0)
+                                if body != stir_body:
+                                        _pushes_others += 1
+        if stir_body != null and "velocity" in stir_body and absf(stir_body.velocity.x) > 60.0:
+                var s_spd := clampf(absf(stir_body.velocity.x) / 230.0, 0.0, 1.0)
+                _air_stir = minf(1.0, _air_stir + (0.35 + 0.09 * vessel_pushed) * (0.4 + 0.6 * s_spd) * delta * 10.0)
         else:
                 _air_stir = maxf(0.0, _air_stir - delta * 0.55)
         for m in _fg_ash:
@@ -200,6 +241,12 @@ func air_stir() -> float:
         ## decays when the air stills (smoke law: the room forgets a
         ## standing body).
         return _air_stir
+
+func others_pushes() -> int:
+        ## How many times the world's OWN movers have parted the air —
+        ## the hollow's patrol, the shuffle, the charge (smoke law: the
+        ## air yields to whatever lives, not only to the vessel).
+        return _pushes_others
 
 func mist_push(x: float) -> float:
         ## How far the mist is displaced at x — the vessel's body opens a

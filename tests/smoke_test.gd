@@ -52,6 +52,7 @@ func _run() -> void:
         await _the_world_thins()
         await _the_threshold()
         await _the_vessels_trace()
+        await _the_others_passage()
         print("=== %d checks, %d failures ===" % [checks, fails])
         get_tree().quit(1 if fails > 0 else 0)
 
@@ -1825,6 +1826,169 @@ func _the_vessels_trace() -> void:
                 "the air stills when the vessel stands (%.2f -> %.2f)" % [stirred, game.ambient.air_stir()])
         ok(game.ambient.mist_push(game.player.global_position.x + 600.0) == 0.0,
                 "the ground haze holds far from the body (WB-8 law unbroken)")
+
+# ------------------------------------------------------------------ WB-15
+func _the_others_passage() -> void:
+        print("[THE OTHERS' PASSAGE — WB-15]")
+        # --- THE GAITS: every creature that walks writes in its own body's language
+        ok(Traces.GAITS.has("hollow") and Traces.GAITS.has("believer") and Traces.GAITS.has("martyr"),
+                "the walkers of the city each own a gait")
+        var gh: Dictionary = Traces.GAITS["hollow"]
+        var gb: Dictionary = Traces.GAITS["believer"]
+        var gm: Dictionary = Traces.GAITS["martyr"]
+        ok(float(gh["weight"]) < 0.75 and String(gh["sole"]) == "boot",
+                "the hollow presses the vessel's own sole without conviction (%.2f)" % float(gh["weight"]))
+        ok(float(gh["variance"]) <= 0.01,
+                "the hollow strides like a metronome — a copy of a gait, not a gait")
+        ok(String(gb["sole"]) == "soft" and float(gb["stride"]) < float(gh["stride"]),
+                "the believer shuffles: a soft narrow sole, short quick steps")
+        ok(float(gm["weight"]) > 1.2 and float(gm["stride"]) > float(gh["stride"]),
+                "the bound martyr presses deeper and strides wider than the vessel (%.2f)" % float(gm["weight"]))
+        # --- unit laws on a bare canvas
+        var tr := Traces.new()
+        tr.setup("wb15", "ash")
+        tr.stamp_foot(Vector2(200.0, 500.0), 1.0)
+        var vessel_born := float(tr.print_at(0)["born"])
+        tr.stamp_foot(Vector2(240.0, 500.0), 1.0, 1.0, "hollow")
+        var ph: Dictionary = tr.print_at(1)
+        ok(String(ph["tag"]) == "hollow" and float(ph["born"]) < vessel_born * 0.8,
+                "the hollow's print is the vessel's, pressed lighter (%.2f < %.2f)" % [float(ph["born"]), vessel_born])
+        # the metronome: same-side prints fall at EXACTLY the same offset
+        tr.setup("wb15", "ash")
+        for i in 8:
+                tr.stamp_foot(Vector2(300.0 + float(i) * 34.0, 500.0), 1.0, 1.0, "hollow")
+        var metronome := true
+        var off0 := float(tr.print_at(0)["x"]) - 300.0
+        var off1 := float(tr.print_at(1)["x"]) - (300.0 + 34.0)
+        for i in 8:
+                var want := off0 if i % 2 == 0 else off1
+                var got := float(tr.print_at(i)["x"]) - (300.0 + float(i) * 34.0)
+                if absf(got - want) > 0.0001:
+                        metronome = false
+        ok(metronome, "the metronome stride: the same step every step (no fatigue)")
+        # the believer's narrow sole / the martyr's wide stance
+        tr.stamp_foot(Vector2.ZERO, 1.0, 1.0, "believer")
+        var pb: Dictionary = tr.print_at(tr.count() - 1)
+        tr.stamp_foot(Vector2.ZERO, 1.0, 1.0, "martyr")
+        var pm: Dictionary = tr.print_at(tr.count() - 1)
+        ok(float(pb["w"]) < 9.0 and float(pb["w"]) < float(pm["w"]),
+                "the believer's sole is narrower than the martyr's stance")
+        ok(float(pm["born"]) > vessel_born, "the martyr's press is deeper than the vessel's")
+        # --- THE SHARED RING: one canvas, whatever walks it
+        tr.setup("wb15", "ash")
+        for i in 300:
+                var key: String = ["", "hollow", "believer"][i % 3]
+                tr.stamp_foot(Vector2(float(i) * 7.0, 500.0), 1.0, 1.0, key)
+        ok(tr.count() == Traces.CAP, "the others share the vessel's ring — a path, not a ledger (%d)" % tr.count())
+        # --- THE INFORMATION LAW: fresh reads darker than old (the wet
+        # stone shows it fastest — a print dries as it ages)
+        tr.setup("wb15", "wet")
+        tr.stamp_foot(Vector2(160.0, 500.0), 1.0, 1.0, "hollow")
+        var f_now := tr.alpha_factor(tr.print_at(0))
+        tr.simulate(6.5)
+        ok(tr.alpha_factor(tr.print_at(0)) < f_now * 0.6,
+                "the floor is information: a fresh trail reads darker than an old one (%.2f -> %.2f)" % [f_now, tr.alpha_factor(tr.print_at(0))])
+        # --- THE CENSOR ERASES: its passage blanks the record
+        tr.setup("wb15", "ash")
+        for i in 12:
+                tr.stamp_foot(Vector2(400.0 + float(i) * 26.0, 500.0), 1.0)
+        var before := tr.count()
+        var erased := tr.erase_column(530.0, 30.0)
+        ok(erased >= 2 and tr.count() == before - erased,
+                "the censor's passage blanks the record where it passed (%d erased)" % erased)
+        ok(tr.count() > 0, "the record outside the correction survives")
+        # --- THE FLOOR NEVER MEETS THEM: the drifters and the paperwork
+        var nc_probe := NullChild.new()
+        ok(not nc_probe.has_method("gait_key") or nc_probe.gait_key() == "",
+                "the null children drift through walls — the floor never meets them")
+        nc_probe.free()
+        var co_probe := Correction.new()
+        ok(not co_probe.has_method("gait_key"),
+                "the correction is paperwork — it files past, it does not walk")
+        co_probe.free()
+        var bm_probe := BoundMartyr.new()
+        ok(bm_probe.gait_key() == "martyr", "the bound martyr owns the heaviest gait in the city")
+        bm_probe.free()
+        # the leap's witness at martyr weight
+        tr.setup("wb15", "dust")
+        tr.stamp_land(Vector2(600.0, 500.0), 1.7)
+        ok(int(tr.print_at(0)["star"]) >= 7,
+                "the martyr's landing throws a wide witness (%d flights)" % int(tr.print_at(0)["star"]))
+        # --- INTEGRATION: the hollow's patrol writes the ash quarter
+        game.transition_to("act3")
+        await _room("act3")
+        var h0 := game.traces.count_tag("hollow")
+        var t0 := Time.get_ticks_msec()
+        while Time.get_ticks_msec() - t0 < 2600:
+                await get_tree().process_frame
+        var h1 := game.traces.count_tag("hollow")
+        ok(h1 > h0 + 3, "the hollow's patrol writes the ash quarter in its own hand (%d -> %d)" % [h0, h1])
+        ok(game.traces.count_tag("vessel") == 0,
+                "the vessel has not walked — the ash holds only the hollow's passage")
+        # the shared canvas: both hands on one floor
+        Input.action_press("move_right")
+        var tw := Time.get_ticks_msec()
+        while Time.get_ticks_msec() - tw < 1100:
+                await get_tree().process_frame
+        Input.action_release("move_right")
+        ok(game.traces.count_tag("vessel") > 4 and game.traces.count_tag("hollow") > 0,
+                "one floor, two hands: the vessel's boots and the hollow's echo share the record")
+        # --- THE AIR YIELDS TO THEM TOO: the patrol parts the falling ash
+        var t_air := Time.get_ticks_msec()
+        while Time.get_ticks_msec() - t_air < 4000 and game.ambient.others_pushes() == 0:
+                await get_tree().process_frame
+        ok(game.ambient.others_pushes() > 0,
+                "the air parts for whatever lives — the patrol parts the falling ash (%d)" % game.ambient.others_pushes())
+        # --- THE ENGINE RECORDS NOTHING, even for its own hollows
+        game.transition_to("act7")
+        await _room("act7")
+        var e0 := game.traces.count()
+        var t7 := Time.get_ticks_msec()
+        while Time.get_ticks_msec() - t7 < 2200:
+                await get_tree().process_frame
+        ok(game.traces.count() == e0 and game.traces.count_tag("hollow") == 0,
+                "the Engine's floor records nothing — not even the hollows that walk it")
+        # --- THE CHAPEL: the devotion field pre-exists the vessel
+        game.transition_to("act5")
+        await _room("act5")
+        var t_k := Time.get_ticks_msec()
+        while Time.get_ticks_msec() - t_k < 3200 and game.traces.count_kind("kneel") < 7:
+                await get_tree().process_frame
+        var knees := game.traces.count_kind("kneel")
+        ok(knees >= 7, "the chapel runner carries the congregation's stations (%d knee-presses)" % knees)
+        var aged := 0
+        for i in game.traces.count():
+                var kp: Dictionary = game.traces.print_at(i)
+                if String(kp["kind"]) == "kneel" and float(kp["age"]) > 3.0:
+                        aged += 1
+        ok(aged >= 5, "the stations were pressed before the vessel arrived — the devotion predates him")
+        # the shuffle: harm one and all answer — in cloth
+        var first_bel: Believer = null
+        for node in get_tree().get_nodes_in_group("enemies"):
+                if node is Believer and not node.dead:
+                        first_bel = node
+                        break
+        ok(first_bel != null, "the congregation is present")
+        if first_bel != null:
+                # stand the vessel within the congregation's answer (their
+                # aggro leash is 560 — from the door the nearest is 580 away
+                # and the answer dies unborn; two steps in and it holds)
+                game.player.global_position = Vector2(560.0, game.player.global_position.y)
+                game.player.velocity = Vector2.ZERO
+                await _frames(2)
+                first_bel._on_hurt()
+                var t5 := Time.get_ticks_msec()
+                while Time.get_ticks_msec() - t5 < 2000:
+                        await get_tree().process_frame
+                var bel_feet := 0
+                for i in game.traces.count():
+                        var bp: Dictionary = game.traces.print_at(i)
+                        if String(bp.get("tag", "")) == "believer" and String(bp["kind"]) == "foot":
+                                bel_feet += 1
+                ok(bel_feet > 2,
+                        "the believers' shuffle writes the runner as they come (%d strides)" % bel_feet)
+        else:
+                ok(false, "the congregation is present")
 
 # ------------------------------------------------------------------ WB-13
 func _the_threshold() -> void:

@@ -80,6 +80,12 @@ func _act(delta: float) -> void:
 func _contact_damages() -> bool:
         return state == LUNGE
 
+func gait_key() -> String:
+        ## THE ECHO (WB-15): the hollow's print is the vessel's own sole —
+        ## pressed without conviction, stepped at a metronome. It is what
+        ## the census left when it took the man out of the gait.
+        return "hollow"
+
 func _on_hurt() -> void:
         if state in [PATROL, STALK]:
                 state = STALK

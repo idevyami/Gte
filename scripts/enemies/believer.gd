@@ -13,6 +13,8 @@ var ward: WardBarrier = null
 var facing := 1
 var aggro_all := false
 var flee_target := Vector2.ZERO
+var _chant_pressed := false        # WB-15: this kneel already wrote its station
+var _walked_since_press := false  # WB-15: has the body moved since it last knelt
 
 func setup_believer(p_pos: Vector2, p_ward: WardBarrier = null, p_kneel := true) -> void:
         setup_enemy("BELIEVER", "BELIEVER_%d" % [randi() % 800 + 150])
@@ -26,10 +28,27 @@ func setup_believer(p_pos: Vector2, p_ward: WardBarrier = null, p_kneel := true)
 func is_chanting() -> bool:
         return state == CHANT and not dead
 
+func gait_key() -> String:
+        ## THE SHUFFLE (WB-15): short soft-soled steps — the congregation
+        ## moves in cloth, not boots. Their deeper mark is the knee-press
+        ## (see _press_station).
+        return "believer"
+
 func _act(delta: float) -> void:
         state_t += delta
         var pp := _player_pos()
         facing = 1 if pp.x > global_position.x else -1
+        # THE KNEE-PRESS (WB-15): entering the chant presses the station
+        # into the floor — once per kneel, and only once the body has
+        # landed (a station floats nowhere)
+        if state == CHANT:
+                if not _chant_pressed and is_on_floor():
+                        _chant_pressed = true
+                        _press_station()
+        else:
+                _chant_pressed = false
+        if state in [AGGRO, STRIKE, FLEE] and absf(velocity.x) > 30.0:
+                _walked_since_press = true
         match state:
                 CHANT:
                         aggro = false
@@ -67,6 +86,21 @@ func _act(delta: float) -> void:
                         if absf(flee_target.x - global_position.x) < 30.0 or state_t > 6.0:
                                 _abandon_fade()
         velocity.y += 1500.0 * delta if not is_on_floor() else 0.0
+
+func _press_station() -> void:
+        ## THE STATION'S AGE (WB-15): a press the vessel never saw kneel is
+        ## born OLD — the devotion predates his arrival (the chapel was
+        ## full of prayer before he ever walked in). A press after walking
+        ## is fresh: darker, present, now. The record keeps up with the
+        ## living either way.
+        var tr := _trace_layer()
+        if tr == null:
+                return
+        var pre := 0.0
+        if not _walked_since_press:
+                pre = randf_range(6.0, 9.0)
+        _walked_since_press = false
+        tr.stamp_kneel(global_position + Vector2(0.0, 4.0), float(facing), pre)
 
 func _player_near(r: float) -> bool:
         return absf(_player_pos().x - global_position.x) < r

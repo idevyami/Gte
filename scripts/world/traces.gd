@@ -4,6 +4,12 @@
 ## the chapel runner, fine dust in the archive), landing scuff-stars where
 ## the body met the ground hard, and roll smears. Bounded ring buffer,
 ## deterministic seeding per print, weathering per material.
+## THE OTHERS' PASSAGE (WB-15): the memory is not one-sided. The creatures
+## that live in a room write it too, each in the language of its body —
+## the hollow's echo of the vessel's own sole, the believers' soft shuffle
+## and their pre-aged knee-press stations, the martyr's heavy press. What
+## has no floor under it leaves nothing (the null children drift through
+## walls); the censor does not write at all — ITS PASSAGE ERASES.
 ## THE ONE DISTRICT THAT RECORDS NOTHING: the Engine's floor is maintained
 ## clean — it does not need to count; the census already owns the count.
 ## Painted ON the walking surface (above FloorCraft, below every light,
@@ -31,6 +37,30 @@ const RECIPES := {
 const SMEAR_LIFE := 6.0            # roll marks weather faster than prints
 const SMEAR_ALPHA := 0.42
 
+# ------------------------------------------------------------------ gaits
+# THE OTHERS' PASSAGE (WB-15): every creature that walks the floor writes
+# it in the language of its body. A gait declares the sole (the anatomy),
+# the weight (the conviction of the press), the stride, and the variance
+# of the walk — a mind is legible in how regular its steps are. What has
+# no gait leaves nothing: the null children drift through walls (the floor
+# never meets them), the correction is paperwork (it files past, it does
+# not walk), and the censor does not write at all — it erases.
+const GAITS := {
+        # THE HOLLOW — the absence of identity, walking. Its print is the
+        # vessel's OWN sole pressed without conviction, stepped at a
+        # metronome: the same step every step, no fatigue, no personality.
+        # A copy of a gait, not a gait.
+        "hollow":   {"sole": "boot",  "weight": 0.62, "stride": 34.0, "variance": 0.0, "w": 1.0,  "h": 1.0},
+        # THE BELIEVER — robed, soft-shod, shuffling: short quick steps on
+        # a narrow sole, a living irregularity to the stride. Their real
+        # mark on the chapel is the knee-press (see stamp_kneel).
+        "believer": {"sole": "soft",  "weight": 0.55, "stride": 24.0, "variance": 0.8, "w": 0.72, "h": 0.94},
+        # THE BOUND MARTYR — the weight of the bound: the heaviest thing
+        # that walks the aftermath. The floor records it deeper than the
+        # vessel, in a wider stance.
+        "martyr":   {"sole": "heavy", "weight": 1.35, "stride": 40.0, "variance": 0.8, "w": 1.3,  "h": 1.15},
+}
+
 var material_name := "none"
 var _prints: Array = []            # the ring {kind, x, y, side, rot, w, h, age, ...}
 var _side := 0                     # last foot that landed (0 left, 1 right)
@@ -49,28 +79,46 @@ func setup(p_key: String, p_material: String) -> void:
 
 # ------------------------------------------------------------------ stamps
 
-func stamp_foot(pos: Vector2, dir: float, p_strength := 1.0) -> void:
+func stamp_foot(pos: Vector2, dir: float, p_strength := 1.0, gait := "") -> void:
         ## One stride's impression. The side alternates; the print staggers
         ## along the path (front/back foot) and a hair in depth; the boot
         ## rotates into the direction of travel.
+        ## THE OTHERS' PASSAGE (WB-15): a gait writes the same law in
+        ## another body's language — its sole (the anatomy), its weight
+        ## (the conviction of the press), its variance (a copy strides
+        ## like a metronome; a living man wanders).
         if material_name == "none" or not RECIPES.has(material_name):
                 return
         var rec: Dictionary = RECIPES[material_name]
+        var prof: Dictionary = GAITS[gait] if GAITS.has(gait) else {}
+        var weight := float(prof.get("weight", 1.0))
+        var v := float(prof.get("variance", 1.0))
         _side = 1 - _side
         var stag := (1.0 if _side == 1 else -1.0)
-        var w := 9.0 * (0.9 + 0.2 * p_strength)
-        var h := 16.5 * (0.9 + 0.2 * p_strength)
+        var w := 9.0 * (0.9 + 0.2 * p_strength) * float(prof.get("w", 1.0))
+        var h := 16.5 * (0.9 + 0.2 * p_strength) * float(prof.get("h", 1.0))
+        # the stagger: a living stride wanders; a copied stride is a
+        # metronome (variance 0 — the same step every step); a child's weaves
+        var sx := 3.5
+        var sy := 1.3
+        var rv := 0.075
+        if v > 0.01:
+                sx = _rng.randf_range(2.6, 4.4) * v
+                sy = _rng.randf_range(0.8, 1.8) * v
+                rv = _rng.randf_range(0.04, 0.11)
         _prints.append({
                 "kind": "foot",
-                "x": pos.x + stag * _rng.randf_range(2.6, 4.4),
-                "y": pos.y + stag * _rng.randf_range(0.8, 1.8),
+                "tag": gait if gait != "" else "vessel",
+                "sole": String(prof.get("sole", "boot")),
+                "x": pos.x + stag * sx,
+                "y": pos.y + stag * sy,
                 "side": _side,
-                "rot": dir * _rng.randf_range(0.04, 0.11) + stag * 0.03,
+                "rot": dir * rv + stag * 0.03,
                 "w": w, "h": h,
                 "age": 0.0,
                 "life": float(rec["life"]),
-                "born": float(rec["alpha"]) * (0.9 + 0.2 * p_strength),
-                "rim": float(rec["rim"]) * (0.9 + 0.2 * p_strength),
+                "born": float(rec["alpha"]) * (0.9 + 0.2 * p_strength) * weight,
+                "rim": float(rec["rim"]) * (0.9 + 0.2 * p_strength) * weight,
                 "fade": float(rec["fade"]),
                 "dry": float(rec["dry"]),
                 "lighten": bool(rec["lighten"]),
@@ -159,6 +207,54 @@ func _trim() -> void:
         while _prints.size() > CAP:
                 _prints.pop_front()
 
+func stamp_kneel(pos: Vector2, dir: float, pre_age := 0.0) -> void:
+        ## THE KNEE-PRESS (WB-15, a believer's station): two knees and the
+        ## hem of the robe pressed into the floor. A station the vessel
+        ## never saw kneel is born OLD — the devotion predates his arrival;
+        ## the room was already written before he walked it. A press after
+        ## walking is fresh (age 0): the record keeps up with the living.
+        if material_name == "none" or not RECIPES.has(material_name):
+                return
+        var rec: Dictionary = RECIPES[material_name]
+        var life := float(rec["life"]) * 1.7
+        _prints.append({
+                "kind": "kneel",
+                "tag": "believer",
+                "x": pos.x, "y": pos.y,
+                "rot": 0.0,
+                "w": 6.4, "h": 8.2,
+                "age": clampf(pre_age, 0.0, life * 0.8),
+                "life": life,
+                "born": float(rec["alpha"]) * 0.8,
+                "rim": float(rec["rim"]) * 0.7,
+                "fade": float(rec["fade"]),
+                "dry": float(rec["dry"]),
+                "lighten": bool(rec["lighten"]),
+                "kick": false,
+                "hem_dir": dir,
+        })
+        _trim()
+
+func erase_column(x: float, half_w: float) -> int:
+        ## THE CENSOR'S PASSAGE (WB-15): where it passed, the record is
+        ## blank. It does not write itself into the census — it is the
+        ## correction the census makes to what was written. A vertical
+        ## sweep through the floor's memory, as wide as the correction's
+        ## reach. Returns how much history it removed.
+        if _prints.is_empty():
+                return 0
+        var kept: Array = []
+        var n := 0
+        for p in _prints:
+                if absf(float(p["x"]) - x) <= half_w:
+                        n += 1
+                else:
+                        kept.append(p)
+        _prints = kept
+        if n > 0:
+                queue_redraw()
+        return n
+
 # ------------------------------------------------------------------ weather
 
 func _process(delta: float) -> void:
@@ -214,6 +310,14 @@ func count_kind(kind: String) -> int:
                         n += 1
         return n
 
+func count_tag(tag: String) -> int:
+        ## Whose hand wrote this floor — the vessel's, or one of its own.
+        var n := 0
+        for p in _prints:
+                if String(p.get("tag", "vessel")) == tag:
+                        n += 1
+        return n
+
 func print_at(i: int) -> Dictionary:
         return _prints[i]
 
@@ -236,6 +340,8 @@ func _draw() -> void:
                 var kind := String(p["kind"])
                 if kind == "foot":
                         _draw_foot(p, a, ra)
+                elif kind == "kneel":
+                        _draw_kneel(p, a, ra)
                 elif kind == "land":
                         _draw_land(p, a, ra)
                 else:
@@ -272,10 +378,11 @@ func _draw_foot(p: Dictionary, a: float, ra: float) -> void:
                                 Vector2(w * 0.34, -h * 0.12 + float(gr) * 2.6),
                                 Color(0.16, 0.07, 0.08, ra * 0.8), 1.0)
         else:
+                var sole := String(p.get("sole", "boot"))
                 # the displaced-material rim first — a slightly larger sole the dark
                 # impression sits inside, so the print reads on ANY floor value
-                _sole_local(w * 1.42, h * 1.24, rim)
-                _sole_local(w, h, core)
+                _sole_shape(sole, w * 1.42, h * 1.24, rim)
+                _sole_shape(sole, w, h, core)
         draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
         if bool(p["kick"]):
                 # ash piles at the toe of the trailing boot — the material
@@ -299,6 +406,19 @@ func _draw_foot(p: Dictionary, a: float, ra: float) -> void:
                 draw_polyline(PackedVector2Array([
                         toe_l + Vector2(0, 2.4), toe_r + Vector2(0, 2.4), side_b + Vector2(0, 2.4)]), ge2, 1.6)
 
+func _sole_shape(sole: String, w: float, h: float, ink: Color) -> void:
+        ## The anatomy of the presser, in local space: the vessel's boot
+        ## (ball + heel), the believer's soft slipper (one narrow mass —
+        ## cloth, not leather), a bare foot (the ball alone). The martyr
+        ## wears the vessel's shape wide (its w/h carry the stance).
+        match sole:
+                "soft":
+                        _capsule_local(w * 0.95, h * 0.8, ink, 0.0, 0.0)
+                "bare":
+                        _capsule_local(w, h * 0.52, ink, 0.0, -h * 0.08)
+                _:
+                        _sole_local(w, h, ink)
+
 func _sole_local(w: float, h: float, ink: Color) -> void:
         ## Ball of the foot + heel as ROUNDED masses (capsules — a boot's
         ## impression is organic, never a rectangle). LOCAL space: the
@@ -320,6 +440,27 @@ func _capsule_local(w: float, h: float, ink: Color, ox := 0.0, oy := 0.0) -> voi
         draw_rect(Rect2(x0, y0, w, y1 - y0), ink)
         draw_circle(Vector2(ox, y0), r, ink)
         draw_circle(Vector2(ox, y1), r, ink)
+
+func _draw_kneel(p: Dictionary, a: float, ra: float) -> void:
+        ## THE KNEE-PRESS: two small paired ovals and the hem's drag — on
+        ## the runner the nap presses LIGHTER (the chapel's own law).
+        var pos := Vector2(float(p["x"]), float(p["y"]))
+        var hd := float(p.get("hem_dir", 1.0))
+        var core: Color
+        var rim: Color
+        if bool(p["lighten"]):
+                core = Color(E0.PARCH.r * 1.05, E0.PARCH.g * 1.03, E0.PARCH.b, a * 0.6)
+                rim = Color(0.10, 0.05, 0.06, ra * 0.85)
+        else:
+                core = Color(0.07, 0.06, 0.07, a)
+                rim = Color(E0.PARCH.r * 1.10, E0.PARCH.g * 1.08, E0.PARCH.b * 1.02, ra)
+        # the two knees — small paired ovals, a hand's width apart
+        for side in [-1.0, 1.0]:
+                var kpos := pos + Vector2(side * 4.3, 0.0)
+                _soft_ellipse(kpos, 4.4, 6.2, core, a * 0.8)
+                _soft_ellipse(kpos + Vector2(side * 1.5, 0.6), 2.8, 4.0, rim, ra * 0.5)
+        # the hem dragged behind the kneeling body
+        _soft_ellipse(pos + Vector2(-hd * 10.5, 2.0), 11.5, 3.2, rim, ra * 0.55)
 
 func _draw_land(p: Dictionary, a: float, ra: float) -> void:
         var pos := Vector2(float(p["x"]), float(p["y"]))

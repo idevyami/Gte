@@ -85,6 +85,11 @@ names = [
     "wb14_03_landing_star", "wb14_04_roll_smear",
     "wb14_05_wet_glisten", "wb14_06_chapel_nap",
     "wb14_07_page_flutter", "wb14_08_engine_clean",
+    # WB-15: the others' passage
+    "wb15_01_two_hands", "wb15_02_the_echo",
+    "wb15_03_devotion_field", "wb15_04_the_shuffle",
+    "wb15_05_martyr_weight", "wb15_06_engine_clean",
+    "wb15_07_the_erasure", "wb15_08_age_gradient",
 ]
 for n in names:
     p = os.path.join(src, n + ".png")

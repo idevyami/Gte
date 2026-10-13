@@ -17,6 +17,8 @@ var contact_damage := 0
 var telegraph_t := 0.0        # >0 while winding an attack — reads as a warning
 var _death_anim_len := 0.0     # >0 when the skin carries a death performance
 var _dissolved := false        # the ash scatter fires once, at the fade
+var _gait_accum := 0.0         # WB-15: distance walked since the last print
+var _trace_cache: Traces = null
 var _hurtbox: Area2D
 var _contact: Area2D
 var _skin: SpriteSkin
@@ -162,9 +164,53 @@ func _physics_process(delta: float) -> void:
                 return          # corpse physics live in _process (death path)
         _act(delta)
         move_and_slide()
+        _passage(delta)
 
 func _act(_delta: float) -> void:
         pass
+
+# ------------------------------------------------------------- the passage
+
+func gait_key() -> String:
+        ## THE OTHERS' PASSAGE (WB-15): this creature's entry in the floor's
+        ## memory (see Traces.GAITS). The DEFAULT is empty — the world is
+        ## not obliged to remember everything, only what its fiction
+        ## demands: the null children drift through walls (the floor never
+        ## meets them), the correction is paperwork (it files past, it
+        ## does not walk). The censor does not override this — it does not
+        ## write at all; its passage ERASES (see Censor._process).
+        return ""
+
+func _trace_layer() -> Traces:
+        ## The room's trace canvas — walked from the parents once, cached.
+        if _trace_cache != null:
+                return _trace_cache
+        var node := get_parent()
+        while node != null:
+                if node is Game:
+                        _trace_cache = node.traces
+                        return _trace_cache
+                node = node.get_parent()
+        return null
+
+func _passage(delta: float) -> void:
+        ## The floor records its own creatures: each stride stamps the
+        ## room's material with this body's gait. The enemy's origin sits
+        ## at its feet, so the print lands a hair into the walking band.
+        var key := gait_key()
+        if key == "":
+                return
+        if not is_on_floor() or absf(velocity.x) < 40.0:
+                return
+        _gait_accum += absf(velocity.x) * delta
+        var stride := float(Traces.GAITS.get(key, {}).get("stride", 30.0))
+        if _gait_accum < stride:
+                return
+        _gait_accum = 0.0
+        var tr := _trace_layer()
+        if tr != null:
+                tr.stamp_foot(global_position + Vector2(0.0, 4.0),
+                        1.0 if velocity.x > 0.0 else -1.0, 1.0, key)
 
 func _on_contact(body: Node2D) -> void:
         if dead or body == null or not body is Player:

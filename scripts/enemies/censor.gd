@@ -10,6 +10,7 @@ extends Node2D
 var data: EntityData
 var instance_key := "THE_CENSOR"
 var life_t := 0.0
+var _erase_accum := 0.0        # WB-15: distance drifted since the last correction
 var anim_t := 0.0
 var contact_cd := 0.0
 var speed := 120.0
@@ -70,7 +71,17 @@ func _process(delta: float) -> void:
         var player := get_tree().get_first_node_in_group("player") as Player
         if player and player.hp > 0:
                 var to_p := player.global_position - global_position
-                global_position += to_p.normalized() * speed * delta * (0.85 + 0.3 * sin(anim_t * 0.6))
+                var step := speed * delta * (0.85 + 0.3 * sin(anim_t * 0.6))
+                global_position += to_p.normalized() * step
+                # THE CENSOR'S PASSAGE (WB-15): where it passed, the record
+                # is blank — it does not write itself into the census; it is
+                # the correction the census makes to what was written.
+                _erase_accum += step
+                if _erase_accum > 22.0:
+                        _erase_accum = 0.0
+                        var tr := _trace_layer()
+                        if tr != null:
+                                tr.erase_column(global_position.x, 30.0)
                 if to_p.length() < 26.0 and contact_cd <= 0.0:
                         contact_cd = 1.2
                         _pose = "reach"
@@ -82,6 +93,16 @@ func _process(delta: float) -> void:
         if life_t > 25.0:
                 _depart()
         queue_redraw()
+
+func _trace_layer() -> Traces:
+        ## The room's trace canvas, walked from the parents (the censor is
+        ## no one's child of EnemyBase — it arrives on its own terms).
+        var node := get_parent()
+        while node != null:
+                if node is Game:
+                        return node.traces
+                node = node.get_parent()
+        return null
 
 func _depart() -> void:
         var tween := create_tween()
