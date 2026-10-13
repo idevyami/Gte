@@ -53,6 +53,7 @@ func _run() -> void:
         await _the_threshold()
         await _the_vessels_trace()
         await _the_others_passage()
+        await _the_endings_record()
         print("=== %d checks, %d failures ===" % [checks, fails])
         get_tree().quit(1 if fails > 0 else 0)
 
@@ -1989,6 +1990,187 @@ func _the_others_passage() -> void:
                         "the believers' shuffle writes the runner as they come (%d strides)" % bel_feet)
         else:
                 ok(false, "the congregation is present")
+
+# ------------------------------------------------------------------ WB-16
+func _the_endings_record() -> void:
+        print("[THE ENDING'S RECORD — WB-16]")
+        # --- THE ENDING OUTLIVES THE STRIDE: every material owns an ending's life
+        ok(Traces.FALL_LIFE.has("carpet") and Traces.FALL_LIFE.has("ash") \
+                        and Traces.FALL_LIFE.has("wet") and Traces.FALL_LIFE.has("dust"),
+                "every recording material owns an ending's life")
+        ok(float(Traces.FALL_LIFE["carpet"]) > float(Traces.FALL_LIFE["ash"]) \
+                        and float(Traces.FALL_LIFE["ash"]) > float(Traces.FALL_LIFE["wet"]) \
+                        and float(Traces.FALL_LIFE["wet"]) > float(Traces.FALL_LIFE["dust"]),
+                "the runner rises slowest, the archive's dust forgets fastest")
+        # --- unit laws on a bare canvas: the floor keeps the ending
+        var tr := Traces.new()
+        for mat in ["ash", "wet", "carpet", "dust"]:
+                tr.setup("wb16", mat)
+                tr.stamp_foot(Vector2(200.0, 500.0), 1.0)
+                tr.stamp_fall(Vector2(200.0, 500.0), 1.0, 1.0, "vessel")
+                ok(tr.fall_count() == 1 and String(tr.fall_at(0)["kind"]) == "fall",
+                        "the %s floor keeps the ending" % mat)
+        # THE ENGINE RECORDS NOTHING — not even its dead
+        tr.setup("wb16", "none")
+        tr.stamp_fall(Vector2(200.0, 500.0), 1.0, 1.0, "vessel")
+        tr.stamp_foot(Vector2(200.0, 500.0), 1.0)
+        ok(tr.fall_count() == 0 and tr.count() == 0,
+                "the Engine records nothing — not even its dead")
+        # the ending outlives the stride (ash holds 62% of a full minute)
+        tr.setup("wb16", "ash")
+        tr.stamp_foot(Vector2(300.0, 500.0), 1.0)
+        tr.stamp_fall(Vector2(300.0, 500.0), 1.0, 1.0, "vessel")
+        tr.simulate(40.0)
+        ok(tr.count() == 0 and tr.fall_count() == 1,
+                "the ash forgets the stride but keeps the ending")
+        ok(tr.alpha_factor(tr.fall_at(0)) > 0.3,
+                "the ending still reads after the path has gone (%.2f)" % tr.alpha_factor(tr.fall_at(0)))
+        # the runner rises at its own pace — ten strides' lives, the press holds
+        tr.setup("wb16", "carpet")
+        tr.stamp_fall(Vector2(300.0, 500.0), 1.0, 1.0, "vessel")
+        var f0 := tr.alpha_factor(tr.fall_at(0))
+        tr.simulate(9.5)
+        ok(tr.alpha_factor(tr.fall_at(0)) > f0 * 0.85,
+                "the runner's pressed nap outlasts a boot's press tenfold")
+        # the wet pool dries to a mineral ghost that holds
+        tr.setup("wb16", "wet")
+        tr.stamp_fall(Vector2(300.0, 500.0), 1.0, 1.0, "vessel")
+        var w0 := tr.alpha_factor(tr.fall_at(0))
+        tr.simulate(30.0)
+        var w1 := tr.alpha_factor(tr.fall_at(0))
+        ok(w1 < w0 * 0.35 and w1 > 0.0,
+                "the pool dries to a mineral ghost that holds (%.2f -> %.2f)" % [w0, w1])
+        # the ending is written in the walker's own weight
+        tr.setup("wb16", "ash")
+        tr.stamp_fall(Vector2(100.0, 500.0), 1.0, float(Traces.GAITS["hollow"]["weight"]), "hollow")
+        tr.stamp_fall(Vector2(200.0, 500.0), 1.0, 1.0, "vessel")
+        tr.stamp_fall(Vector2(300.0, 500.0), 1.0, float(Traces.GAITS["martyr"]["weight"]), "martyr")
+        var bh := float(tr.fall_at(0)["born"])
+        var bv := float(tr.fall_at(1)["born"])
+        var bm := float(tr.fall_at(2)["born"])
+        ok(bh < bv and bv < bm,
+                "the ending is written in the walker's weight (hollow %.2f < vessel %.2f < martyr %.2f)" % [bh, bv, bm])
+        # the endings keep their own bounded ledger on the same canvas
+        tr.setup("wb16", "ash")
+        for i in 12:
+                tr.stamp_fall(Vector2(100.0 + float(i) * 40.0, 500.0), 1.0)
+        ok(tr.fall_count() == Traces.FALL_CAP,
+                "the floor is not a graveyard — it holds the last %d endings" % Traces.FALL_CAP)
+        tr.stamp_foot(Vector2(500.0, 500.0), 1.0)
+        ok(tr.count() == 1 and tr.fall_count() == Traces.FALL_CAP,
+                "one canvas, two ledgers: the path forgets, the ending holds")
+        # --- THE WALK ENDS HERE: frozen strides
+        tr.setup("wb16", "ash")
+        for i in 6:
+                tr.stamp_foot(Vector2(200.0 + float(i) * 34.0, 500.0), 1.0, 1.0, "hollow")
+        var n_frozen := tr.freeze_strides("hollow", 2)
+        var age_f := float(tr.print_at(5)["age"])
+        tr.simulate(5.0)
+        ok(n_frozen == 2 and tr.frozen_count() == 2,
+                "the walk ends here: the last strides freeze mid-path (%d)" % n_frozen)
+        ok(absf(float(tr.print_at(5)["age"]) - age_f) < 0.001,
+                "a frozen stride does not age — the record keeps where the gait stopped")
+        ok(float(tr.print_at(0)["age"]) > 4.0,
+                "the path behind the ending still weathers")
+        tr.simulate(30.0)
+        ok(tr.frozen_count() == 2, "frozen strides outlive their own lives")
+        tr.stamp_foot(Vector2(600.0, 500.0), 1.0)
+        tr.freeze_strides("hollow", 2)
+        var last_p: Dictionary = tr.print_at(tr.count() - 1)
+        ok(not bool(last_p.get("frozen", false)), "freeze keeps to the walker's own strides")
+        # --- the correction blanks endings too
+        tr.setup("wb16", "ash")
+        for i in 10:
+                tr.stamp_foot(Vector2(400.0 + float(i) * 24.0, 500.0), 1.0)
+        tr.stamp_fall(Vector2(530.0, 500.0), 1.0, 1.0, "vessel")
+        tr.stamp_fall(Vector2(900.0, 500.0), 1.0, 1.0, "vessel")
+        var erased_f := tr.erase_column(530.0, 30.0)
+        ok(erased_f >= 3 and tr.fall_count_tag("vessel") == 1,
+                "the censor's correction blanks even an ending; the far fall survives (%d erased)" % erased_f)
+        # a stain the vessel never saw fall is born aged
+        tr.setup("wb16", "ash")
+        tr.stamp_fall(Vector2(200.0, 500.0), 1.0, 1.0, "vessel", 3.5)
+        ok(absf(float(tr.fall_at(0)["age"]) - 3.5) < 0.01,
+                "a stain the vessel never saw fall is born aged")
+        # --- INTEGRATION: the hollow's death writes the ash
+        game.transition_to("act3")
+        await _room("act3")
+        var hollow2: Hollow = null
+        for node in get_tree().get_nodes_in_group("enemies"):
+                if node is Hollow and not node.dead:
+                        hollow2 = node
+                        break
+        if hollow2 == null:
+                ok(false, "the ash quarter has its hollow")
+        else:
+                var th := Time.get_ticks_msec()
+                while Time.get_ticks_msec() - th < 1500:
+                        await get_tree().process_frame
+                var hx := hollow2.global_position.x
+                var hy := hollow2.global_position.y
+                hollow2.take_hit(9999, hollow2.global_position + Vector2(60.0, 0.0), true)
+                await _frames(3)
+                ok(game.traces.fall_count_tag("hollow") == 1,
+                        "the hollow's death writes the ash in its own hand")
+                ok(game.traces.frozen_count() >= 1,
+                        "its last strides froze mid-path — the walk ends where it ended")
+                var hf: Dictionary = game.traces.fall_at(0)
+                ok(String(hf["tag"]) == "hollow" and absf(float(hf["x"]) - hx) < 24.0 \
+                                and absf(float(hf["y"]) - (hy + 40.0)) < 8.0,
+                        "the fall lies where the body ended")
+                # --- the censor's leaving is a correction: stand the vessel under
+                #     the fall, drop a control ending far off, and let the censor
+                #     depart on the column
+                game.player.global_position = Vector2(hx, game.player.global_position.y)
+                game.player.velocity = Vector2.ZERO
+                await _frames(2)
+                game.traces.stamp_fall(Vector2(hx + 300.0, hy), 1.0, 1.0, "vessel")
+                var co := Censor.new()
+                co.global_position = Vector2(hx, hy - 300.0)
+                game.world.add_child(co)
+                co.life_t = 24.9
+                var tc := Time.get_ticks_msec()
+                while Time.get_ticks_msec() - tc < 1600 and is_instance_valid(co):
+                        await get_tree().process_frame
+                ok(not is_instance_valid(co), "the censor departs")
+                ok(game.traces.fall_count_tag("hollow") == 0,
+                        "the censor's leaving blanks the column where it stood — even endings")
+                ok(game.traces.fall_count_tag("vessel") == 1,
+                        "the ending outside the correction survives")
+        # --- the null child's death writes nothing — the floor never met it
+        game.transition_to("act1")
+        await _room("act1")
+        var falls_a1 := game.traces.fall_count()
+        var nc2: NullChild = null
+        for node in get_tree().get_nodes_in_group("enemies"):
+                if node is NullChild and not node.dead:
+                        nc2 = node
+                        break
+        if nc2 != null:
+                nc2.take_hit(9999, nc2.global_position + Vector2(40.0, 0.0), true)
+                await _frames(3)
+        ok(game.traces.fall_count() == falls_a1,
+                "the null child's death writes nothing — the floor never met it")
+        # --- THE VESSEL'S OWN ENDING: recorded, and the rebuilt floor wears it
+        game.transition_to("act3")
+        await _room("act3")
+        var deaths0 := int(GameState.stats.get("deaths", 0))
+        game.player.take_damage(999, game.player.global_position + Vector2(40.0, 0.0))
+        var td := Time.get_ticks_msec()
+        while Time.get_ticks_msec() - td < 6500 and game._dead_handled:
+                await get_tree().process_frame
+        ok(int(GameState.stats.get("deaths", 0)) == deaths0 + 1,
+                "the count of endings is kept (death %d)" % int(GameState.stats.get("deaths", 0)))
+        var reg: Array = game._death_stains.get("act3", [])
+        ok(reg.size() >= 1, "the death is filed in the session's registry")
+        if game.room_id != "act3":
+                game.transition_to("act3")
+        await _room("act3")
+        ok(game.traces.fall_count_tag("vessel") >= 1,
+                "the stain survives the crossing — the rebuilt ash wears where he fell")
+        var vf: Dictionary = game.traces.fall_at(0)
+        ok(String(vf["tag"]) == "vessel" and float(vf["age"]) > 3.0,
+                "the revisited stain reads already-happened — born aged (%.1f)" % float(vf["age"]))
 
 # ------------------------------------------------------------------ WB-13
 func _the_threshold() -> void:

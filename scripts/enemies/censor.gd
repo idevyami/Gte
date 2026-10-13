@@ -105,6 +105,13 @@ func _trace_layer() -> Traces:
         return null
 
 func _depart() -> void:
+        # THE CENSOR'S LEAVING (WB-16): even its ending is a correction —
+        # the column where it stood is blanked as it goes, WIDER than its
+        # passage swept (a leaving is thorough). It does not write itself
+        # into the census; not even its leaving.
+        var tr := _trace_layer()
+        if tr != null:
+                tr.erase_column(global_position.x, 42.0)
         var tween := create_tween()
         tween.tween_property(self, "modulate:a", 0.0, 0.8)
         tween.tween_callback(queue_free)

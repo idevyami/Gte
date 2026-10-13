@@ -418,6 +418,12 @@ func load_game() -> Dictionary:
         return data
 
 func apply_save(data: Dictionary) -> void:
+        # THE ENDING'S RECORD (WB-16): a count that ended AFTER the record
+        # was filed is not un-counted by returning to it — the census
+        # counts even what it strikes out. The live death count survives
+        # both the reset and the saved snapshot (the save holds the world's
+        # state, not the vessel's endings).
+        var live_deaths := int(stats.get("deaths", 0))
         _reset_run()
         consistency = int(data.get("consistency", E0.CONSISTENCY_START))
         stage = E0.stage_for(consistency)
@@ -432,6 +438,7 @@ func apply_save(data: Dictionary) -> void:
         visited_rooms = data.get("visited", {})
         texts_read = data.get("texts_read", {})
         stats = data.get("stats", stats)
+        stats["deaths"] = maxi(live_deaths, int(stats.get("deaths", 0)))
         if not stats.has("observed"):
                 stats["observed"] = observed.size()
         if not stats.has("texts"):

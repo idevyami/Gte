@@ -255,6 +255,21 @@ func _die() -> void:
         death_t = 0.0
         GameState.stats["dissipated"] += 1
         var outsider := data.type == "OUTSIDER"
+        # THE ENDING'S RECORD (WB-16): the floor keeps the ending. The fall
+        # is written in the walker's own weight, and its last strides
+        # FREEZE mid-path — the walk ends here, and the record keeps where
+        # it stopped. What never walked (an empty gait — the drifters, the
+        # paperwork) leaves nothing: the floor cannot hold what it never met.
+        var tr := _trace_layer()
+        if tr != null:
+                var gk := gait_key()
+                if gk != "":
+                        # the fall lies IN the walking band, deeper than any
+                        # sole — a body's mass lands mid-band, where it lay
+                        tr.stamp_fall(global_position + Vector2(0.0, 40.0),
+                                1.0 if velocity.x >= 0.0 else -1.0,
+                                float(Traces.GAITS.get(gk, {}).get("weight", 1.0)), gk)
+                        tr.freeze_strides(gk)
         # the death PERFORMANCE: if the skin carries a death animation the
         # body plays its collapse whole (stun -> buckle -> down) and the
         # ash waits for it; without one, the old immediate scatter stands

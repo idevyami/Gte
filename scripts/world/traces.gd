@@ -12,12 +12,34 @@
 ## walls); the censor does not write at all — ITS PASSAGE ERASES.
 ## THE ONE DISTRICT THAT RECORDS NOTHING: the Engine's floor is maintained
 ## clean — it does not need to count; the census already owns the count.
+## THE ENDING'S RECORD (WB-16): the floor keeps a memory of endings too.
+## The passage forgets (a bounded ring, weathered prints) but a body that
+## ENDS on a floor is the heaviest thing the floor can witness — the fall
+## is written as an organic sprawl (the torso's settled mass, the head at
+## the leading end, extremity streaks, the churn where the feet fought),
+## in its own material's law, and it OUTLIVES any stride. The walker's
+## last strides FREEZE mid-path — the walk ends here, and the record keeps
+## where it stopped. One canvas, two ledgers: the path forgets, the ending
+## holds. The Engine records nothing — not even its dead.
 ## Painted ON the walking surface (above FloorCraft, below every light,
 ## decor and actor) so the prints sit IN the world, never on the lens.
 class_name Traces
 extends Node2D
 
 const CAP := 96                    # the ring's bound — a path, not a ledger
+
+# THE ENDING'S RECORD (WB-16): an ending outlives any stride — the fall's
+# life per material (the runner's pressed nap rises slowest; the archive's
+# dust settles back over the fallen fastest). The endings keep their own
+# bounded ledger on the same canvas: the floor is not a graveyard — it
+# holds the last few endings, then lets them go.
+const FALL_CAP := 8
+const FALL_LIFE := {
+        "ash":    60.0,
+        "wet":    42.0,
+        "carpet": 90.0,
+        "dust":   26.0,
+}
 
 # per-material recipes: born alpha, life (s), fade-start fraction, dry floor
 # (wet prints dry toward a faint damp shadow before they leave), lighten
@@ -63,6 +85,7 @@ const GAITS := {
 
 var material_name := "none"
 var _prints: Array = []            # the ring {kind, x, y, side, rot, w, h, age, ...}
+var _falls: Array = []             # the endings' ledger {kind: "fall", ...}
 var _side := 0                     # last foot that landed (0 left, 1 right)
 var _t := 0.0
 var _redraw_t := 0.0
@@ -71,6 +94,7 @@ var _rng := RandomNumberGenerator.new()
 func setup(p_key: String, p_material: String) -> void:
         material_name = p_material
         _prints.clear()
+        _falls.clear()
         _side = 0
         _rng.seed = hash("traces:" + p_key)
         z_index = 0
@@ -207,6 +231,59 @@ func _trim() -> void:
         while _prints.size() > CAP:
                 _prints.pop_front()
 
+# ------------------------------------------------------------- the ending
+
+func stamp_fall(pos: Vector2, dir: float, weight := 1.0, tag := "vessel", pre_age := 0.0) -> void:
+        ## THE ENDING'S RECORD (WB-16): a body ended here. The fall writes
+        ## the floor in the walker's own weight — an organic sprawl (torso,
+        ## head, extremities, the churn where the feet fought) rendered in
+        ## the material's own law, weathering on the ending's own life (an
+        ## ending outlives any stride). A stain the vessel never saw fall
+        ## is born AGED (the crossing back took time). THE ENGINE RECORDS
+        ## NOTHING — not even its dead.
+        if material_name == "none" or not RECIPES.has(material_name):
+                return
+        var rec: Dictionary = RECIPES[material_name]
+        var life := float(FALL_LIFE.get(material_name, 40.0))
+        var w_fac := 0.72 + 0.42 * weight
+        _falls.append({
+                "kind": "fall",
+                "tag": tag,
+                "x": pos.x, "y": pos.y,
+                "dir": 1.0 if dir >= 0.0 else -1.0,
+                "weight": weight,
+                "age": clampf(pre_age, 0.0, life * 0.5),
+                "life": life,
+                "born": float(rec["alpha"]) * w_fac,
+                "rim": float(rec["rim"]) * w_fac,
+                "fade": float(rec["fade"]),
+                "dry": float(rec["dry"]),
+                "lighten": bool(rec["lighten"]),
+                "seed": _rng.randf() * TAU,
+        })
+        while _falls.size() > FALL_CAP:
+                _falls.pop_front()
+        queue_redraw()
+
+func freeze_strides(tag: String, n := 2) -> int:
+        ## THE WALK ENDS HERE: the walker's last strides stop aging — the
+        ## record keeps where the gait stopped, mid-path. (The ring's bound
+        ## still holds — the path is a path; the ENDING's ledger is the
+        ## durable memory.) Returns how many strides froze.
+        var frozen := 0
+        var i := _prints.size() - 1
+        while i >= 0 and frozen < n:
+                var p: Dictionary = _prints[i]
+                if String(p.get("tag", "vessel")) == tag \
+                                and String(p["kind"]) == "foot" \
+                                and not bool(p.get("frozen", false)):
+                        p["frozen"] = true
+                        frozen += 1
+                i -= 1
+        if frozen > 0:
+                queue_redraw()
+        return frozen
+
 func stamp_kneel(pos: Vector2, dir: float, pre_age := 0.0) -> void:
         ## THE KNEE-PRESS (WB-15, a believer's station): two knees and the
         ## hem of the robe pressed into the floor. A station the vessel
@@ -240,17 +317,26 @@ func erase_column(x: float, half_w: float) -> int:
         ## blank. It does not write itself into the census — it is the
         ## correction the census makes to what was written. A vertical
         ## sweep through the floor's memory, as wide as the correction's
-        ## reach. Returns how much history it removed.
-        if _prints.is_empty():
-                return 0
-        var kept: Array = []
+        ## reach — THROUGH WHATEVER WAS WRITTEN (WB-16: the endings too;
+        ## even a fall does not survive the correction). Returns how much
+        ## history it removed.
         var n := 0
-        for p in _prints:
-                if absf(float(p["x"]) - x) <= half_w:
-                        n += 1
-                else:
-                        kept.append(p)
-        _prints = kept
+        if not _prints.is_empty():
+                var kept: Array = []
+                for p in _prints:
+                        if absf(float(p["x"]) - x) <= half_w:
+                                n += 1
+                        else:
+                                kept.append(p)
+                _prints = kept
+        if not _falls.is_empty():
+                var fkept: Array = []
+                for f in _falls:
+                        if absf(float(f["x"]) - x) <= half_w:
+                                n += 1
+                        else:
+                                fkept.append(f)
+                _falls = fkept
         if n > 0:
                 queue_redraw()
         return n
@@ -258,12 +344,18 @@ func erase_column(x: float, half_w: float) -> int:
 # ------------------------------------------------------------------ weather
 
 func _process(delta: float) -> void:
-        if _prints.is_empty():
+        if _prints.is_empty() and _falls.is_empty():
                 return
         _t += delta
         for p in _prints:
-                p["age"] = float(p["age"]) + delta
+                # a FROZEN stride does not age — the walk ended; the record
+                # keeps where it stopped
+                if not bool(p.get("frozen", false)):
+                        p["age"] = float(p["age"]) + delta
         _prints = _prints.filter(func(p): return float(p["age"]) < float(p["life"]))
+        for f in _falls:
+                f["age"] = float(f["age"]) + delta
+        _falls = _falls.filter(func(f): return float(f["age"]) < float(f["life"]))
         # thrift cadence: the ring redraws at ~12Hz — births read instantly
         # to the eye, and 96 soft shapes cost nothing
         _redraw_t += delta
@@ -318,6 +410,28 @@ func count_tag(tag: String) -> int:
                         n += 1
         return n
 
+func fall_count() -> int:
+        ## The endings this floor still holds.
+        return _falls.size()
+
+func fall_count_tag(tag: String) -> int:
+        var n := 0
+        for f in _falls:
+                if String(f.get("tag", "vessel")) == tag:
+                        n += 1
+        return n
+
+func fall_at(i: int) -> Dictionary:
+        return _falls[i]
+
+func frozen_count() -> int:
+        ## The strides that stopped mid-path and never aged again.
+        var n := 0
+        for p in _prints:
+                if bool(p.get("frozen", false)):
+                        n += 1
+        return n
+
 func print_at(i: int) -> Dictionary:
         return _prints[i]
 
@@ -331,6 +445,14 @@ func has_glisten(p: Dictionary) -> bool:
 func _draw() -> void:
         if material_name == "none":
                 return
+        # the endings first, the path after — the living walk over the dead
+        for f in _falls:
+                var ff := alpha_factor(f)
+                var fa := ff * float(f["born"])
+                var fra := ff * float(f.get("rim", 0.0))
+                if fa <= 0.01 and fra <= 0.01:
+                        continue
+                _draw_fall(f, fa, fra)
         for p in _prints:
                 var f := alpha_factor(p)
                 var a := f * float(p["born"])
@@ -346,6 +468,114 @@ func _draw() -> void:
                         _draw_land(p, a, ra)
                 else:
                         _draw_smear(p, a, ra)
+
+func _draw_fall(p: Dictionary, a: float, ra: float) -> void:
+        ## THE SPRAWL: a body's ending is organic, never geometric. Under
+        ## everything, the CHURN — the short bent streaks where the feet
+        ## fought the floor before the weight went (the body's last
+        ## argument with the ground). Over it the TORSO — three overlapping
+        ## soft masses staggered along the fall axis, the chest darkest
+        ## where the weight settled. The HEAD's smaller mass past the
+        ## leading end. The EXTREMITIES — thin bent streaks where the limbs
+        ## slid on the fall's momentum, fading at their ends. Two marks by
+        ## the visibility law everywhere (the dark impression wrapped in
+        ## the displaced-material rim); on the runner the pressed nap
+        ## reads LIGHTER with a dark edge, matte as the chapel's own law.
+        draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+        var pos := Vector2(float(p["x"]), float(p["y"]))
+        var dir := float(p["dir"])
+        var wt := float(p["weight"])
+        var seedv := float(p.get("seed", 0.5))
+        var light := bool(p["lighten"])
+        var core: Color
+        var rim: Color
+        if light:
+                # the runner's pressed nap reads LIGHTER — and a whole body's
+                # press is the strongest press the runner takes: the core
+                # rides high (the nap flattened by a body catches the censer
+                # light), the grain edge presses dark beneath it
+                core = Color(E0.PARCH.r * 1.1, E0.PARCH.g * 1.07, E0.PARCH.b, a * 0.88)
+                rim = Color(0.10, 0.05, 0.06, clampf(ra * 1.15, 0.0, 0.95))
+        else:
+                core = Color(0.07, 0.06, 0.07, a)
+                rim = Color(E0.PARCH.r * 1.12, E0.PARCH.g * 1.10, E0.PARCH.b * 1.04, ra)
+        var axis := Vector2(dir, 0.0)
+        var L := 20.0 + 9.0 * (wt - 1.0)          # the sprawl's reach
+        # --- THE CHURN: feet pivoted and slid before the fall — bent
+        #     streaks crossing the fall axis at the trailing end, each
+        #     fading where the slide lost its fight
+        for i in 3:
+                var hc := fmod(sin(seedv * 97.0 + float(i) * 23.7) * 43758.5453, 1.0)
+                var hc2 := fmod(sin(seedv * 41.0 + float(i) * 11.3) * 22578.145, 1.0)
+                var c0 := pos - axis * (10.0 + 7.0 * hc) + Vector2(0.0, -0.5 - hc2 * 1.5)
+                var bend := Vector2(dir * (3.0 + 5.0 * hc2), (1.0 if hc > 0.5 else -1.0) * (5.0 + 6.0 * hc)).normalized()
+                var c1 := c0 + bend * (7.0 + 7.0 * hc2)
+                var c2 := c1 + bend.rotated(dir * (0.4 + 0.3 * hc)) * (5.0 + 4.0 * hc)
+                draw_polyline(PackedVector2Array([c0, c1]),
+                        Color(core.r, core.g, core.b, a * (0.45 + 0.25 * hc)), 2.2 - 0.6 * hc2)
+                draw_polyline(PackedVector2Array([c1, c2]),
+                        Color(rim.r, rim.g, rim.b, ra * 0.5), 1.3)
+        # --- THE TORSO: the weight settled — rim of displaced material
+        #     first, then the dark press, chest heaviest
+        var torso: Array = [
+                {"o": 0.34, "rx": 11.5 * wt, "ry": 5.2 * wt, "w": 1.0},
+                {"o": 0.02, "rx": 10.0 * wt, "ry": 4.6 * wt, "w": 0.85},
+                {"o": -0.30, "rx": 8.2 * wt, "ry": 4.0 * wt, "w": 0.68},
+        ]
+        for t in torso:
+                var tp := pos + axis * L * float(t["o"]) \
+                        + Vector2(0.0, (fmod(seedv * 613.0 + float(t["o"]) * 97.0, 1.0) - 0.5) * 2.2)
+                _soft_ellipse(tp, float(t["rx"]) * 1.28, float(t["ry"]) * 1.5, rim, ra * 0.6)
+                _soft_ellipse(tp, float(t["rx"]), float(t["ry"]), core, a * float(t["w"]))
+        # --- THE HEAD: a smaller mass past the leading end, a hair off-axis
+        var hp := pos + axis * (L * 0.72) + Vector2(0.0, -1.6 - fmod(seedv * 29.0, 1.0) * 1.4)
+        _soft_ellipse(hp, 5.8, 4.6, rim, ra * 0.7)
+        _soft_ellipse(hp, 4.4, 3.6, core, a * 0.9)
+        # --- THE EXTREMITIES: where the limbs slid on the fall's momentum
+        #     — thin bent streaks, thick at the body, fading at the hand
+        var ext := 3 + int(roundf(fmod(seedv * 7.0, 1.0) * 2.0))
+        for i in ext:
+                var he := fmod(sin(seedv * 53.0 + float(i) * 31.9) * 43758.5453, 1.0)
+                var he2 := fmod(sin(seedv * 19.0 + float(i) * 7.3) * 22578.145, 1.0)
+                var side := 1.0 if he > 0.5 else -1.0
+                var fwd := -1.0 if he2 > 0.62 else 1.0        # most slide forward of the fall
+                var e0 := pos + axis * L * (0.3 * fwd - 0.1) + Vector2(0.0, side * 2.2)
+                var e1 := e0 + axis * fwd * (9.0 + 9.0 * he2) \
+                        + Vector2(0.0, side * (3.0 + 4.0 * he))
+                var e2 := e1 + (axis * fwd + Vector2(0.0, side * 0.6)).normalized() \
+                        * (6.0 + 6.0 * he)
+                draw_polyline(PackedVector2Array([e0, e1]),
+                        Color(core.r, core.g, core.b, a * (0.55 + 0.25 * he2)), 2.6 - 0.8 * he)
+                draw_polyline(PackedVector2Array([e1, e2]),
+                        Color(core.r, core.g, core.b, a * 0.35), 1.4)
+                # the displaced wake at the streak's end
+                draw_circle(e2, 1.6, Color(rim.r, rim.g, rim.b, ra * 0.55))
+        # --- the runner keeps its own law: the pressed nap is matte grain
+        if light:
+                for gr in 4:
+                        var gy := pos.y - 2.2 + float(gr) * 1.9
+                        draw_line(pos - axis * (L * 0.7) + Vector2(0.0, gy),
+                                pos + axis * (L * 0.8) + Vector2(0.0, gy),
+                                Color(0.16, 0.07, 0.08, ra * 0.6), 1.0)
+        # --- wet: the pool is a POOL while it is young — the mass reads
+        #     DARK and damp (wet stone darkens), a concentrated streak of
+        #     reflected light across its long axis, and a sharp catch-light
+        #     arc at the leading edge, the wettest lip of the spill
+        if has_glisten(p):
+                var sheen := Color(E0.BONE.r * 1.22, E0.BONE.g * 1.18, E0.BONE.b * 1.02,
+                        clampf(a * 0.26, 0.0, 0.32))
+                _soft_ellipse(pos + axis * L * 0.24, L * 0.4, 2.2 * wt, sheen, clampf(a * 0.34, 0.0, 0.4))
+                _soft_ellipse(pos + axis * L * 0.52, L * 0.2, 1.5 * wt,
+                        Color(sheen.r, sheen.g, sheen.b, sheen.a * 0.7), a * 0.24)
+                var ge := Color(E0.BONE.r * 1.34, E0.BONE.g * 1.3, E0.BONE.b * 1.1,
+                        clampf(a * 0.95, 0.0, 0.95))
+                var gl0 := pos + axis * L * 0.95 + Vector2(0.0, -5.4 * wt)
+                var gl1 := pos + axis * L * 1.16 + Vector2(0.0, 0.0)
+                var gl2 := pos + axis * L * 0.95 + Vector2(0.0, 5.0 * wt)
+                draw_polyline(PackedVector2Array([gl0, gl1, gl2]), ge, 3.6)
+                draw_polyline(PackedVector2Array([gl0 + Vector2(0, 2.2),
+                        gl1 + Vector2(0, 2.2), gl2 + Vector2(0, 2.2)]),
+                        Color(ge.r * 0.9, ge.g * 0.9, ge.b, ge.a * 0.55), 2.0)
 
 func _draw_foot(p: Dictionary, a: float, ra: float) -> void:
         var pos := Vector2(float(p["x"]), float(p["y"]))

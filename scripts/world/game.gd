@@ -16,6 +16,12 @@ var lights: Lights
 var floor_lights: FloorLights = null
 var world_life: WorldLife = null
 var traces: Traces = null
+# THE ENDING'S RECORD (WB-16): where counts ended — session-scoped death
+# stains per room (x, y, dir), re-pressed on every rebuilt floor. The
+# vessel walks past where he fell: the count resumes where the count
+# ended. Bounded per room — the floor is not a graveyard.
+var _death_stains := {}
+const DEATH_STAIN_CAP := 6
 
 var ui_layer: CanvasLayer
 var hud: HUD
@@ -315,6 +321,13 @@ func load_room(id: String) -> void:
         traces.setup(id, String(room_data.get("trace_material",
                 _trace_fallback(String(room_data.get("step_material", "stone"))))))
         world.add_child(traces)
+        # THE ENDING'S RECORD: the session's death stains are re-pressed on
+        # the rebuilt floor, born AGED (the crossing back took time — a
+        # stain reads already-happened, never fresh). The Engine's floor
+        # still records nothing: the census already owns the count.
+        for s in _death_stains.get(id, []):
+                traces.stamp_fall(Vector2(float(s["x"]), float(s["y"])),
+                        float(s["dir"]), 1.0, "vessel", 3.5)
         # architectural framing: every door gets its carved arch — the portal
         # TOWERS over the door it frames (the painting is 414x300, so width
         # drives height; a 160-tall door needs a ~300-wide arch), and the
@@ -1268,6 +1281,15 @@ func _on_player_died() -> void:
 func _handle_death() -> void:
         state = "dead"
         player.input_locked = true
+        # THE ENDING'S RECORD (WB-16): the floor keeps where the count
+        # ended — the fall is written now, the vessel's last strides
+        # freeze mid-path, and the stain is filed in the session's registry
+        # so the rebuilt floor wears it when he walks back
+        if traces != null:
+                traces.stamp_fall(player.global_position + Vector2(0.0, 40.0),
+                        float(player.facing), 1.0, "vessel")
+                traces.freeze_strides("vessel")
+        _record_death_stain()
         if camera:
                 camera.punch_zoom(1.14, 1.1)   # the lens looms over the collapse
         cinema.death_card()
@@ -1281,6 +1303,16 @@ func _handle_death() -> void:
         FX.fade_in(0.5)
         await get_tree().create_timer(0.6, true, false, true).timeout
         _dead_handled = false
+
+func _record_death_stain() -> void:
+        ## The session's memory of where counts ended — per room, bounded.
+        var arr: Array = _death_stains.get(room_id, [])
+        arr.append({"x": player.global_position.x,
+                "y": player.global_position.y + 40.0,
+                "dir": float(player.facing)})
+        while arr.size() > DEATH_STAIN_CAP:
+                arr.pop_front()
+        _death_stains[room_id] = arr
 
 func _restore_after_death() -> void:
         if GameState.has_save():
