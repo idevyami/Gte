@@ -32,7 +32,7 @@ func _act(delta: float) -> void:
         velocity = velocity.lerp(desired, 2.0 * delta)
         velocity.y += 100.0 * delta * (1.0 if global_position.y < pp.y - 60.0 else 0.0)
 
-func take_hit(dmg: int, from_pos: Vector2, heavy: bool) -> void:
+func take_hit(dmg: int, from_pos: Vector2, heavy: bool, style := 0) -> void:
         # UNFILED things cannot be ended. Change the state first.
         if data.state == "UNFILED":
                 AudioManager.play_sfx("sfx_ui_deny", -4.0)
@@ -43,7 +43,7 @@ func take_hit(dmg: int, from_pos: Vector2, heavy: bool) -> void:
                         if game and game.has_method("start_dialogue"):
                                 game.start_dialogue("null_tut")
                 return
-        super(dmg, from_pos, heavy)
+        super(dmg, from_pos, heavy, style)
 
 func is_invulnerable() -> bool:
         return data.state == "UNFILED"
@@ -95,7 +95,7 @@ func _draw_body() -> void:
         var flicker := 0.55 + 0.45 * sin(anim_t * 11.0)
         var col := Color(base_col.r, base_col.g, base_col.b, 0.45 + 0.4 * flicker)
         if hurt_flash > 0.0:
-                col = col.lerp(Color(0.9, 0.6, 0.5), hurt_flash / 0.18)
+                col = col.lerp(Color(0.9, 0.6, 0.5), hurt_flash / 0.26)
         var c := jitter
         # small robed body, floating: feet do not reach anything
         draw_colored_polygon(PackedVector2Array([

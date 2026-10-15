@@ -139,7 +139,7 @@ func _sync_skin(_delta: float) -> void:
         _skin.flip_h = skin_facing() < 0
         var m := Color(1.0, 1.0, 1.0, 1.0)
         if hurt_flash > 0.0:
-                m = m.lerp(Color(1.0, 0.42, 0.36), (hurt_flash / 0.18) * 0.55)
+                m = m.lerp(Color(1.0, 0.5, 0.42), (hurt_flash / 0.26) * 0.85)
         if dead and death_t >= 0.0:
                 if _death_anim_len > 0.0:
                         # SOLID through the collapse — the body performs its
@@ -226,20 +226,22 @@ func _contact_damages() -> bool:
         return true
 
 # ------------------------------------------------------------------ combat
-func take_hit(dmg: int, from_pos: Vector2, _heavy: bool) -> void:
+func take_hit(dmg: int, from_pos: Vector2, _heavy: bool, style := 0) -> void:
         if dead:
                 return
         if is_invulnerable():
                 AudioManager.play_sfx("sfx_ui_deny", -6.0)
                 return
         hp = maxi(0, hp - dmg)
-        hurt_flash = 0.18
+        # WB-18: the hurt read was too quiet to read in motion — the flash
+        # lasts longer, burns whiter, and the body is pushed harder
+        hurt_flash = 0.26
         var dir := -1 if from_pos.x > global_position.x else 1
-        velocity = Vector2(dir * 180.0, -120.0)
+        velocity = Vector2(dir * 230.0, -150.0)
         # the wound card: a bright directional read at the contact point,
         # facing the way the blow pushes
-        FX.impact(global_position + Vector2(-dir * 14.0, -26.0), dir, _heavy)
-        FX.burst(global_position + Vector2(0, -26), "glitch" if data.type == "OUTSIDER" else "ash", 0.0, 9)
+        FX.impact(global_position + Vector2(-dir * 14.0, -26.0), dir, _heavy, style)
+        FX.burst(global_position + Vector2(0, -26), "glitch" if data.type == "OUTSIDER" else "ash", 0.0, 11)
         _on_hurt()
         if hp <= 0:
                 _die()
@@ -323,7 +325,7 @@ func _draw_body() -> void:
         pass
 
 func _draw_hurt_overlay() -> void:
-        var k := hurt_flash / 0.18
+        var k := hurt_flash / 0.26
         draw_circle(Vector2(0, -26), 26.0, Color(0.9, 0.75, 0.6, 0.25 * k))
 
 func _draw_telegraph() -> void:

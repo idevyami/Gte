@@ -41,6 +41,11 @@ var _fall_peak := 0.0
 var _step_side := 0
 var _step_variant := 0        # stone alternates two samples so no two steps are twins
 var _roll_puff_t := 0.0
+# WB-18 THE ROLL IS A DECISION: a short position history so the sprite can
+# trail fading afterimages through the tumble — the evasion reads as an
+# evasion, not a stumble
+var roll_hist: Array[Vector2] = []
+var roll_ghost_t := 0.0
 var _shape: CollisionShape2D
 var _stand_extents := Vector2(11, 24)
 var _roll_extents := Vector2(11, 9)
@@ -113,7 +118,7 @@ func _handle_landing() -> void:
         if impact > 240.0:
                 var strength := clampf((impact - 240.0) / 640.0, 0.0, 1.0)
                 land_squash = 0.55 + 0.45 * strength
-                FX.burst(global_position + Vector2(0, -2), "dust", 0.0, 8 + int(8 * strength))
+                FX.burst(global_position + Vector2(0, -2), "dust", 0.0, 11 + int(11 * strength))
                 FX.rumble(0.22 + 0.5 * strength, 0.1 + 0.12 * strength)
                 # a hard landing leaves a scuff-star in the material
                 var trl := _trace_layer()
@@ -238,6 +243,13 @@ func _handle_jump() -> void:
 func _handle_roll(delta: float) -> void:
         _roll_t = maxf(0.0, _roll_t - delta)
         if _rolling:
+                # the ghost trail samples the path every 45ms
+                roll_ghost_t -= delta
+                if roll_ghost_t <= 0.0:
+                        roll_ghost_t = 0.045
+                        roll_hist.append(global_position)
+                        if roll_hist.size() > 9:
+                                roll_hist.pop_front()
                 if _roll_t <= 0.0:
                         _rolling = false
                         _set_shape(_stand_extents)
@@ -269,6 +281,8 @@ func _handle_roll(delta: float) -> void:
                 _iframes = maxf(_iframes, E0.P_ROLL_TIME + 0.06)
                 _set_shape(_roll_extents)
                 _roll_puff_t = 0.0
+                roll_hist.clear()
+                roll_ghost_t = 0.0
                 FX.burst(global_position + Vector2(-_roll_dir * 14.0, -2), "dust", PI if _roll_dir > 0 else 0.0, 7)
                 FX.rumble(0.16, 0.09)
                 AudioManager.play_sfx("sfx_roll", -8.0)
@@ -348,13 +362,16 @@ func _do_hit(chain_idx: int) -> void:
                 if collider and collider.has_meta("hurt_owner"):
                         target = collider.get_meta("hurt_owner")
                 if target and target.has_method("take_hit"):
-                        target.take_hit(dmg, global_position, chain_idx == 2)
+                        target.take_hit(dmg, global_position, chain_idx == 2, chain_idx)
                         any = true
         if any:
-                FX.hitstop(0.05 if chain_idx < 2 else 0.09)
-                FX.shake(2.0 if chain_idx < 2 else 4.0, 0.12)
-                FX.rumble(0.32 if chain_idx < 2 else 0.58, 0.11)
-                FX.burst(global_position + Vector2(facing * 36.0, -12), "spark" if chain_idx == 2 else "ash", 0.0, 7)
+                # WB-18 THE FIST THAT LANDS: the punctuation carries the weight —
+                # hitstop and shake now escalate through the chain so the three
+                # hits read as three sentences, not one held button
+                FX.hitstop(0.07 if chain_idx < 2 else 0.115)
+                FX.shake([2.2, 3.2, 5.0][chain_idx], 0.13)
+                FX.rumble(0.4 if chain_idx < 2 else 0.66, 0.12)
+                FX.burst(global_position + Vector2(facing * 36.0, -12), "spark" if chain_idx == 2 else "ash", 0.0, 9)
                 AudioManager.play_sfx("sfx_hit_light" if chain_idx < 2 else "sfx_hit_heavy", -4.0)
 
 # ------------------------------------------------------------------ damage

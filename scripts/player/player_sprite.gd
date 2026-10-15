@@ -84,6 +84,34 @@ class VesselAura:
                                 Color(0.85, 0.72, 0.50, a * 0.42))
                 draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
+## THE ROLL IS A DECISION (WB-18): fading afterimages trail the tumble so
+## the evasion reads as a deliberate slip through danger — the motion audit
+## called the old roll "movement with intent, but not a SAFE movement".
+class RollGhost:
+        extends Node2D
+        var player: Player
+        func _ready() -> void:
+                z_index = 1
+        func _process(_delta: float) -> void:
+                queue_redraw()
+        func _draw() -> void:
+                if player == null or not player.is_rolling() or player.roll_hist.is_empty():
+                        return
+                var n := player.roll_hist.size()
+                # three ghosts walk back through the sampled path
+                for g in 3:
+                        var idx := n - 2 - g * 2
+                        if idx < 0:
+                                continue
+                        var gp: Vector2 = player.roll_hist[idx]
+                        var local := gp - player.global_position
+                        var a := 0.3 - 0.09 * g
+                        var c := Color(E0.BONE.r, E0.BONE.g, E0.BONE.b, a)
+                        draw_circle(local + Vector2(0, -14), 11.0 - 1.5 * g, Color(c.r, c.g, c.b, a * 0.5))
+                        draw_arc(local + Vector2(0, -14), 11.0 - 1.5 * g, 0.0, TAU, 10, c, 2.2)
+
+var _ghost: RollGhost
+
 func attach(p_player: Player) -> void:
         player = p_player
         _shadow = ContactShadow.new()
@@ -91,6 +119,9 @@ func attach(p_player: Player) -> void:
         player.add_child(_shadow)
         _aura = VesselAura.new()
         player.add_child(_aura)
+        _ghost = RollGhost.new()
+        _ghost.player = player
+        player.add_child(_ghost)
 
 func sync_state(delta: float) -> void:
         if player == null:
@@ -162,6 +193,10 @@ func sync_state(delta: float) -> void:
                 want = "death"
         elif player.is_rolling():
                 want = "roll"
+                # the slip's first instant carries a faint white flash — the
+                # body announcing its own escape
+                if player._roll_t > E0.P_ROLL_TIME - 0.08:
+                        m = m.lerp(Color(1.0, 1.0, 1.0), 0.35)
         elif player._attack_idx >= 0:
                 want = "attack%d" % (player._attack_idx + 1)
         elif player.interact_pose_t > 0.0:

@@ -185,7 +185,7 @@ func _draw_body() -> void:
                 return
         var col := E0.VIOLET.darkened(0.15)
         if hurt_flash > 0.0:
-                col = col.lerp(Color(0.9, 0.75, 0.6), hurt_flash / 0.18)
+                col = col.lerp(Color(0.9, 0.75, 0.6), hurt_flash / 0.26)
         match state:
                 CHANT:
                         _draw_kneeling(col)

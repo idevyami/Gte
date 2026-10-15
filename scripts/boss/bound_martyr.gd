@@ -20,6 +20,10 @@ var arena_r := 1300.0
 var floor_y := 0.0
 var dash_dir := 1
 var leap_target := Vector2.ZERO
+# WB-18 THE CHARGE SPEAKS: the dash windup now gathers — sparks at the feet,
+# the halo pulling toward crimson — so the crouch reads as a promise
+var dash_charge := 0.0
+var _spark_accum := 0.0
 var chain_breaks := 0
 var _death_msec := 0
 var intro_done := false
@@ -74,12 +78,22 @@ func _act(delta: float) -> void:
                                 state_t = 0.0
                 DASH_WINDUP:
                         velocity.x = 0.0
+                        # the charge speaks: sparks scrape off the floor while
+                        # the body coils (the motion audit called the bare
+                        # crouch "barely readable" against the dark arches)
+                        dash_charge = minf(1.0, dash_charge + delta / 0.7)
+                        _spark_accum -= delta
+                        if _spark_accum <= 0.0:
+                                _spark_accum = 0.14
+                                FX.burst(global_position + Vector2(dash_dir * -18.0, -4), "spark", 0.0, 5)
+                                FX.burst(global_position + Vector2(0, -2), "dust", 0.0, 3)
                         if state_t > 0.7:
                                 state = DASHING
                                 state_t = 0.0
                                 dash_dir = facing
                                 AudioManager.play_sfx("sfx_boss_roar", -6.0)
                 DASHING:
+                        dash_charge = 0.0
                         velocity.x = dash_dir * 520.0
                         _dash_damage_check()
                         if state_t > 0.5 or global_position.x < arena_l + 40.0 or global_position.x > arena_r - 40.0:
@@ -288,14 +302,14 @@ func _fervor_tick(player: Player, delta: float) -> void:
                 player.take_damage(12, player.global_position)
 
 # ------------------------------------------------------------------ damage / shield
-func take_hit(dmg: int, from_pos: Vector2, heavy: bool) -> void:
+func take_hit(dmg: int, from_pos: Vector2, heavy: bool, style := 0) -> void:
         if state == INTRO or state == DYING or state == DEAD:
                 return
         var applied := dmg
         if shielded():
                 applied = maxi(1, int(round(dmg * 0.2)))
                 AudioManager.play_sfx("sfx_barrier_break", -12.0, false)
-        super(applied, from_pos, heavy)
+        super(applied, from_pos, heavy, style)
 
 func begin_fight() -> void:
         if intro_done:
@@ -483,14 +497,18 @@ func _draw_overlays(alpha: float, lean: float) -> void:
                         draw_colored_polygon(_ellipse(Vector2(lean * 0.4, -1.0 - t * 2.0), stance_w * (1.0 - t * 0.22), 7.0 * (1.0 - t * 0.25)),
                                 Color(E0.VOID.r, E0.VOID.g, E0.VOID.b, 0.16 * (1.0 - t * 0.4) * alpha))
         # halo bloom — a light source, not a drawn ring: layered gold circles
-        # breathing behind the crown, shared by painted and procedural bodies
-        var pulse := 0.70 + 0.30 * sin(anim_t * 2.2)
-        var halo_a := (0.5 if phase < 3 else 0.25) * alpha
+        # breathing behind the crown, shared by painted and procedural bodies.
+        # WB-18: while the dash charges, the halo pulls toward crimson and
+        # beats faster — the design itself leaning into the lunge
+        var pulse := 0.70 + 0.30 * sin(anim_t * (2.2 + 8.0 * dash_charge))
+        var halo_col := Color(E0.GOLD.r, E0.GOLD.g, E0.GOLD.b).lerp(
+                Color(E0.CRIMSON.r + 0.25, E0.CRIMSON.g, E0.CRIMSON.b), dash_charge)
+        var halo_a := ((0.5 if phase < 3 else 0.25) + 0.3 * dash_charge) * alpha
         for i in 4:
                 var t := float(i) / 4.0
                 draw_circle(Vector2(lean * 1.6, -108.0), 20.0 + t * 26.0,
-                        Color(E0.GOLD.r, E0.GOLD.g, E0.GOLD.b, 0.028 * (1.0 - t) * halo_a * 4.0 * pulse))
-        draw_arc(Vector2(lean * 1.6, -108), 20.0, PI * 0.9, PI * 2.1, 16, Color(E0.GOLD.r, E0.GOLD.g, E0.GOLD.b, halo_a * alpha), 2.0)
+                        Color(halo_col.r, halo_col.g, halo_col.b, 0.028 * (1.0 - t) * halo_a * 4.0 * pulse))
+        draw_arc(Vector2(lean * 1.6, -108), 20.0, PI * 0.9, PI * 2.1, 16, Color(halo_col.r, halo_col.g, halo_col.b, halo_a * alpha), 2.0)
         # belief shield shimmer
         if shielded():
                 var shield_a := 0.10 + 0.06 * sin(anim_t * 3.0)

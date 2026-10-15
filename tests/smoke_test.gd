@@ -54,6 +54,7 @@ func _run() -> void:
         await _the_vessels_trace()
         await _the_others_passage()
         await _the_endings_record()
+        await _the_fist_that_lands()
         print("=== %d checks, %d failures ===" % [checks, fails])
         get_tree().quit(1 if fails > 0 else 0)
 
@@ -2171,6 +2172,84 @@ func _the_endings_record() -> void:
         var vf: Dictionary = game.traces.fall_at(0)
         ok(String(vf["tag"]) == "vessel" and float(vf["age"]) > 3.0,
                 "the revisited stain reads already-happened — born aged (%.1f)" % float(vf["age"]))
+
+# ------------------------------------------------------------------ WB-18
+func _the_fist_that_lands() -> void:
+        print("[WB-18 THE FIST THAT LANDS]")
+        # --- the wound card carries the chain's sentence
+        var c0 := FX.impact(Vector2.ZERO, 1.0, false, 0)
+        ok(c0 != null and c0.style == 0 and is_equal_approx(c0.life, 0.20),
+                "a chain hit's wound card reads 0.20s")
+        var c2 := FX.impact(Vector2.ZERO, 1.0, true, 2)
+        ok(c2 != null and c2.style == 2 and is_equal_approx(c2.life, 0.28),
+                "the finisher's card outlasts the chain (0.28s)")
+        if c0:
+                c0.queue_free()
+        if c2:
+                c2.queue_free()
+        # --- the punctuation escalates through the chain (hitstop ms)
+        game.new_game()
+        await _settle_playing(0.4)
+        game.transition_to("act3")
+        await _room("act3")
+        var hollow18: Hollow = null
+        for node in get_tree().get_nodes_in_group("enemies"):
+                if node is Hollow and not node.dead:
+                        hollow18 = node
+                        break
+        ok(hollow18 != null, "the hollow stands in the undercity")
+        if hollow18:
+                game.player.global_position = hollow18.global_position + Vector2(-52.0, 0)
+                game.player.facing = 1
+                await _frames(3)
+                var now := Time.get_ticks_msec()
+                game.player._do_hit(0)
+                var stop0: int = FX._hitstop_until_msec - now
+                ok(stop0 >= 60, "hit one holds the frame (>=60ms, got %d)" % stop0)
+                await _frames(2)
+                now = Time.get_ticks_msec()
+                game.player._do_hit(2)
+                var stop2: int = FX._hitstop_until_msec - now
+                ok(stop2 >= 105, "the finisher holds longer (>=105ms, got %d)" % stop2)
+                ok(hollow18.hurt_flash > 0.2, "the hurt read lasts (flash %.2f)" % hollow18.hurt_flash)
+                ok(absf(hollow18.velocity.x - 230.0) < 1.0, "the body is pushed harder (230)" )
+        # --- the roll is a decision: the ghost trail samples the path
+        game.player.global_position = Vector2(600, 792)
+        game.player.velocity = Vector2.ZERO
+        for i in 60:
+                if game.player.is_on_floor():
+                        break
+                await _frames(1)
+        if game.player.is_on_floor():
+                Input.action_press("roll")
+                await _frames(2)
+                Input.action_release("roll")
+                # headless runs unthrottled — the roll lives in REAL time
+                await get_tree().create_timer(0.18, true, false, true).timeout
+                ok(game.player.roll_hist.size() >= 2,
+                        "the tumble leaves ghosts behind (%d sampled)" % game.player.roll_hist.size())
+                await get_tree().create_timer(0.5, true, false, true).timeout
+                ok(not game.player.is_rolling(), "the tumble ends")
+        else:
+                ok(false, "roll law staged off-floor")
+        # --- the charge speaks: the boss's dash windup gathers and spends
+        game.transition_to("act8")
+        await _room("act8")
+        var boss18: BoundMartyr = game.boss
+        ok(boss18 != null, "the martyr is bound in the sanctum")
+        if boss18:
+                boss18.intro_done = true
+                boss18.phase = 2
+                boss18.state = boss18.DASH_WINDUP
+                boss18.state_t = 0.0
+                boss18.dash_charge = 0.0
+                await _frames(12)
+                ok(boss18.dash_charge > 0.05,
+                        "the windup gathers (charge %.2f)" % boss18.dash_charge)
+                boss18.state_t = 0.75
+                await _frames(6)
+                ok(boss18.state == boss18.DASHING and is_equal_approx(boss18.dash_charge, 0.0),
+                        "the dash spends the charge clean")
 
 # ------------------------------------------------------------------ WB-13
 func _the_threshold() -> void:

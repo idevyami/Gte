@@ -115,9 +115,16 @@ func _draw_body() -> void:
         # painted skin active: keep only the readable crimson telegraph
         if _skin != null and not GameState.debug_no_sprites:
                 if state == TELEGRAPH:
+                        # WB-18: the warning reads FIRST — a wider crimson line
+                        # with a hot bone core, bright enough to survive the
+                        # darkest backdrops (the motion audit called the old
+                        # 2px line invisible against the stone)
                         var kk := clampf(state_t / 0.55, 0.0, 1.0)
-                        draw_line(Vector2(facing * 20.0, -30.0), Vector2(facing * (20.0 + 90.0 * kk), -30.0),
-                                Color(E0.CRIMSON.r, E0.CRIMSON.g, E0.CRIMSON.b, 0.25 + 0.3 * kk), 2.0)
+                        var ln := 110.0 * kk
+                        draw_line(Vector2(facing * 20.0, -30.0), Vector2(facing * (20.0 + ln), -30.0),
+                                Color(E0.CRIMSON.r, E0.CRIMSON.g, E0.CRIMSON.b, 0.3 + 0.4 * kk), 4.5)
+                        draw_line(Vector2(facing * 22.0, -30.0), Vector2(facing * (22.0 + ln * 0.82), -30.0),
+                                Color(E0.BONE.r, E0.BONE.g, E0.BONE.b, (0.25 + 0.55 * kk) * 0.9), 1.6)
                 return
         # tall gaunt figure of ash; the chest is a hollow
         var lean := 0.0
@@ -128,9 +135,9 @@ func _draw_body() -> void:
         var col := E0.PARCH.darkened(0.25)
         if state == TELEGRAPH:
                 var k := 0.5 + 0.5 * sin(state_t * 30.0)
-                col = col.lerp(E0.CRIMSON, k * 0.7)
+                col = col.lerp(E0.CRIMSON, k * 0.95)
         if hurt_flash > 0.0:
-                col = col.lerp(Color(0.9, 0.8, 0.7), hurt_flash / 0.18)
+                col = col.lerp(Color(0.9, 0.8, 0.7), hurt_flash / 0.26)
         # legs
         var stride := sin(anim_t * 8.0) * 5.0 if absf(velocity.x) > 20.0 else 0.0
         draw_line(Vector2(-3 + stride, -26), Vector2(-5, 0), col, 3.5)
@@ -153,10 +160,13 @@ func _draw_body() -> void:
         # shadow
         draw_colored_polygon(_ellipse(Vector2(0, 1), 15.0, 3.5), Color(E0.VOID.r, E0.VOID.g, E0.VOID.b, 0.35))
         if state == TELEGRAPH:
-                # the read: a crimson flash line before the lunge
+                # the read: the warning line carries a hot core now
                 var k := clampf(state_t / 0.55, 0.0, 1.0)
-                draw_line(Vector2(facing * 20.0, -30.0), Vector2(facing * (20.0 + 90.0 * k), -30.0),
-                        Color(E0.CRIMSON.r, E0.CRIMSON.g, E0.CRIMSON.b, 0.25 + 0.3 * k), 2.0)
+                var ln := 110.0 * k
+                draw_line(Vector2(facing * 20.0, -30.0), Vector2(facing * (20.0 + ln), -30.0),
+                        Color(E0.CRIMSON.r, E0.CRIMSON.g, E0.CRIMSON.b, 0.3 + 0.4 * k), 4.5)
+                draw_line(Vector2(facing * 22.0, -30.0), Vector2(facing * (22.0 + ln * 0.82), -30.0),
+                        Color(E0.BONE.r, E0.BONE.g, E0.BONE.b, (0.25 + 0.55 * k) * 0.9), 1.6)
 
 func _ellipse(center: Vector2, rx: float, ry: float) -> PackedVector2Array:
         var pts := PackedVector2Array()

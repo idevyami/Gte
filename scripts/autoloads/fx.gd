@@ -177,11 +177,16 @@ func burst(pos: Vector2, kind := "ash", dir := 0.0, count := -1) -> Burst:
 ## bone-white arc segments opening INTO the push direction, a hot core
 ## flash, spark ticks. Heavy (chain finisher) adds a crimson edge ring.
 ## The hit you land must be legible at gameplay zoom from across the room.
-func impact(pos: Vector2, dir := 1.0, heavy := false) -> Impact:
+## WB-18: the three hits are three SENTENCES — style varies the arc's
+## attitude (0 opens high into a downward diagonal, 1 cuts flat, 2 the
+## finisher's wide overhead), and every amplitude was lifted until the
+## card read from across the room in motion (the first motion audit
+## called the old card air-cutting).
+func impact(pos: Vector2, dir := 1.0, heavy := false, style := 0) -> Impact:
         if _burst_world == null or not is_instance_valid(_burst_world):
                 return null
         var c := Impact.new()
-        c.setup(pos, dir, heavy)
+        c.setup(pos, dir, heavy, style)
         _burst_world.add_child(c)
         return c
 
@@ -189,14 +194,16 @@ class Impact:
         extends Node2D
         var dir := 1.0
         var heavy := false
+        var style := 0
         var life := 0.16
         var _t := 0.0
 
-        func setup(pos: Vector2, p_dir: float, p_heavy: bool) -> void:
+        func setup(pos: Vector2, p_dir: float, p_heavy: bool, p_style: int) -> void:
                 global_position = pos
                 dir = 1.0 if p_dir >= 0.0 else -1.0
                 heavy = p_heavy
-                life = 0.21 if heavy else 0.15
+                style = clampi(p_style, 0, 2)
+                life = 0.28 if heavy else 0.20
                 z_index = 22
 
         func _process(delta: float) -> void:
@@ -209,29 +216,41 @@ class Impact:
                 var k := _t / life                  # 0 -> 1
                 var fade := 1.0 - k
                 var ang := 0.0 if dir > 0.0 else PI
+                # the three sentences: each chain hit carries its own attitude
+                # (high diagonal / flat cut / the finisher's wide overhead)
+                match style:
+                        0:
+                                ang += deg_to_rad(20.0) * dir
+                        1:
+                                ang += deg_to_rad(-4.0) * dir
+                        _:
+                                ang += deg_to_rad(-16.0) * dir
+                var spread_scale := 1.18 if style == 2 else 1.0
                 # three expanding arc segments, opening toward the push
                 for i in 3:
-                        var rr := (12.0 + i * 7.0) * (0.7 + 0.6 * k)
-                        var spread := (0.55 + 0.28 * i) * (1.0 - 0.25 * k)
-                        var a := fade * (0.95 - 0.22 * i)
+                        var rr := (13.0 + i * 8.0) * (0.7 + 0.6 * k)
+                        var spread := (0.55 + 0.28 * i) * (1.0 - 0.25 * k) * spread_scale
+                        var a := fade * (1.0 - 0.16 * i)
                         draw_arc(Vector2.ZERO, rr, ang - spread, ang + spread, 10,
-                                Color(E0.BONE.r, E0.BONE.g, E0.BONE.b, a), 3.4 - i * 0.7)
-                # hot core flash (the first 45% only — the instant of contact)
-                if k < 0.45:
-                        var ca := (1.0 - k / 0.45)
-                        draw_circle(Vector2.ZERO, 7.0 * (1.0 - k), Color(1.0, 0.96, 0.88, 0.85 * ca))
-                        draw_circle(Vector2(dir * 9.0, -2.0), 3.4, Color(E0.BONE.r, E0.BONE.g, E0.BONE.b, ca))
+                                Color(E0.BONE.r, E0.BONE.g, E0.BONE.b, a), 5.4 - i * 1.0)
+                # hot core flash (the first 55% — the instant of contact)
+                if k < 0.55:
+                        var ca := (1.0 - k / 0.55)
+                        draw_circle(Vector2.ZERO, 9.5 * (1.0 - k), Color(1.0, 0.97, 0.9, 0.9 * ca))
+                        draw_circle(Vector2(dir * 10.0, -2.0), 4.0, Color(E0.BONE.r, E0.BONE.g, E0.BONE.b, ca))
                 # spark ticks firing along the push
-                for i in 5:
-                        var ta := ang + (float(i) / 4.0 - 0.5) * 1.5
-                        var d0 := 14.0 + 26.0 * k
+                for i in 7:
+                        var ta := ang + (float(i) / 6.0 - 0.5) * 1.6
+                        var d0 := 14.0 + 28.0 * k
                         var p0 := Vector2(cos(ta), sin(ta)) * d0
-                        var p1 := p0 + Vector2(cos(ta), sin(ta)) * (5.0 + 9.0 * k)
-                        draw_line(p0, p1, Color(E0.PARCH.r, E0.PARCH.g, E0.PARCH.b, fade * 0.7), 1.6)
-                # the finisher's verdict: a crimson edge ring
+                        var p1 := p0 + Vector2(cos(ta), sin(ta)) * (6.0 + 12.0 * k)
+                        draw_line(p0, p1, Color(E0.PARCH.r, E0.PARCH.g, E0.PARCH.b, fade * 0.8), 1.8)
+                # the finisher's verdict: a doubled crimson ring
                 if heavy:
-                        draw_arc(Vector2.ZERO, 26.0 * (0.8 + 0.5 * k), 0.0, TAU, 18,
-                                Color(E0.CRIMSON.r, E0.CRIMSON.g, E0.CRIMSON.b, fade * 0.55), 2.2)
+                        draw_arc(Vector2.ZERO, 30.0 * (0.85 + 0.55 * k), 0.0, TAU, 18,
+                                Color(E0.CRIMSON.r, E0.CRIMSON.g, E0.CRIMSON.b, fade * 0.7), 3.4)
+                        draw_arc(Vector2.ZERO, 21.0 * (0.85 + 0.5 * k), 0.0, TAU, 14,
+                                Color(E0.CRIMSON.r, E0.CRIMSON.g, E0.CRIMSON.b, fade * 0.45), 2.0)
 
 class Burst:
         extends Node2D
