@@ -56,6 +56,7 @@ func _run() -> void:
         await _the_endings_record()
         await _the_fist_that_lands()
         await _the_three_beats()
+        await _the_walking_flock()
         print("=== %d checks, %d failures ===" % [checks, fails])
         get_tree().quit(1 if fails > 0 else 0)
 
@@ -2416,6 +2417,112 @@ func _the_three_beats() -> void:
                 await _frames(50)
                 ok(boss19.dash_hist.is_empty(),
                         "the smear settles with the recovery (%d left)" % boss19.dash_hist.size())
+
+# ------------------------------------------------------------------ WB-20
+func _the_walking_flock() -> void:
+        print("[THE WALKING FLOCK — WB-20]")
+        game.transition_to("act5")
+        await _room("act5")
+        var flock: Array = []
+        for node in get_tree().get_nodes_in_group("enemies"):
+                if node is Believer and not node.dead:
+                        flock.append(node)
+        ok(flock.size() >= 2, "the chapel holds a flock to walk (%d)" % flock.size())
+        if flock.size() < 2:
+                return
+        var w: Believer = flock[0]
+        var w2: Believer = flock[1]
+        # the vessel stands close enough to hold the walk, far enough to
+        # never hold the strike — both bodies are set walking toward him
+        game.player.global_position = w.global_position + Vector2(300, 0)
+        w2.global_position = w.global_position + Vector2(43, 0)
+        w2.velocity = Vector2.ZERO
+        for b in [w, w2]:
+                b.state = b.AGGRO
+                b.state_t = 0.0
+        var ys: Array[float] = []
+        var xs: Array[float] = []
+        var contacts: Array[float] = []
+        var frames_seen := {}
+        var t0 := Time.get_ticks_msec()
+        while Time.get_ticks_msec() - t0 < 1400:
+                await get_tree().process_frame
+                if not is_instance_valid(w) or w.dead or w._skin == null:
+                        break
+                if w._skin.animation == "walk":
+                        ys.append(w._skin.position.y)
+                        xs.append(w._skin.position.x)
+                        frames_seen[int(w._skin.frame)] = true
+                        if (int(w._skin.frame) == 0 or int(w._skin.frame) == 3) \
+                                        and w._frame_clock < 0.03:
+                                contacts.append(w._skin.position.y)
+        var ptp_y := 0.0
+        var ptp_x := 0.0
+        if not ys.is_empty():
+                ptp_y = ys.max() - ys.min()
+                ptp_x = xs.max() - xs.min()
+        ok(ys.size() >= 40, "the walk holds long enough to judge (%d samples)" % ys.size())
+        ok(ptp_y >= 1.6 and ptp_y <= 5.0,
+                "the body rides the stride (%.2fpx dip-to-rise)" % ptp_y)
+        ok(ptp_x >= 0.9,
+                "the weight settles over the new foot (%.2fpx sway)" % ptp_x)
+        var deepest := 0.0
+        for c in contacts:
+                deepest = maxf(deepest, c)
+        ok(contacts.size() >= 2 and deepest >= 1.0,
+                "the dip lands on the footfall (%d contacts, deepest %.2f)" % [contacts.size(), deepest])
+        ok(frames_seen.size() >= 5,
+                "the ride crosses the whole painted cycle (%d/6 frames)" % frames_seen.size())
+        ok(w._stagger_seed != w2._stagger_seed,
+                "each body begins its cycle alone (%d vs %d)" % [w._stagger_seed, w2._stagger_seed])
+        # --- the ride settles when the walk ends
+        w.state = w.CHANT
+        w.state_t = 0.0
+        await _wait_real(0.7)
+        ok(is_instance_valid(w) and w._skin != null and w._skin.position.length() < 0.05,
+                "the ride settles when the walk ends")
+        # --- the corpse does not ride
+        w2.dead = true
+        w2.death_t = 0.0
+        w2.velocity = Vector2.ZERO
+        await _wait_real(0.5)
+        ok(is_instance_valid(w2) and w2._skin != null and w2._skin.position.length() < 0.05,
+                "the corpse does not ride")
+        # --- the fallback rig rides the same weight, and the censer trails
+        GameState.debug_no_sprites = true
+        game.player.global_position = w.global_position + Vector2(-420, 0)
+        w.state = w.AGGRO
+        w.state_t = 0.0
+        var rys: Array[float] = []
+        var lags: Array[float] = []
+        var t1 := Time.get_ticks_msec()
+        while Time.get_ticks_msec() - t1 < 900:
+                await get_tree().process_frame
+                if not is_instance_valid(w) or w.dead:
+                        break
+                rys.append(w._rig_ride.y)
+                lags.append(w._censer_lag)
+        GameState.debug_no_sprites = false
+        var rig_ptp := 0.0
+        var lag_ptp := 0.0
+        if not rys.is_empty():
+                rig_ptp = rys.max() - rys.min()
+                lag_ptp = lags.max() - lags.min()
+        ok(rig_ptp >= 1.5,
+                "the fallback rig rides the same weight (%.2fpx)" % rig_ptp)
+        ok(lag_ptp >= 0.3,
+                "the censer trails the sway (%.2fpx swing)" % lag_ptp)
+        # --- THE DORMANT ARCH: this pass's first walk down the fallback path
+        # found the procedural arch band self-intersecting (an unreversed
+        # inner loop drew a bowtie the renderer silently refused to
+        # triangulate — fallback decor had never been exercised by an
+        # automated run before this law turned it on)
+        var arch_tris: Array = []
+        for wv in [150.0, 227.0, 340.0]:
+                arch_tris.append(Geometry2D.triangulate_polygon(
+                        Decor.arch_band_points(Vector2(400, 500), wv, wv * 300.0 / 414.0)))
+        ok(not arch_tris[0].is_empty() and not arch_tris[1].is_empty() and not arch_tris[2].is_empty(),
+                "the procedural arch band triangulates (the dormant bowtie, closed)")
 
 func _phase_at_impact() -> float:
         ## Ticks physics frames until the swing's blade meets, then returns

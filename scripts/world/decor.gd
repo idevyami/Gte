@@ -523,15 +523,24 @@ func _column(pos: Vector2, w: float, h: float) -> void:
 
 func _arch(pos: Vector2, w: float, h: float) -> void:
         _arch_interior(pos, w, h * 0.92)
+        draw_colored_polygon(arch_band_points(pos, w, h), E0.DIRTY_STONE.darkened(0.12))
+
+static func arch_band_points(pos: Vector2, w: float, h: float) -> PackedVector2Array:
+        ## The arch's stone band: outer arc left-to-right over the top, then
+        ## the inner arc REVERSED (right-to-left) — an unreversed inner loop
+        ## self-intersects into a bowtie and the renderer refuses to
+        ## triangulate it (WB-20: the dormant bug the rig-path law surfaced —
+        ## procedural decor only draws in fallback/F9 mode, so no automated
+        ## run had ever exercised it).
         var pts := PackedVector2Array()
         var steps := 12
         for i in steps:
                 var a := PI - PI * i / float(steps - 1)
                 pts.append(pos + Vector2(cos(a) * w * 0.5, -h - sin(a) * h * 0.55))
-        for i in steps:
+        for i in range(steps - 1, -1, -1):
                 var a := PI - PI * i / float(steps - 1)
                 pts.append(pos + Vector2(cos(a) * (w * 0.5 - 10.0), -h - sin(a) * (h * 0.55 - 9.0)))
-        draw_colored_polygon(pts, E0.DIRTY_STONE.darkened(0.12))
+        return pts
 
 func _banner(pos: Vector2, w: float, h: float, s: float) -> void:
         var sway := sin(Time.get_ticks_msec() * 0.001 + s * 6.0) * 3.0

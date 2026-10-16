@@ -20,6 +20,22 @@ var _walked_since_press := false  # WB-15: has the body moved since it last knel
 # bodies never bleed into one dark mass against the chapel's dark
 var sep_k := 0.0
 var _sep_phase := 0.0
+# WB-20 THE FLOCK WALKS WITH WEIGHT: the audit's chess-piece read — the
+# painted walk cycles its legs while the body glides flat. The body now
+# RIDES the stride: it dips as the weight is accepted at each footfall
+# (the paint's contact frames, 0 and 3), rises through the swing, and
+# sways a quarter-cycle past the plant. Each body starts its cycle on its
+# own frame, so the congregation never marches as one mechanism.
+var _weight := Vector2.ZERO       # the live ride (painted path: the skin's offset)
+var _rig_ride := Vector2.ZERO     # the same ride, for the fallback rig
+var _walk_phase := 0.0            # 0..1 across the painted walk cycle
+var _frame_clock := 0.0           # seconds since the skin's frame last changed
+var _last_skin_frame := -1
+var _walk_armed := false           # stagger applied for this walk
+var _stagger_seed := -1           # the frame this body begins its cycle on
+var _walk_frames := 6             # derived from the skin at walk entry
+var _walk_fps := 8.0
+var _censer_lag := 0.0            # the hanging lamp trails the sway (rig path)
 
 func setup_believer(p_pos: Vector2, p_ward: WardBarrier = null, p_kneel := true) -> void:
         setup_enemy("BELIEVER", "BELIEVER_%d" % [randi() % 800 + 150])
@@ -92,6 +108,7 @@ func _act(delta: float) -> void:
                                 _abandon_fade()
         velocity.y += 1500.0 * delta if not is_on_floor() else 0.0
         _convergence_update(delta)
+        _weight_update(delta)
 
 func _convergence_update(delta: float) -> void:
         ## THE FLOCK KEEPS ITS EDGES (WB-19): the motion audit's silhouette
@@ -107,6 +124,25 @@ func _convergence_update(delta: float) -> void:
                 best = minf(best, absf(b.global_position.x - global_position.x))
         var want := clampf((110.0 - best) / 55.0, 0.0, 1.0)
         sep_k = lerpf(sep_k, want, delta * 8.0)
+
+func _weight_update(delta: float) -> void:
+        ## WB-20 THE RIDE, in time: the rig path's weight (the painted path
+        ## derives its own in _sync_skin, anchored to the skin's frames).
+        ## The rig's legs scissor at sin(anim_t * 9); the pass/plant is the
+        ## crossing — the body dips there, rises through the swing, and
+        ## sways a quarter behind. The censer hangs and trails (a pendulum).
+        if state in [AGGRO, STRIKE, FLEE] and absf(velocity.x) > 20.0:
+                var th := anim_t * 9.0
+                _rig_ride = Vector2(
+                        sin(th * 2.0) * E0.BELIEVER_RIDE_SWAY * facing,
+                        cos(th * 2.0) * E0.BELIEVER_RIDE_DIP)
+        else:
+                _rig_ride = _rig_ride.lerp(Vector2.ZERO, minf(1.0, delta * 10.0))
+        var want_lag := 0.0
+        if absf(_rig_ride.x) > 0.05:
+                want_lag = -_rig_ride.x * (E0.BELIEVER_CENSER_SWING
+                        / maxf(0.1, E0.BELIEVER_RIDE_SWAY))
+        _censer_lag = lerpf(_censer_lag, want_lag, delta * 6.0)
 
 func _press_station() -> void:
         ## THE STATION'S AGE (WB-15): a press the vessel never saw kneel is
@@ -178,6 +214,45 @@ func _on_contact(body: Node2D) -> void:
                 contact_cd = 0.9
                 body.take_damage(int(float(contact_damage) * damage_mult()), global_position)
 
+func _sync_skin(delta: float) -> void:
+        super(delta)
+        if _skin == null:
+                return
+        ## WB-20 THE PAINTED RIDE: the skin rides its own walk — the offset
+        ## is derived from the ACTUAL painted frame (re-anchored at every
+        ## frame change so the ride can never drift from the paint) plus a
+        ## sub-frame clock for the in-between. Contacts sit at frames 0 and
+        ## 3 (the paint's own footfalls): dip there, rise mid-swing, sway a
+        ## quarter past each plant, mirrored with facing (the planted side
+        ## flips with the sprite). Off the walk the ride relaxes to zero —
+        ## the kneel, the strike and the corpse do not bob.
+        var walking := not dead and _skin.animation == "walk" and absf(velocity.x) > 20.0
+        if walking:
+                if not _walk_armed:
+                        _walk_armed = true
+                        _walk_frames = maxi(2, _skin.sprite_frames.get_frame_count("walk"))
+                        _walk_fps = maxf(1.0, _skin.sprite_frames.get_animation_speed("walk"))
+                        # each body begins its cycle alone — the flock is a
+                        # congregation, not a chorus line
+                        _stagger_seed = int(absf(fmod(global_position.x * 0.61, float(_walk_frames))))
+                        _skin.frame = _stagger_seed
+                        _last_skin_frame = _stagger_seed
+                        _frame_clock = 0.0
+                if _skin.frame != _last_skin_frame:
+                        _last_skin_frame = _skin.frame
+                        _frame_clock = 0.0
+                else:
+                        _frame_clock = minf(_frame_clock + delta, 1.0 / _walk_fps)
+                _walk_phase = fmod((float(_last_skin_frame) + _frame_clock * _walk_fps)
+                        / float(_walk_frames), 1.0)
+                _weight = Vector2(
+                        sin(TAU * 2.0 * _walk_phase) * E0.BELIEVER_RIDE_SWAY * facing,
+                        cos(TAU * 2.0 * _walk_phase) * E0.BELIEVER_RIDE_DIP)
+        else:
+                _walk_armed = false
+                _weight = _weight.lerp(Vector2.ZERO, minf(1.0, delta * 10.0))
+        _skin.position = _weight
+
 func skin_set() -> String:
         return "believers"
 
@@ -225,8 +300,14 @@ func _draw_convergence_edge() -> void:
         var breathe := 0.8 + 0.2 * sin(_sep_phase * 3.1 + global_position.x * 0.7)
         var a := 0.24 * sep_k * breathe
         var col := Color(0.86, 0.74, 0.52)
+        # WB-20: the rim rides mostly with the body (damped 0.85) so the glow
+        # stays glued to the robe it edges while the ride moves — but the
+        # ground pool never rides: it is the floor's light, and the floor
+        # does not walk (the rim follows whichever body is visible)
+        var painted := _skin != null and not GameState.debug_no_sprites
+        var rim_ride := (_weight if painted else _rig_ride) * 0.85
         # the robe's bounds: taller when standing, settled when kneeling
-        var cy := -30.0
+        var cy := -30.0 + rim_ride.y
         var ry := 33.0
         if state == CHANT or state == RISE:
                 cy = -22.0
@@ -234,7 +315,7 @@ func _draw_convergence_edge() -> void:
         var pts := PackedVector2Array()
         for i in 22:
                 var t := TAU * i / 22.0
-                pts.append(Vector2(0, cy) + Vector2(cos(t) * 13.5, sin(t) * ry))
+                pts.append(Vector2(rim_ride.x, cy) + Vector2(cos(t) * 13.5, sin(t) * ry))
         draw_polyline(pts, Color(col.r, col.g, col.b, a), 1.6)
         # the censer's light pools at the feet — the ground separates too,
         # and the pool breathes with the shuffle (the re-audit: static pools
@@ -265,22 +346,30 @@ func _draw_kneeling(col: Color) -> void:
 
 func _draw_standing(col: Color) -> void:
         var stride := sin(anim_t * 9.0) * 4.0 if absf(velocity.x) > 20.0 else 0.0
-        draw_line(Vector2(-3 + stride, -26), Vector2(-4, 0), col, 3.5)
-        draw_line(Vector2(3 - stride, -26), Vector2(4, 0), col, 3.5)
+        # WB-20 THE RIG RIDES TOO: the same weight the painted body rides —
+        # the hips rise and settle while the feet stay planted (the legs
+        # pivot at the hip, they do not translate), the torso sways over
+        # the settling side, and the censer trails the sway like the
+        # pendulum it is (it hangs from the arm, it is not held)
+        var ride := _rig_ride
+        var hip := -26.0 + ride.y
+        draw_line(Vector2(-3 + stride, hip), Vector2(-4, 0), col, 3.5)
+        draw_line(Vector2(3 - stride, hip), Vector2(4, 0), col, 3.5)
         draw_colored_polygon(PackedVector2Array([
-                Vector2(-9, -26), Vector2(9, -26), Vector2(10, -52), Vector2(-10, -52),
+                Vector2(-9 + ride.x, hip), Vector2(9 + ride.x, hip),
+                Vector2(10 + ride.x, hip - 26.0), Vector2(-10 + ride.x, hip - 26.0),
         ]), col)
-        draw_circle(Vector2(0, -58), 7.5, col)
-        draw_rect(Rect2(facing * 2.0 - 3.0, -61, 6, 5), E0.VOID)
+        draw_circle(Vector2(ride.x, hip - 32.0), 7.5, col)
+        draw_rect(Rect2(facing * 2.0 - 3.0 + ride.x, hip - 35.0, 6, 5), E0.VOID)
         # arm with hanging censer — a weapon they never chose
-        var arm := Vector2(facing * 12.0, -40.0)
+        var arm := Vector2(facing * 12.0 + ride.x, hip - 14.0)
         if state == WINDUP:
                 var k := clampf(state_t / 0.5, 0.0, 1.0)
-                arm = Vector2(facing * (12.0 - 6.0 * k), -40.0 + 14.0 * k)
+                arm = Vector2(facing * (12.0 - 6.0 * k) + ride.x, hip - 14.0 + 14.0 * k)
                 col = col.lerp(E0.CRIMSON, k * 0.5)
-        draw_line(Vector2(facing * 6.0, -46.0), arm, col, 3.0)
-        draw_line(arm, arm + Vector2(0, 10.0), Color(E0.GOLD.r, E0.GOLD.g, E0.GOLD.b, 0.8), 1.5)
-        draw_circle(arm + Vector2(0, 12.0), 3.5, E0.GOLD.darkened(0.3))
+        draw_line(Vector2(facing * 6.0 + ride.x, hip - 20.0), arm, col, 3.0)
+        draw_line(arm, arm + Vector2(_censer_lag, 10.0), Color(E0.GOLD.r, E0.GOLD.g, E0.GOLD.b, 0.8), 1.5)
+        draw_circle(arm + Vector2(_censer_lag, 12.0), 3.5, E0.GOLD.darkened(0.3))
         if state == WINDUP:
                 var k2 := clampf(state_t / 0.5, 0.0, 1.0)
                 draw_line(Vector2(facing * 14.0, -36.0), Vector2(facing * (14.0 + 60.0 * k2), -36.0),

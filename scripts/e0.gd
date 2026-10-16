@@ -82,6 +82,17 @@ const BELIEVER_DMG := 10
 const CENSOR_DMG := 30
 const CENSOR_SPEED_S4 := 120.0
 const CENSOR_SPEED_S5 := 200.0
+# WB-20 THE FLOCK WALKS WITH WEIGHT: the ride the painted walk was missing —
+# the audit's chess-piece read. The painted cycle plants its feet at frames
+# 0 and 3 (verified: hem contact + the leg-swing structure); the body now
+# DIPS as each footfall's weight is accepted, RISES through the swing, and
+# SWAYS a quarter-cycle past the plant (the mass settles over the new foot)
+# — additive to the 2px the paint itself rises at frames 1/4. Cloth-subtle
+# by design: the congregation shuffles, it does not march. The censer is a
+# pendulum — it trails the sway, it does not ride with the body.
+const BELIEVER_RIDE_DIP := 1.3           # px, settled at each footfall
+const BELIEVER_RIDE_SWAY := 1.35         # px, a quarter-cycle behind the plant
+const BELIEVER_CENSER_SWING := 2.6       # px, the hanging lamp's lag
 
 # --- Boss (locked) -----------------------------------------------------------
 const MARTYR_HP := 900

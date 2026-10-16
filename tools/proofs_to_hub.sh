@@ -99,6 +99,11 @@ names = [
     "wb19_01_gather", "wb19_02_launch",
     "wb19_03_chain_step", "wb19_04_finisher_card",
     "wb19_05_flock_rim", "wb19_06_dash_smear",
+    # WB-20: the walking flock (motion keyframe, stride-cycle filmstrip,
+    # strobe stills, the labeled pair, the closed arch)
+    "wb20_01_ride_in_motion", "wb20_02_the_cycle",
+    "wb20_03_dip_still", "wb20_04_rise_still",
+    "wb20_05_the_pair", "wb20_06_the_arch",
 ]
 for n in names:
     p = os.path.join(src, n + ".png")
