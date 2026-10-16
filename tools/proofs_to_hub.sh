@@ -95,6 +95,10 @@ names = [
     "wb16_03_the_pool", "wb16_04_the_congregations_ending",
     "wb16_05_the_censors_leaving", "wb16_06_where_he_fell",
     "wb16_07_engine_records_nothing", "wb16_08_two_endings",
+    # WB-19: the three beats (event-locked strobe stills + motion frames)
+    "wb19_01_gather", "wb19_02_launch",
+    "wb19_03_chain_step", "wb19_04_finisher_card",
+    "wb19_05_flock_rim", "wb19_06_dash_smear",
 ]
 for n in names:
     p = os.path.join(src, n + ".png")

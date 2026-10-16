@@ -154,18 +154,29 @@ func sync_state(delta: float) -> void:
                 else:
                         sk *= 1.0 - vy * 0.05
                         sh *= 1.0 + vy * 0.09
+        # WB-19 THE LAUNCH SPEAKS: the gather's answer is a stretch — the
+        # body leaves the floor long, then hands the arc to the air stretch
+        # (re-audit: "reads but subtle and brief" — held a touch longer and
+        # a touch taller)
+        if player.hp > 0 and player.jump_stretch > 0.02:
+                var jk: float = clampf(player.jump_stretch, 0.0, 1.0)
+                sk *= 1.0 - 0.10 * jk
+                sh *= 1.0 + 0.20 * jk
         scale = Vector2(sk, sh)
-        # ATTACK ANTICIPATION: the first 70ms of a swing coils the body down
-        # (windup crouch), then the strike overshoots tall — the painted pose
-        # reads as effort even between its frames
+        # ATTACK ANTICIPATION: the windup coils the body down (deeper for
+        # the later, heavier beats — WB-19 gives each beat its own crouch),
+        # then the strike overshoots tall — the painted pose reads as effort
+        # even between its frames
         if player.hp > 0 and player._attack_idx >= 0:
                 var ph: float = player._attack_phase
-                if ph < 0.07:
-                        var k := 1.0 - ph / 0.07
-                        scale = Vector2(sk * (1.0 + 0.05 * k), sh * (1.0 - 0.06 * k))
-                elif ph < 0.13:
-                        var k2 := (ph - 0.07) / 0.06
-                        scale = Vector2(sk * (1.0 - 0.03 * k2), sh * (1.0 + 0.04 * k2))
+                var w: float = E0.P_CHAIN_WINDUP[player._attack_idx]
+                if ph < w:
+                        var k := 1.0 - ph / w
+                        var depth := 0.05 + 0.035 * player._attack_idx
+                        scale = Vector2(sk * (1.0 + depth * k), sh * (1.0 - (depth + 0.015) * k))
+                elif ph < w + 0.06:
+                        var k2 := (ph - w) / 0.06
+                        scale = Vector2(sk * (1.0 - 0.03 * k2), sh * (1.0 + 0.05 * k2))
         # RUN LEAN: the vessel leans into its speed (a few degrees, springy)
         if player.hp > 0 and player.is_on_floor():
                 var lean_k := clampf(absf(player.velocity.x) / E0.P_MAX_SPEED, 0.0, 1.0)
@@ -205,6 +216,10 @@ func sync_state(delta: float) -> void:
                 want = "observe"
         elif not player.is_on_floor():
                 want = "jump" if player.velocity.y < 0.0 else "fall"
+        elif player._jump_windup > 0.0:
+                # WB-19 THE GATHER: the crouch before the leave keeps the
+                # grounded pose — the compression itself is the tell
+                want = "idle"
         elif absf(player.velocity.x) > 30.0:
                 want = "walk"
                 speed = clampf(absf(player.velocity.x) / E0.P_MAX_SPEED, 0.55, 1.5)

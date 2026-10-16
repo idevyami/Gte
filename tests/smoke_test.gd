@@ -55,6 +55,7 @@ func _run() -> void:
         await _the_others_passage()
         await _the_endings_record()
         await _the_fist_that_lands()
+        await _the_three_beats()
         print("=== %d checks, %d failures ===" % [checks, fails])
         get_tree().quit(1 if fails > 0 else 0)
 
@@ -2250,6 +2251,182 @@ func _the_fist_that_lands() -> void:
                 await _frames(6)
                 ok(boss18.state == boss18.DASHING and is_equal_approx(boss18.dash_charge, 0.0),
                         "the dash spends the charge clean")
+
+# ------------------------------------------------------------------ WB-19
+func _the_three_beats() -> void:
+        print("[WB-19 THE THREE BEATS]")
+        # --- the cadence table: each beat gathers longer and lives longer
+        var w: Array = E0.P_CHAIN_WINDUP
+        var tot: Array = E0.P_CHAIN_TOTAL
+        var cd: Array = E0.P_CHAIN_CD
+        ok(float(w[0]) < float(w[1]) and float(w[1]) < float(w[2]),
+                "the chain gathers weight before each landing (windups rise)")
+        ok(float(tot[0]) < float(tot[1]) and float(tot[1]) < float(tot[2]),
+                "the later beats live longer (totals rise)")
+        ok(float(cd[0]) < float(cd[1]) and float(cd[1]) < float(cd[2]),
+                "the recoveries deepen (cd rises through the chain)")
+        for i in 3:
+                ok(float(cd[i]) >= float(tot[i]),
+                        "beat %d recovers only after its swing ends" % (i + 1))
+        # --- live: the jab snaps, the finisher gathers — measured on the vessel
+        game.new_game()
+        await _settle_playing(0.4)
+        game.transition_to("act3")
+        await _room("act3")
+        game.player.global_position = Vector2(600, 792)
+        game.player.velocity = Vector2.ZERO
+        game.player.facing = 1
+        for i in 60:
+                if game.player.is_on_floor():
+                        break
+                await _frames(1)
+        # beat one: the jab — impact inside its own narrow window
+        Input.action_press("attack")
+        var guard := 0
+        while game.player._attack_idx != 0 and guard < 30:
+                await get_tree().physics_frame
+                guard += 1
+        Input.action_release("attack")
+        ok(game.player._attack_idx == 0, "the jab arms")
+        var ph0 := await _phase_at_impact()
+        ok(ph0 >= E0.P_CHAIN_WINDUP[0] - 0.002 and ph0 < E0.P_CHAIN_WINDUP[0] + 0.026,
+                "the jab snaps early (impact at %.3f)" % ph0)
+        # wait out the beat, then chain into beat two: the step-through
+        for i in 40:
+                if game.player._attack_idx == -1:
+                        break
+                await _frames(1)
+        await _frames(24)   # past the beat's cd (0.26s; headless ≈7ms/frame)
+        Input.action_press("attack")
+        guard = 0
+        while game.player._attack_idx != 1 and guard < 30:
+                await get_tree().physics_frame
+                guard += 1
+        Input.action_release("attack")
+        ok(game.player._attack_idx == 1, "the chain advances to the cut")
+        ok(absf(game.player.velocity.x) > 240.0,
+                "the middle beat steps through its cut (surge %.0f)" % absf(game.player.velocity.x))
+        var ph1 := await _phase_at_impact()
+        ok(ph1 >= E0.P_CHAIN_WINDUP[1] - 0.002,
+                "the cut gathers before it lands (impact at %.3f)" % ph1)
+        # the surge is spent within the swing (friction owns it)
+        for i in 50:
+                if game.player._attack_idx == -1:
+                        break
+                await _frames(1)
+        ok(absf(game.player.velocity.x) < 80.0,
+                "the step-through spends itself within the swing (%.0f left)" % absf(game.player.velocity.x))
+        # beat three: the finisher gathers longest (a fresh chain — the old
+        # window is allowed to die first so the sentence starts over)
+        await _frames(130)
+        Input.action_press("attack")
+        guard = 0
+        while game.player._attack_idx != 0 and guard < 30:
+                await get_tree().physics_frame
+                guard += 1
+        Input.action_release("attack")
+        for i in 40:
+                if game.player._attack_idx == -1:
+                        break
+                await _frames(1)
+        await _frames(14)
+        Input.action_press("attack")
+        guard = 0
+        while game.player._attack_idx != 1 and guard < 30:
+                await get_tree().physics_frame
+                guard += 1
+        Input.action_release("attack")
+        for i in 40:
+                if game.player._attack_idx == -1:
+                        break
+                await _frames(1)
+        await _frames(16)
+        Input.action_press("attack")
+        guard = 0
+        while game.player._attack_idx != 2 and guard < 30:
+                await get_tree().physics_frame
+                guard += 1
+        Input.action_release("attack")
+        ok(game.player._attack_idx == 2, "the chain reaches its finisher")
+        var ph2 := await _phase_at_impact()
+        ok(ph2 >= E0.P_CHAIN_WINDUP[2] - 0.002 and ph2 > ph0 + 0.03,
+                "the finisher gathers longest (impact %.3f vs jab %.3f)" % [ph2, ph0])
+        # --- THE GATHER: the crouch before the leave
+        game.player.velocity = Vector2.ZERO
+        for i in 60:
+                if game.player.is_on_floor():
+                        break
+                await _frames(1)
+        game.player._buffer = 0.05
+        game.player._coyote = 0.1
+        var gathered := false
+        for i in 14:
+                await get_tree().process_frame
+                if game.player._jump_windup > 0.0 and game.player.is_on_floor():
+                        gathered = true
+                if not game.player.is_on_floor():
+                        break
+        ok(gathered, "the gather crouches before the leave")
+        ok(not game.player.is_on_floor(), "the leave follows the gather")
+        ok(game.player.jump_stretch > 0.25,
+                "the launch stretches the body long (%.2f)" % game.player.jump_stretch)
+        await _frames(150)
+        ok(game.player.is_on_floor(), "the vessel lands again")
+        # --- THE FLOCK KEEPS ITS EDGES: convergence lights the robes
+        game.transition_to("act5")
+        await _room("act5")
+        var flock: Array = []
+        for node in get_tree().get_nodes_in_group("enemies"):
+                if node is Believer and not node.dead:
+                        flock.append(node)
+        ok(flock.size() >= 2, "the chapel holds a flock (%d)" % flock.size())
+        if flock.size() >= 2:
+                var a: Believer = flock[0]
+                var b: Believer = flock[1]
+                # keep the vessel far so the chant holds
+                game.player.global_position = Vector2(1400, 700)
+                b.global_position = a.global_position + Vector2(42, 0)
+                b.velocity = Vector2.ZERO
+                await _frames(90)
+                ok(a.sep_k > 0.5 and b.sep_k > 0.5,
+                        "pressed robes catch their own light (%.2f / %.2f)" % [a.sep_k, b.sep_k])
+                b.global_position = a.global_position + Vector2(520, 0)
+                await _frames(120)
+                ok(b.sep_k < 0.15,
+                        "a distant flock keeps its dark (sep %.2f)" % b.sep_k)
+        # --- THE DASH SPENDS ITS IMAGE: the smear and its settle
+        game.transition_to("act8")
+        await _room("act8")
+        var boss19: BoundMartyr = game.boss
+        ok(boss19 != null, "the martyr stands for the smear")
+        if boss19:
+                boss19.intro_done = true
+                boss19.phase = 2
+                boss19.global_position.x = 800.0
+                boss19.state = boss19.DASH_WINDUP
+                boss19.state_t = 0.0
+                boss19.dash_charge = 0.0
+                boss19.state_t = 0.75
+                await _frames(16)
+                ok(boss19.state == boss19.DASHING, "the dash launches")
+                ok(boss19.dash_hist.size() >= 2,
+                        "the dash leaves its image (%d ghosts)" % boss19.dash_hist.size())
+                boss19.state = boss19.RECOVER
+                boss19.state_t = 0.0
+                await _frames(50)
+                ok(boss19.dash_hist.is_empty(),
+                        "the smear settles with the recovery (%d left)" % boss19.dash_hist.size())
+
+func _phase_at_impact() -> float:
+        ## Ticks physics frames until the swing's blade meets, then returns
+        ## the phase at which it met (the tick that fired the hit).
+        var last := 0.0
+        for i in 30:
+                if not game.player._hit_pending:
+                        return maxf(last, game.player._attack_phase)
+                last = game.player._attack_phase
+                await get_tree().physics_frame
+        return last
 
 # ------------------------------------------------------------------ WB-13
 func _the_threshold() -> void:

@@ -36,6 +36,18 @@ const P_ROLL_TIME := 0.35
 const P_ROLL_CD := 0.6
 const P_ATTACK_CD := 0.42
 const P_CHAIN_WINDOW := 0.75
+# WB-19 THE THREE BEATS: each hit of the chain carries its own cadence —
+# the impact lands later and the swing lives longer as the sentence gathers
+# weight (the audit called hits 1-2 "one held button"; the arcs differ but
+# the clock was uniform). Windup = ms into the swing before the blade meets;
+# total = the swing's full life; cd = recovery before the next press answers.
+const P_CHAIN_WINDUP := [0.055, 0.095, 0.115]
+const P_CHAIN_TOTAL := [0.16, 0.25, 0.30]
+const P_CHAIN_CD := [0.26, 0.35, 0.44]
+# WB-19 THE GATHER: the body compresses for a breath before it leaves the
+# floor — the jump reads as a decision, not a twitch (the ascent's jump
+# scored 5/7 with "no anticipation frames" as the named lack)
+const P_JUMP_GATHER := 0.045
 const P_HURT_IFRAMES := 0.65
 
 # --- Consistency (HUNTED model, locked) --------------------------------------

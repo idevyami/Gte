@@ -27,6 +27,10 @@ var _hit_done := false
 var _iframes := 0.0
 var _step_accum := 0.0
 var _hurt_flash := 0.0
+# WB-19 THE GATHER: the crouch before the leave — the sprite reads the
+# compression through the squash channel and the stretch of the launch
+var _jump_windup := 0.0
+var jump_stretch := 0.0
 # input buffers: captured on idle frames, consumed by physics
 var _jump_press := 0.0
 var _attack_press := 0.0
@@ -95,7 +99,7 @@ func _physics_process(delta: float) -> void:
         _apply_gravity(delta)
         _handle_landing()
         _handle_movement(delta)
-        _handle_jump()
+        _handle_jump(delta)
         _handle_roll(delta)
         _handle_attack(delta)
         move_and_slide()
@@ -141,6 +145,7 @@ func _tick_timers(delta: float) -> void:
         _attack_cd = maxf(0.0, _attack_cd - delta)
         _iframes = maxf(0.0, _iframes - delta)
         _hurt_flash = maxf(0.0, _hurt_flash - delta)
+        jump_stretch = maxf(0.0, jump_stretch - delta * 4.5)
         if is_on_floor():
                 _coyote = E0.P_COYOTE
         # footsteps — THE GROUND ANSWERS THE EAR: each district's floor
@@ -223,22 +228,39 @@ func _handle_movement(delta: float) -> void:
         else:
                 velocity.x = move_toward(velocity.x, 0.0, E0.P_FRICTION * control * delta)
 
-func _handle_jump() -> void:
+func _handle_jump(delta: float) -> void:
         if input_locked or _rolling:
+                _jump_windup = 0.0
                 return
         if _jump_press > 0.0:
                 _buffer = E0.P_BUFFER
                 _jump_press = 0.0
+        # WB-19 THE GATHER: the buffered answer is a crouch first — the body
+        # compresses for a breath (the squash channel renders it) and the
+        # floor answers the leave. The kit's reach is untouched: same launch
+        # velocity, same arc — the gather only buys the read.
+        if _jump_windup > 0.0:
+                _jump_windup -= delta
+                if _jump_windup <= 0.0:
+                        _launch_jump()
+                return
         if _buffer > 0.0 and _coyote > 0.0:
-                velocity.y = E0.P_JUMP
                 _buffer = 0.0
                 _coyote = 0.0
-                AudioManager.play_sfx("sfx_jump", -8.0)
-                # takeoff kick: dust off the floor the vessel leaves behind
-                FX.burst(global_position + Vector2(0, -2), "dust", PI * 0.5, 5)
+                _jump_windup = E0.P_JUMP_GATHER
+                land_squash = maxf(land_squash, 0.55)
         # let go early = shorter jump
         if Input.is_action_just_released("jump") and velocity.y < 0.0:
                 velocity.y *= 0.55
+
+func _launch_jump() -> void:
+        _jump_windup = 0.0
+        velocity.y = E0.P_JUMP
+        land_squash = 0.0
+        jump_stretch = 1.0
+        AudioManager.play_sfx("sfx_jump", -8.0)
+        # takeoff kick: dust off the floor the vessel leaves behind
+        FX.burst(global_position + Vector2(0, -2), "dust", PI * 0.5, 5)
 
 func _handle_roll(delta: float) -> void:
         _roll_t = maxf(0.0, _roll_t - delta)
@@ -296,11 +318,15 @@ func _set_shape(extents: Vector2) -> void:
 func _handle_attack(delta: float) -> void:
         if _attack_idx != -1:
                 _attack_phase += delta
-                # impact lands 80ms into the swing
-                if _hit_pending and _attack_phase >= 0.08:
+                # WB-19 THE THREE BEATS: each hit keeps its own clock — the
+                # jab snaps early, the cut gathers, the finisher gathers
+                # longest (the uniform clock read as "one held button")
+                var windup: float = E0.P_CHAIN_WINDUP[_attack_idx]
+                var total: float = E0.P_CHAIN_TOTAL[_attack_idx]
+                if _hit_pending and _attack_phase >= windup:
                         _hit_pending = false
                         _do_hit(_attack_idx)
-                if _attack_phase >= 0.22:
+                if _attack_phase >= total:
                         _attack_idx = -1
                         _attack_phase = 0.0
                 return
@@ -313,7 +339,17 @@ func _handle_attack(delta: float) -> void:
                         _attack_idx = 0
                 _attack_phase = 0.0
                 _attack_press = 0.0
-                _attack_cd = E0.P_ATTACK_CD
+                _attack_cd = E0.P_CHAIN_CD[_attack_idx]
+                # the middle beat steps through its cut — a cadence in space
+                # as well as time (friction spends the surge within the
+                # swing). THE STEP IS FOOTWORK, not drift: the rear boot
+                # kicks the floor's dust and the body drops into the push
+                # (the re-audit called the bare surge a slide)
+                if _attack_idx == 1:
+                        velocity.x = facing * 320.0
+                        FX.burst(global_position + Vector2(-facing * 9.0, -2), "dust", PI if facing > 0 else 0.0, 6)
+                        land_squash = maxf(land_squash, 0.34)
+                        _play_footstep(-2.0)
                 _hit_pending = true
                 _hit_done = false
                 _chain_expiry_idx = _attack_idx
@@ -421,7 +457,7 @@ func _draw() -> void:
         ## (The procedural rig draws its own trails when sprites are off.)
         if sprite == null or GameState.debug_no_sprites or _attack_idx < 0:
                 return
-        var t := clampf(_attack_phase / 0.22, 0.0, 1.0)
+        var t := clampf(_attack_phase / E0.P_CHAIN_TOTAL[_attack_idx], 0.0, 1.0)
         if t <= 0.02:
                 return
         var f := facing

@@ -24,6 +24,16 @@ var leap_target := Vector2.ZERO
 # the halo pulling toward crimson — so the crouch reads as a promise
 var dash_charge := 0.0
 var _spark_accum := 0.0
+# WB-19 THE DASH SPENDS ITS IMAGE: position samples age out behind the
+# lunge — crimson-stained body ghosts and the halo's trailing ring read the
+# velocity, then settle away as he recovers (the audit's last missing read)
+var dash_hist: Array[Vector2] = []
+var dash_ages: Array[float] = []
+var _dash_sample_t := 0.0
+# WB-19 THE STOP HAS WEIGHT: a colossus ending a lunge does not glide to a
+# halt — the body crushes into its own stop (a brief squash on the painted
+# skin, the chains' jingle, the floor's dust answering the mass)
+var stop_squash := 0.0
 var chain_breaks := 0
 var _death_msec := 0
 var intro_done := false
@@ -95,15 +105,28 @@ func _act(delta: float) -> void:
                 DASHING:
                         dash_charge = 0.0
                         velocity.x = dash_dir * 520.0
+                        # THE DASH SPENDS ITS IMAGE: the path is sampled every
+                        # 40ms so the smear trails the flight at true spacing
+                        _dash_sample_t -= delta
+                        if _dash_sample_t <= 0.0:
+                                _dash_sample_t = 0.04
+                                dash_hist.append(global_position)
+                                dash_ages.append(0.0)
                         _dash_damage_check()
                         if state_t > 0.5 or global_position.x < arena_l + 40.0 or global_position.x > arena_r - 40.0:
                                 state = RECOVER
                                 state_t = 0.0
+                                # THE STOP HAS WEIGHT: the lunge dies in a skid,
+                                # not a glide — the body squashes into its own
+                                # halt and the chains answer the sudden stop
+                                velocity.x = dash_dir * 140.0
+                                stop_squash = 1.0
                                 FX.shake(5.0, 0.3)
                                 FX.rumble(0.45, 0.15)
                                 FX.burst(global_position + Vector2(-dash_dir * 30.0, -8), "spark", 0.0, 12)
-                                FX.burst(global_position + Vector2(-dash_dir * 30.0, -6), "dust", 0.0, 8)
+                                FX.burst(global_position + Vector2(-dash_dir * 24.0, -4), "dust", 0.0, 14)
                                 AudioManager.play_sfx("sfx_boss_impact", -4.0)
+                                AudioManager.play_sfx("sfx_boss_chain", -3.0)
                 LEAP_WINDUP:
                         velocity.x = 0.0
                         if state_t > 0.6:
@@ -141,6 +164,14 @@ func _act(delta: float) -> void:
         _phase_update(delta)
         _fervor_update(delta)
         _facing_update()
+        # the smear's ledger ages whether he dashes or not — ghosts die of
+        # time, not of state, so the trail settles into the recovery
+        for i in range(dash_ages.size() - 1, -1, -1):
+                dash_ages[i] += delta
+                if dash_ages[i] > 0.20:
+                        dash_hist.remove_at(i)
+                        dash_ages.remove_at(i)
+        stop_squash = maxf(0.0, stop_squash - delta * 5.0)
 
 func gravity_pass(delta: float) -> void:
         if not is_on_floor():
@@ -397,6 +428,20 @@ func skin_pose() -> String:
 func _sync_skin(delta: float) -> void:
         super(delta)
         if _skin:
+                # THE CHARGE SINKS (re-audit: "snaps into the coil rather than
+                # sinking with weight") — the crouch is now a progressive
+                # compression that deepens as the dash_charge gathers, so the
+                # lunge releases FROM a loaded spring
+                if state == DASH_WINDUP:
+                        var ck := clampf(dash_charge, 0.0, 1.0)
+                        _skin.scale = Vector2(1.0 + 0.07 * ck, 1.0 - 0.09 * ck)
+                # THE STOP HAS WEIGHT: the dash's halt crushes the body for a
+                # breath (wide and low), springing back as the recovery rises
+                elif stop_squash > 0.01:
+                        var k := clampf(stop_squash, 0.0, 1.0)
+                        _skin.scale = Vector2(1.0 + 0.10 * k, 1.0 - 0.13 * k)
+                else:
+                        _skin.scale = Vector2.ONE
                 # phases visibly alter the light he carries
                 match phase:
                         2:
@@ -415,6 +460,7 @@ func _draw_body() -> void:
                 lean = -10.0 * facing * clampf(state_t / _windup_time(), 0.0, 1.0)
         if state == DASHING:
                 lean = 14.0 * dash_dir
+        _draw_dash_smear(alpha)
         # shadow — the ground under a colossus
         draw_colored_polygon(_ellipse(Vector2(0, 2), 42.0, 8.0), Color(E0.VOID.r, E0.VOID.g, E0.VOID.b, 0.4 * alpha))
         if painted:
@@ -485,6 +531,38 @@ func _draw_body() -> void:
         var ember := 0.4 + 0.3 * sin(anim_t * 6.0)
         draw_circle(ball, 5.0, Color(E0.CRIMSON.r, E0.CRIMSON.g, E0.CRIMSON.b, ember * alpha))
         _draw_overlays(alpha, lean)
+
+func _draw_dash_smear(alpha: float) -> void:
+        ## THE DASH SPENDS ITS IMAGE (WB-19): ghosts of the bound body trail
+        ## the lunge — a wide dark mass stained crimson, and above it the
+        ## halo's ring trailing its flight. They age out in a fifth of a
+        ## second, so the smear reads as SPEED and settles as he recovers.
+        var n := dash_hist.size()
+        if n == 0:
+                return
+        for g in mini(4, n):
+                var idx := n - 1 - g
+                var age: float = dash_ages[idx]
+                var k := 1.0 - age / 0.20
+                if k <= 0.0:
+                        continue
+                var off: Vector2 = dash_hist[idx] - global_position
+                var stretch := 1.0 + 0.5 * k
+                var ghost := Color(E0.CHARCOAL.r, E0.CHARCOAL.g, E0.CHARCOAL.b).lerp(
+                        Color(E0.CRIMSON.r, E0.CRIMSON.g, E0.CRIMSON.b), 0.45)
+                draw_colored_polygon(_ellipse(off + Vector2(0, -58.0), 30.0 * stretch, 46.0),
+                        Color(ghost.r, ghost.g, ghost.b, 0.20 * k * alpha))
+                draw_arc(off + Vector2(0, -108.0), 20.0, PI * 0.9, PI * 2.1, 14,
+                        Color(E0.GOLD.r, E0.GOLD.g, E0.GOLD.b, 0.30 * k * alpha), 2.0)
+        # speed streaks at the heels — the floor reads the velocity itself
+        # (re-audit: a touch thicker, a brush stroke not a laser line)
+        if state == DASHING:
+                for i in 4:
+                        var yy := -8.0 - 26.0 * float(i)
+                        var ln := 30.0 + 16.0 * float((i + 2) % 3)
+                        draw_line(Vector2(-dash_dir * (36.0 + i * 16.0), yy),
+                                Vector2(-dash_dir * (36.0 + i * 16.0 + ln), yy),
+                                Color(E0.CRIMSON.r, E0.CRIMSON.g, E0.CRIMSON.b, 0.11 + 0.05 * float(i % 2)), 2.8)
 
 func _draw_overlays(alpha: float, lean: float) -> void:
         ## gameplay-critical overlays shared by painted and procedural bodies.

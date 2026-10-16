@@ -25,7 +25,8 @@ func sync_state(delta: float) -> void:
                 _land_squash = maxf(0.0, _land_squash - delta * 3.0)
         if _swing["active"]:
                 _swing["t"] += delta
-                if float(_swing["t"]) > 0.24:
+                # WB-19: each beat keeps its own clock (matches the kit)
+                if float(_swing["t"]) > E0.P_CHAIN_TOTAL[int(_swing["idx"])]:
                         _swing["active"] = false
         if _death_t >= 0.0:
                 _death_t += delta
@@ -139,7 +140,7 @@ func _draw_limb(pts: PackedVector2Array, col: Color) -> void:
         draw_circle(pts[2], 2.0, col.darkened(0.25))
 
 func _draw_swing(f: int, alpha: float) -> void:
-        var t: float = float(_swing["t"]) / 0.22
+        var t: float = float(_swing["t"]) / E0.P_CHAIN_TOTAL[int(_swing["idx"])]
         var idx: int = int(_swing["idx"])
         var shoulder := Vector2(0, -42)
         # sweep arc: windup to extension (angle from forward-down, facing applied by dir_vec)

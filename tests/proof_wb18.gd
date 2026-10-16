@@ -76,7 +76,16 @@ func _seg_end() -> void:
 
 # ---------------------------------------------------------------- helpers
 func _wait(t: float) -> void:
-        await get_tree().create_timer(t, true, false, true).timeout
+        ## Dialogue-immune wait: a room trigger that opens a census record
+        ## mid-beat is read and filed, never frozen on (systemic hardening
+        ## learned in WB-19 — the street's measurer once ate a whole segment)
+        var t0 := Time.get_ticks_msec()
+        while Time.get_ticks_msec() - t0 < int(t * 1000.0):
+                if game != null and is_instance_valid(game) and game.dialogue_box != null \
+                                and game.dialogue_box.active:
+                        game.dialogue_box.chars_shown = 99999
+                        game.dialogue_box.advance()
+                await get_tree().process_frame
 
 func _skip_dialogue() -> void:
         while game.dialogue_box.active:
@@ -184,7 +193,8 @@ func _run() -> void:
         # ============================================================ 3. HOLLOW
         # combat readability in motion: the stalk, the crimson warning, the
         # lunge, the roll that answers it, the three-hit verdict.
-        await _room("act3", Vector2(560, 700))
+        # (starts BEYOND the measurer's greeting trigger at x 980-1060)
+        await _room("act3", Vector2(1200, 700))
         var hollow: Hollow = null
         for node in get_tree().get_nodes_in_group("enemies"):
                 if node is Hollow:

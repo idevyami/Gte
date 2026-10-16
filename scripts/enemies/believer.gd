@@ -15,6 +15,11 @@ var aggro_all := false
 var flee_target := Vector2.ZERO
 var _chant_pressed := false        # WB-15: this kneel already wrote its station
 var _walked_since_press := false  # WB-15: has the body moved since it last knelt
+# WB-19 THE FLOCK KEEPS ITS EDGES: convergence closeness — when the flock
+# presses together each robe catches its own censer's light, so the many
+# bodies never bleed into one dark mass against the chapel's dark
+var sep_k := 0.0
+var _sep_phase := 0.0
 
 func setup_believer(p_pos: Vector2, p_ward: WardBarrier = null, p_kneel := true) -> void:
         setup_enemy("BELIEVER", "BELIEVER_%d" % [randi() % 800 + 150])
@@ -86,6 +91,22 @@ func _act(delta: float) -> void:
                         if absf(flee_target.x - global_position.x) < 30.0 or state_t > 6.0:
                                 _abandon_fade()
         velocity.y += 1500.0 * delta if not is_on_floor() else 0.0
+        _convergence_update(delta)
+
+func _convergence_update(delta: float) -> void:
+        ## THE FLOCK KEEPS ITS EDGES (WB-19): the motion audit's silhouette
+        ## finding — converging believers read as one shape. Each body now
+        ## knows its nearest neighbor and carries a catch-light that rises
+        ## as the flock closes (full inside a body's width, gone past two).
+        _sep_phase += delta
+        var best := 1e9
+        for node in get_tree().get_nodes_in_group("enemies"):
+                var b := node as Believer
+                if b == null or b == self or b.dead:
+                        continue
+                best = minf(best, absf(b.global_position.x - global_position.x))
+        var want := clampf((110.0 - best) / 55.0, 0.0, 1.0)
+        sep_k = lerpf(sep_k, want, delta * 8.0)
 
 func _press_station() -> void:
         ## THE STATION'S AGE (WB-15): a press the vessel never saw kneel is
@@ -176,6 +197,7 @@ func skin_pose() -> String:
                         return "walk" if absf(velocity.x) > 20.0 else "kneel"
 
 func _draw_body() -> void:
+        _draw_convergence_edge()
         # painted skin active: keep only the windup telegraph flash
         if _skin != null and not GameState.debug_no_sprites:
                 if state == WINDUP:
@@ -193,6 +215,34 @@ func _draw_body() -> void:
                         _draw_kneeling(col)
                 _:
                         _draw_standing(col)
+
+func _draw_convergence_edge() -> void:
+        ## THE FLOCK KEEPS ITS EDGES (WB-19): a thin censer-warm rim on the
+        ## robe's bounds, breathing per-body (no two pulse in step) — the
+        ## ground pool doubles the separation where the feet meet the runner.
+        if sep_k <= 0.02 or dead:
+                return
+        var breathe := 0.8 + 0.2 * sin(_sep_phase * 3.1 + global_position.x * 0.7)
+        var a := 0.24 * sep_k * breathe
+        var col := Color(0.86, 0.74, 0.52)
+        # the robe's bounds: taller when standing, settled when kneeling
+        var cy := -30.0
+        var ry := 33.0
+        if state == CHANT or state == RISE:
+                cy = -22.0
+                ry = 25.0
+        var pts := PackedVector2Array()
+        for i in 22:
+                var t := TAU * i / 22.0
+                pts.append(Vector2(0, cy) + Vector2(cos(t) * 13.5, sin(t) * ry))
+        draw_polyline(pts, Color(col.r, col.g, col.b, a), 1.6)
+        # the censer's light pools at the feet — the ground separates too,
+        # and the pool breathes with the shuffle (the re-audit: static pools
+        # read as chess-pieces, not walkers)
+        var pool_a := a * 0.7
+        if absf(velocity.x) > 20.0:
+                pool_a *= 0.75 + 0.25 * sin(anim_t * 9.0)
+        draw_polyline(_ellipse(Vector2(0, 1), 15.0, 4.2), Color(col.r, col.g, col.b, pool_a), 1.4)
 
 func _draw_kneeling(col: Color) -> void:
         var sway := sin(anim_t * 1.8 + global_position.x * 0.05) * 2.0
