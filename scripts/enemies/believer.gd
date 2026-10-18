@@ -64,6 +64,7 @@ func _act(delta: float) -> void:
         state_t += delta
         var pp := _player_pos()
         facing = 1 if pp.x > global_position.x else -1
+        _jostle(delta)
         # THE KNEE-PRESS (WB-15): entering the chant presses the station
         # into the floor — once per kneel, and only once the body has
         # landed (a station floats nowhere)
@@ -114,6 +115,48 @@ func _act(delta: float) -> void:
         velocity.y += 1500.0 * delta if not is_on_floor() else 0.0
         _convergence_update(delta)
         _weight_update(delta)
+
+func _jostle(delta: float) -> void:
+        ## THE PRESS KEEPS ITS COUNT (WB-22): the honest audit's cluster
+        ## finding — bodies that fully overlap stack into one black column
+        ## the auditor read as empty space. The flock still presses, but
+        ## each body holds its own ground: a soft shove keeps ~a robe's
+        ## width between the living. The STRIKE is exempt (the lunge
+        ## carries through the crowd); the WINDUP is planted but not
+        ## rooted (mobility 0.35 — bodies that planted together still
+        ## part, without being shoved into the vessel); the kneel is a
+        ## station; the dead are ground.
+        if state == STRIKE or state == CHANT:
+                return
+        var mobility := 1.0
+        if state == WINDUP:
+                mobility = E0.BELIEVER_WINDUP_MOBILITY
+        var push := 0.0
+        for node in get_tree().get_nodes_in_group("enemies"):
+                var b := node as Believer
+                if b == null or b == self:
+                        continue
+                push += _push_from(b)
+        if push != 0.0:
+                global_position.x += clampf(push * mobility,
+                        -E0.BELIEVER_JOSTLE_CAP, E0.BELIEVER_JOSTLE_CAP) * delta
+
+func _push_from(b: Believer) -> float:
+        ## the shove this body takes from ONE neighbor, px/s — every
+        ## per-neighbor condition lives here so the law can pin each: the
+        ## dead are ground, a body on another plane is not in this press,
+        ## and only closeness shoves. The exact tie breaks on instance id
+        ## so two stacked bodies always part the same deterministic way.
+        if b == null or b.dead:
+                return 0.0
+        if absf(global_position.y - b.global_position.y) > 48.0:
+                return 0.0
+        var dx := global_position.x - b.global_position.x
+        if absf(dx) >= E0.BELIEVER_JOSTLE_MIN:
+                return 0.0
+        if absf(dx) < 0.01:
+                dx = 0.01 if get_instance_id() > b.get_instance_id() else -0.01
+        return signf(dx) * (E0.BELIEVER_JOSTLE_MIN - absf(dx)) * E0.BELIEVER_JOSTLE_K
 
 func _convergence_update(delta: float) -> void:
         ## THE FLOCK KEEPS ITS EDGES (WB-19): the motion audit's silhouette

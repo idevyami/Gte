@@ -58,6 +58,7 @@ func _run() -> void:
         await _the_three_beats()
         await _the_walking_flock()
         await _the_censers_edge()
+        await _the_press_keeps_its_count()
         print("=== %d checks, %d failures ===" % [checks, fails])
         get_tree().quit(1 if fails > 0 else 0)
 
@@ -2612,9 +2613,232 @@ func _the_censers_edge() -> void:
         await _wait_real(0.4)
         ok(is_instance_valid(dead21) and dead21._skin != null and absf(dead21._skin.rotation_degrees) < 0.05,
                 "the corpse does not lean")
-        # --- THE BETWEEN-BODIES EDGE STRENGTHENS: 0.24 -> 0.32 at full press
-        ok(absf(E0.BELIEVER_RIM_A - 0.32) < 0.001,
-                "the between-bodies rim strengthens (a=%.2f)" % E0.BELIEVER_RIM_A)
+        # --- THE BETWEEN-BODIES EDGE: WB-21 raised it 0.24 -> 0.32; WB-22
+        # raises it again for the press (the many lamps burn brighter
+        # together — the audit's ornament-read finding at the busy spot)
+        ok(absf(E0.BELIEVER_RIM_A - 0.42) < 0.001,
+                "the between-bodies rim burns brighter in the press (a=%.2f)" % E0.BELIEVER_RIM_A)
+
+# ------------------------------------------------------------------ WB-22
+func _the_press_keeps_its_count() -> void:
+        print("[THE PRESS KEEPS ITS COUNT — WB-22]")
+        # --- THE JOSTLE'S AMPLITUDES: the audited constants
+        ok(absf(E0.BELIEVER_JOSTLE_MIN - 34.0) < 0.01,
+                "the press keeps a robe's width and shoulder room (%.0f px)" % E0.BELIEVER_JOSTLE_MIN)
+        ok(E0.BELIEVER_JOSTLE_K >= 16.0,
+                "the shove is strong enough to hold the walk (K %.0f)" % E0.BELIEVER_JOSTLE_K)
+        ok(E0.BELIEVER_WINDUP_MOBILITY >= 0.15 and E0.BELIEVER_WINDUP_MOBILITY <= 0.4,
+                "the windup is planted, not rooted (%.2f)" % E0.BELIEVER_WINDUP_MOBILITY)
+        # --- THE PRESS, STAGED: the vessel stands, the flock answers, the
+        # press forms — the smallest gap between living non-striking bodies
+        # is lawed through the churn (the strike's transits are exempt: the
+        # lunge carries THROUGH the crowd by design)
+        game.transition_to("act5")
+        await _room("act5")
+        game.player.global_position = Vector2(1520, 780)
+        game.player.velocity = Vector2.ZERO
+        await _wait_real(0.4)
+        var flock22: Array = []
+        for node in get_tree().get_nodes_in_group("enemies"):
+                if node is Believer and not node.dead:
+                        flock22.append(node)
+        ok(flock22.size() >= 5, "the chapel stages a flock to press (%d)" % flock22.size())
+        var herd22: Believer = null
+        for node in flock22:
+                if absf(node.global_position.x - 1520.0) < 420.0:
+                        herd22 = node
+                        break
+        ok(herd22 != null, "a believer stands within the press's reach")
+        if herd22 == null:
+                return
+        herd22.take_hit(10, herd22.global_position + Vector2(-30, 0), false, 0)
+        await _wait_real(2.6)
+        var mins: Array[float] = []
+        for i in 150:
+                await get_tree().physics_frame
+                var m := _press_min_gap(1520.0)
+                if m >= 0.0:
+                        mins.append(m)
+        mins.sort()
+        ok(mins.size() >= 100, "the press held bodies to judge (%d samples)" % mins.size())
+        if not mins.is_empty():
+                var med := mins[mins.size() / 2]
+                ok(med >= 14.0,
+                        "the settled press keeps its count (median gap %.1f px)" % med)
+                # the churn's transients stay transients: a strike landing
+                # among the press parts over a few frames — a merge that
+                # PERSISTED would read as the old stacked column
+                var p5 := mins[maxi(0, int(mins.size() * 0.05) - 1)]
+                ok(p5 >= 2.5,
+                        "the churn's transients stay transients (5th percentile %.1f px)" % p5)
+                var worst_run := 0
+                var run := 0
+                for m in mins:
+                        if m < 4.0:
+                                run += 1
+                                worst_run = maxi(worst_run, run)
+                        else:
+                                run = 0
+                ok(worst_run < 25,
+                        "no merge persists through the churn (longest thin run %d frames)" % worst_run)
+        # --- THE KITE: the vessel retreats, the line holds
+        Input.action_press("move_left")
+        var kmins: Array[float] = []
+        for i in 130:
+                await get_tree().physics_frame
+                var m := _press_min_gap(game.player.global_position.x)
+                if m >= 0.0:
+                        kmins.append(m)
+        Input.action_release("move_left")
+        kmins.sort()
+        ok(kmins.size() >= 90, "the retreat held bodies to judge (%d samples)" % kmins.size())
+        if not kmins.is_empty():
+                ok(kmins[kmins.size() / 2] >= 13.0,
+                        "the pressing line holds while the vessel retreats (median %.1f px)" % kmins[kmins.size() / 2])
+        # --- THE STAGED PAIRS (pure laws of the shove)
+        var pair := _stage_pair()
+        if pair.size() == 2:
+                var a: Believer = pair[0]
+                var b: Believer = pair[1]
+                # the exact tie parts deterministically
+                a.global_position = Vector2(1150, 814)
+                b.global_position = Vector2(1150, 814)
+                a.state = a.AGGRO
+                b.state = b.AGGRO
+                a.state_t = 0.0
+                b.state_t = 0.0
+                await _wait_real(0.35)
+                ok(absf(a.global_position.x - b.global_position.x) >= 1.0,
+                        "two stacked bodies part the same deterministic way (%.1f px)"
+                                % absf(a.global_position.x - b.global_position.x))
+                # the windup yields (stacked windups still part)
+                a.global_position = Vector2(1150, 814)
+                b.global_position = Vector2(1156, 814)
+                a.state = a.WINDUP
+                b.state = b.WINDUP
+                a.state_t = 0.0
+                b.state_t = 0.0
+                a.velocity = Vector2.ZERO
+                b.velocity = Vector2.ZERO
+                await _wait_real(0.6)
+                ok(absf(a.global_position.x - b.global_position.x) >= 14.0,
+                        "bodies that planted together still part (%.1f px)"
+                                % absf(a.global_position.x - b.global_position.x))
+                # the windup is not uprooted (a rear presser shifts it a
+                # little, never shoves it into the vessel) — measured
+                # WITHIN the windup's own half-second, before the strike
+                a.global_position = Vector2(1150, 814)
+                b.global_position = Vector2(1184, 814)
+                a.state = a.WINDUP
+                b.state = b.AGGRO
+                a.state_t = 0.0
+                b.state_t = 0.0
+                a.velocity = Vector2.ZERO
+                b.velocity = Vector2.ZERO
+                var x0 := a.global_position.x
+                await _wait_real(0.35)
+                ok(a.state == a.WINDUP and absf(a.global_position.x - x0) <= 40.0,
+                        "the windup yields without being uprooted (%.1f px of drift)"
+                                % absf(a.global_position.x - x0))
+                # the strike carries through the crowd
+                b.global_position = Vector2(1120, 814)
+                b.state = b.WINDUP
+                b.state_t = 0.0
+                await _wait_real(0.1)
+                var sx := a.global_position.x
+                a.state = a.STRIKE
+                a.state_t = 0.0
+                await _wait_real(0.25)
+                ok(absf(a.global_position.x - sx) >= 40.0,
+                        "the lunge carries through the crowd (%.0f px crossed)"
+                                % absf(a.global_position.x - sx))
+                # the kneel is a station
+                a.state = a.CHANT
+                b.state = b.CHANT
+                a.state_t = 0.0
+                b.state_t = 0.0
+                a.velocity = Vector2.ZERO
+                b.velocity = Vector2.ZERO
+                a.global_position = Vector2(1150, 814)
+                b.global_position = Vector2(1160, 814)
+                await _wait_real(0.5)
+                ok(absf(absf(a.global_position.x - b.global_position.x) - 10.0) < 0.5,
+                        "the kneel is a station (offset held at %.1f px)"
+                                % absf(a.global_position.x - b.global_position.x))
+                # the dead are ground
+                b.dead = true
+                ok(absf(a._push_from(b)) < 0.001,
+                        "the dead are ground (no shove from a corpse)")
+                b.dead = false
+                # a body on another plane is not in this press
+                var by := b.global_position.y
+                b.global_position.y = by - 60.0
+                ok(absf(a._push_from(b)) < 0.001,
+                        "a body on another plane is not in this press")
+                b.global_position.y = by
+        # --- THE AIR THE CENSERS FILL: the play plane's own incense
+        var haze22: PlaneHaze = null
+        for ch in game.world.get_children():
+                if ch is PlaneHaze:
+                        haze22 = ch
+        ok(haze22 != null, "the chapel fills with its own air (PlaneHaze built)")
+        if haze22 != null:
+                ok(haze22.z_index == 0, "the air stays behind every actor (z=0)")
+                ok(haze22.band_alpha() >= 0.08 and haze22.band_alpha() <= 0.30,
+                        "the incense breathes at playing strength (%.3f)" % haze22.band_alpha())
+                var fy := 840.0
+                ok(haze22.alpha_at(fy + 8.0) < 0.015,
+                        "the air clears the floor line (alpha %.3f past it)" % haze22.alpha_at(fy + 8.0))
+                ok(haze22.alpha_at(fy - 100.0) >= 0.08,
+                        "the air holds through the body band (%.3f)" % haze22.alpha_at(fy - 100.0))
+                ok(haze22.alpha_at(fy - 320.0) < 0.04,
+                        "the air thins above the bodies (%.3f)" % haze22.alpha_at(fy - 320.0))
+        game.transition_to("act1")
+        await _room("act1")
+        var haze_act1 := false
+        for ch in game.world.get_children():
+                if ch is PlaneHaze:
+                        haze_act1 = true
+        ok(not haze_act1, "the street carries no incense (authored per room)")
+
+func _press_min_gap(px: float) -> float:
+        ## the smallest gap between living, non-striking believers in the
+        ## press zone around px — the strike's transits are exempt (the
+        ## lunge carries through by design); -1 when fewer than two judge
+        var xs: Array[float] = []
+        for node in get_tree().get_nodes_in_group("enemies"):
+                var b := node as Believer
+                if b == null or b.dead or b.state == b.STRIKE:
+                        continue
+                if absf(b.global_position.x - px) > 420.0:
+                        continue
+                xs.append(b.global_position.x)
+        if xs.size() < 2:
+                return -1.0
+        xs.sort()
+        var m := 1e9
+        for i in range(1, xs.size()):
+                m = minf(m, xs[i] - xs[i - 1])
+        return m
+
+func _stage_pair() -> Array:
+        ## two believers isolated on open ground with the vessel near enough
+        ## to hold their interest (inside the leash, away from the rows)
+        game.player.global_position = Vector2(1000, 780)
+        game.player.velocity = Vector2.ZERO
+        var out: Array = []
+        for node in get_tree().get_nodes_in_group("enemies"):
+                if node is Believer and not node.dead:
+                        out.append(node)
+        if out.size() < 2:
+                return []
+        var a: Believer = out[0]
+        var b: Believer = out[1]
+        a.global_position = Vector2(1150, 814)
+        b.global_position = Vector2(1150, 814)
+        a.velocity = Vector2.ZERO
+        b.velocity = Vector2.ZERO
+        return [a, b]
 
 func _rim_edge_margin(path: String, margin: float) -> bool:
         ## WB-21: the edge band (opaque within 2px of transparency) must

@@ -428,6 +428,20 @@ func load_room(id: String) -> void:
         var rays := GodRays.new()
         rays.setup(String(room_data.get("backdrop", "")), room_size, camera)
         world.add_child(rays)
+        # THE AIR THE CENSERS FILL (WB-22): the play plane's own incense —
+        # a soft band at the bodies' height that steps the room's
+        # architecture one depth deeper behind the actors (the audit's
+        # depth-competition finding). Authored per room: only interiors
+        # where censers burn carry it. Drawn after every scenery renderer,
+        # before the contact shadows — the grounding pools stay bright and
+        # the actors (z>=1) are above it entirely.
+        var haze: PlaneHaze = null
+        if room_data.has("depth_band") and light_floor >= 0.0:
+                haze = PlaneHaze.new()
+                haze.setup(room_size.x, light_floor,
+                        room_data.get("fog", E0.VOID),
+                        float(room_data["depth_band"].get("a", 0.13)))
+                world.add_child(haze)
         # THE CLOSEST WALLS: the near-camera silhouette plane — the front
         # slice of the depth sandwich. Every interactive x (doors, anchors,
         # spawn, props, npcs, the boss arena) is handed over as an exclusion
@@ -461,6 +475,8 @@ func load_room(id: String) -> void:
         _grade_base = WORLD_GRADES.get(String(room_data.get("backdrop", "")), Color(1, 1, 1))
         _grade_t = randf() * TAU
         _graded_nodes = [masonry, floorcraft, parallax, decor_renderer, lights, ambient, rays, foreground]
+        if haze != null:
+                _graded_nodes.append(haze)
         # contact shadows LAST among the z=0 plane: above the crafted floor,
         # under every actor (z>=1) — the ground holds every body
         shadows = ContactShadows.new()

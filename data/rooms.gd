@@ -365,6 +365,10 @@ const ROOMS := {
                 "backdrop": "chapel",
                 "fog": Color(0.2, 0.16, 0.12),
                 "fog_a": 0.38,
+                # THE AIR THE CENSERS FILL (WB-22): the chapel's own incense,
+                # thick at the height of the bodies that swing the lamps —
+                # the architecture behind the press sits one depth deeper
+                "depth_band": {"a": 0.20},
                 "music": "amb_a",
                 "ambient": [{"id": "choir", "vol": 0.5}, {"id": "fire", "vol": 0.18}],
                 "step_material": "carpet",

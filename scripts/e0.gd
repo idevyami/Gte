@@ -99,10 +99,26 @@ const BELIEVER_CENSER_SWING := 2.6       # px, the hanging lamp's lag
 # The fix follows the vessel's own WB-17 law — the EDGE carries the read,
 # not the body. Three amplitudes, no new systems:
 const BELIEVER_LEAN := 1.8               # deg, the body's axis tilts toward its walk
-const BELIEVER_RIM_A := 0.32             # the between-bodies edge, up from 0.24
+const BELIEVER_RIM_A := 0.42             # the between-bodies edge — the many lamps burn brighter together (WB-22)
 const BELIEVER_POOL_BASE := 0.10         # the censer ALWAYS pools its light (alive)
-const BELIEVER_POOL_SEP := 0.20          # the many censers burn brighter together
+const BELIEVER_POOL_SEP := 0.30          # the many censers burn brighter together (WB-22: the press is a row of lamps)
 const BELIEVER_SELF_LIFT := Color(1.15, 1.10, 0.98)  # warm — the robe answers the censer
+# WB-22 THE PRESS KEEPS ITS COUNT: the honest audit's cluster finding — at
+# full convergence the logged smallest gap between living bodies was 0.0 px
+# for seven straight seconds, and the auditor read the stacked column as
+# empty space ("no other figures present in the scene, let alone five").
+# The press is the fiction; the merge is the bug. The flock still presses —
+# but each body holds its own ground: a soft jostle keeps ~a robe's width
+# between the living, so the crowd traces as N threats, not one beast. The
+# STRIKE is exempt (the lunge carries through the crowd — the flock parts
+# for the strike); the WINDUP is planted but not rooted — a wound body
+# yields a little to the press (it can be shifted, so bodies that planted
+# together still part) without being shoved into the vessel; the kneel is
+# a station (fully planted); the dead are ground.
+const BELIEVER_JOSTLE_MIN := 34.0        # px of center spacing the press keeps (a robe's width + shoulder room)
+const BELIEVER_JOSTLE_K := 20.0          # px/s of shove per px of overlap
+const BELIEVER_JOSTLE_CAP := 320.0       # px/s — a shove, never a teleport
+const BELIEVER_WINDUP_MOBILITY := 0.25   # planted, not rooted — the press shifts a wound body a little
 
 # --- Boss (locked) -----------------------------------------------------------
 const MARTYR_HP := 900

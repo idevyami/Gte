@@ -107,6 +107,9 @@ names = [
     # WB-21: the censer's edge (the verdict strip; the four full-res stills
     # and the lean pair are already-final JPEGs, copied below)
     "wb21_05_the_motion_verdict",
+    # WB-22: the press keeps its count (the verdict strip; the five
+    # full-res stills are already-final JPEGs, copied below)
+    "wb22_06_the_verdict",
 ]
 for n in names:
     p = os.path.join(src, n + ".png")
@@ -122,4 +125,6 @@ EOF
 echo "CONVERT DONE"
 # WB-21: the stills are already-final JPEGs (1280x720, q92) — copy straight
 cp /home/z/entity000/screenshots/wb21/*.jpg "$DST"/
+# WB-22: the same law — the press stills are final JPEGs
+cp /home/z/entity000/screenshots/wb22/*.jpg "$DST"/
 ls "$DST" | wc -l
