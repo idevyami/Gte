@@ -93,6 +93,16 @@ const CENSOR_SPEED_S5 := 200.0
 const BELIEVER_RIDE_DIP := 1.3           # px, settled at each footfall
 const BELIEVER_RIDE_SWAY := 1.35         # px, a quarter-cycle behind the plant
 const BELIEVER_CENSER_SWING := 2.6       # px, the hanging lamp's lag
+# WB-21 THE CENSER'S EDGE: the readability pass — the honest audit's
+# value-collapse finding (facing 2/10, stride 1/10, silhouette separation
+# 3/10 at full res: the robes at median lum 42 sink into the carpet's 67).
+# The fix follows the vessel's own WB-17 law — the EDGE carries the read,
+# not the body. Three amplitudes, no new systems:
+const BELIEVER_LEAN := 1.8               # deg, the body's axis tilts toward its walk
+const BELIEVER_RIM_A := 0.32             # the between-bodies edge, up from 0.24
+const BELIEVER_POOL_BASE := 0.10         # the censer ALWAYS pools its light (alive)
+const BELIEVER_POOL_SEP := 0.20          # the many censers burn brighter together
+const BELIEVER_SELF_LIFT := Color(1.15, 1.10, 0.98)  # warm — the robe answers the censer
 
 # --- Boss (locked) -----------------------------------------------------------
 const MARTYR_HP := 900

@@ -36,6 +36,11 @@ var _stagger_seed := -1           # the frame this body begins its cycle on
 var _walk_frames := 6             # derived from the skin at walk entry
 var _walk_fps := 8.0
 var _censer_lag := 0.0            # the hanging lamp trails the sway (rig path)
+# WB-21 THE CENSER'S EDGE: the readability pass — the honest audit's
+# facing finding (2/10: "no head orientation or shoulder asymmetry to
+# indicate forward"). The body's axis now LEANS into its walk — the
+# same ride channel, relaxing to zero off the walk.
+var _lean := 0.0                  # deg, toward the direction of travel
 
 func setup_believer(p_pos: Vector2, p_ward: WardBarrier = null, p_kneel := true) -> void:
         setup_enemy("BELIEVER", "BELIEVER_%d" % [randi() % 800 + 150])
@@ -214,6 +219,14 @@ func _on_contact(body: Node2D) -> void:
                 contact_cd = 0.9
                 body.take_damage(int(float(contact_damage) * damage_mult()), global_position)
 
+func skin_lift() -> Color:
+        ## WB-21: the robe answers the censer — a warm self-lift (the
+        ## audit: the robes' mid-tones sank into "an amorphous dark mass";
+        ## the folds must read as cloth inside the silhouette, lit by the
+        ## light the body itself carries). Warm, never white: the censer
+        ## burns gold, and the lift speaks its color.
+        return E0.BELIEVER_SELF_LIFT
+
 func _sync_skin(delta: float) -> void:
         super(delta)
         if _skin == null:
@@ -252,6 +265,14 @@ func _sync_skin(delta: float) -> void:
                 _walk_armed = false
                 _weight = _weight.lerp(Vector2.ZERO, minf(1.0, delta * 10.0))
         _skin.position = _weight
+        ## THE LEAN (WB-21): the axis tilts toward the walk while the body
+        ## moves, settling upright off it — mirrored with facing, driven on
+        ## the same relax channel as the ride so they settle together
+        var lean_want := 0.0
+        if walking:
+                lean_want = facing * E0.BELIEVER_LEAN
+        _lean = lerpf(_lean, lean_want, minf(1.0, delta * 10.0))
+        _skin.rotation_degrees = _lean
 
 func skin_set() -> String:
         return "believers"
@@ -291,20 +312,48 @@ func _draw_body() -> void:
                 _:
                         _draw_standing(col)
 
+func pool_alpha() -> float:
+        ## WB-21 THE CENSER ALWAYS BURNS: the pool decoupled from the crowd —
+        ## the lamp the body carries pools its light whether the flock
+        ## presses or the body stands alone; the press only ADDS (the many
+        ## censers burn brighter together). Walking, the pool breathes with
+        ## the body's OWN stride (bright at the footfall, when the censer
+        ## swings); kneeling, it breathes slow with the chant's sway —
+        ## per-body phase, so no two pools pulse in step.
+        if dead:
+                return 0.0
+        var base := E0.BELIEVER_POOL_BASE + E0.BELIEVER_POOL_SEP * sep_k
+        var breathe := 1.0
+        if absf(velocity.x) > 20.0:
+                breathe = 0.78 + 0.22 * cos(TAU * 2.0 * _walk_phase)
+        else:
+                breathe = 0.8 + 0.2 * sin(anim_t * 1.8 + global_position.x * 0.05)
+        return base * breathe
+
 func _draw_convergence_edge() -> void:
-        ## THE FLOCK KEEPS ITS EDGES (WB-19): a thin censer-warm rim on the
-        ## robe's bounds, breathing per-body (no two pulse in step) — the
-        ## ground pool doubles the separation where the feet meet the runner.
-        if sep_k <= 0.02 or dead:
+        ## THE FLOCK KEEPS ITS EDGES (WB-19, strengthened WB-21): a thin
+        ## censer-warm rim on the robe's bounds, breathing per-body (no two
+        ## pulse in step) — the ground pool grounds every living body (the
+        ## censer's own law), the rim edges bodies only when they press
+        ## together (the between-bodies light).
+        if dead:
+                return
+        var painted := _skin != null and not GameState.debug_no_sprites
+        # the censer always burns: the ground pool is the lamp's own light
+        var pa := pool_alpha()
+        if pa > 0.004:
+                var pcol := Color(0.86, 0.74, 0.52)
+                # the ground pool never rides: it is the floor's light, and
+                # the floor does not walk
+                draw_polyline(_ellipse(Vector2(0, 1), 16.0, 4.6),
+                        Color(pcol.r, pcol.g, pcol.b, pa), 2.2)
+        if sep_k <= 0.02:
                 return
         var breathe := 0.8 + 0.2 * sin(_sep_phase * 3.1 + global_position.x * 0.7)
-        var a := 0.24 * sep_k * breathe
+        var a := E0.BELIEVER_RIM_A * sep_k * breathe
         var col := Color(0.86, 0.74, 0.52)
         # WB-20: the rim rides mostly with the body (damped 0.85) so the glow
-        # stays glued to the robe it edges while the ride moves — but the
-        # ground pool never rides: it is the floor's light, and the floor
-        # does not walk (the rim follows whichever body is visible)
-        var painted := _skin != null and not GameState.debug_no_sprites
+        # stays glued to the robe it edges while the ride moves
         var rim_ride := (_weight if painted else _rig_ride) * 0.85
         # the robe's bounds: taller when standing, settled when kneeling
         var cy := -30.0 + rim_ride.y
@@ -316,14 +365,7 @@ func _draw_convergence_edge() -> void:
         for i in 22:
                 var t := TAU * i / 22.0
                 pts.append(Vector2(rim_ride.x, cy) + Vector2(cos(t) * 13.5, sin(t) * ry))
-        draw_polyline(pts, Color(col.r, col.g, col.b, a), 1.6)
-        # the censer's light pools at the feet — the ground separates too,
-        # and the pool breathes with the shuffle (the re-audit: static pools
-        # read as chess-pieces, not walkers)
-        var pool_a := a * 0.7
-        if absf(velocity.x) > 20.0:
-                pool_a *= 0.75 + 0.25 * sin(anim_t * 9.0)
-        draw_polyline(_ellipse(Vector2(0, 1), 15.0, 4.2), Color(col.r, col.g, col.b, pool_a), 1.4)
+        draw_polyline(pts, Color(col.r, col.g, col.b, a), 2.2)
 
 func _draw_kneeling(col: Color) -> void:
         var sway := sin(anim_t * 1.8 + global_position.x * 0.05) * 2.0
@@ -351,23 +393,26 @@ func _draw_standing(col: Color) -> void:
         # pivot at the hip, they do not translate), the torso sways over
         # the settling side, and the censer trails the sway like the
         # pendulum it is (it hangs from the arm, it is not held)
+        # WB-21: the rig leans too — the torso and head shift toward the
+        # walk (the legs stay planted; the axis tilts, the feet do not)
         var ride := _rig_ride
+        var lean_px := _lean * 0.9
         var hip := -26.0 + ride.y
         draw_line(Vector2(-3 + stride, hip), Vector2(-4, 0), col, 3.5)
         draw_line(Vector2(3 - stride, hip), Vector2(4, 0), col, 3.5)
         draw_colored_polygon(PackedVector2Array([
-                Vector2(-9 + ride.x, hip), Vector2(9 + ride.x, hip),
-                Vector2(10 + ride.x, hip - 26.0), Vector2(-10 + ride.x, hip - 26.0),
+                Vector2(-9 + ride.x + lean_px, hip), Vector2(9 + ride.x + lean_px, hip),
+                Vector2(10 + ride.x + lean_px, hip - 26.0), Vector2(-10 + ride.x + lean_px, hip - 26.0),
         ]), col)
-        draw_circle(Vector2(ride.x, hip - 32.0), 7.5, col)
-        draw_rect(Rect2(facing * 2.0 - 3.0 + ride.x, hip - 35.0, 6, 5), E0.VOID)
+        draw_circle(Vector2(ride.x + lean_px, hip - 32.0), 7.5, col)
+        draw_rect(Rect2(facing * 2.0 - 3.0 + ride.x + lean_px, hip - 35.0, 6, 5), E0.VOID)
         # arm with hanging censer — a weapon they never chose
-        var arm := Vector2(facing * 12.0 + ride.x, hip - 14.0)
+        var arm := Vector2(facing * 12.0 + ride.x + lean_px, hip - 14.0)
         if state == WINDUP:
                 var k := clampf(state_t / 0.5, 0.0, 1.0)
-                arm = Vector2(facing * (12.0 - 6.0 * k) + ride.x, hip - 14.0 + 14.0 * k)
+                arm = Vector2(facing * (12.0 - 6.0 * k) + ride.x + lean_px, hip - 14.0 + 14.0 * k)
                 col = col.lerp(E0.CRIMSON, k * 0.5)
-        draw_line(Vector2(facing * 6.0 + ride.x, hip - 20.0), arm, col, 3.0)
+        draw_line(Vector2(facing * 6.0 + ride.x + lean_px, hip - 20.0), arm, col, 3.0)
         draw_line(arm, arm + Vector2(_censer_lag, 10.0), Color(E0.GOLD.r, E0.GOLD.g, E0.GOLD.b, 0.8), 1.5)
         draw_circle(arm + Vector2(_censer_lag, 12.0), 3.5, E0.GOLD.darkened(0.3))
         if state == WINDUP:

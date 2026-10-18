@@ -1349,6 +1349,54 @@ const VISUAL_PROOFS: {
       "A dormant bug found and fixed by the pass: the procedural arch's inner arc ran UNREVERSED — the band self-intersected into a bowtie the renderer silently refused to triangulate (390 errors/min in fallback mode, dormant since the fallback decor was written).",
     status: "FINAL",
   },
+  {
+    file: "wb21_01_the_edge",
+    num: "143",
+    title: "THE CENSER'S EDGE",
+    caption:
+      "WB-21 THE READABILITY PASS — the honest audit's value-collapse finding closed on the EDGE, the way the vessel's own deep-room read was closed in WB-17. The fourth rim bake lifts the congregation's censer-gold edge from 0.44 to 0.70 (edge luminance 139 vs body 31, margin 108) and a warm self-lift (1.15/1.10/0.98) lifts the robe's folds out of the black void.",
+    status: "FINAL",
+  },
+  {
+    file: "wb21_02a_lean_right",
+    num: "144",
+    title: "THE LEAN, RIGHT",
+    caption:
+      "The audit's facing finding (2/10: 'no head orientation or shoulder asymmetry to indicate forward') — the body's axis now tilts 1.8° toward its walk, relaxing upright off it. Measured live: +1.80° walking right.",
+    status: "FINAL",
+  },
+  {
+    file: "wb21_02b_lean_left",
+    num: "145",
+    title: "THE LEAN, LEFT",
+    caption:
+      "The same body, the player crossed to the other side: −1.80°, mirrored with facing. The rig leans too (the torso shifts, the legs stay planted) and the corpse settles upright — it does not lean.",
+    status: "FINAL",
+  },
+  {
+    file: "wb21_03_the_pools",
+    num: "146",
+    title: "THE CENSER ALWAYS BURNS",
+    caption:
+      "The ground pool decoupled from the crowd: the lamp the body carries pools its light whether the flock presses or the body stands alone (base 0.10 breathing slow with the chant's sway, per-body phase; the press only adds, up to 0.30). Walking, the pool brightens at each footfall — the censer swings with the stride.",
+    status: "FINAL",
+  },
+  {
+    file: "wb21_04_the_warm_robe",
+    num: "147",
+    title: "THE ROBE ANSWERS THE CENSER",
+    caption:
+      "The audit called the robes' interior 'a black void' — the warm self-lift answers the gold the body carries, and the folds read as draped cloth ('voluminous draped objects rather than flat cutouts', 5/10 interior, was void). The between-bodies rim strengthens 0.24 → 0.32 where the flock presses together.",
+    status: "FINAL",
+  },
+  {
+    file: "wb21_05_the_motion_verdict",
+    num: "148",
+    title: "THE RE-AUDIT'S VERDICT",
+    caption:
+      "Three frames across the convergence, post-pass. The honest re-audit (same anti-confabulation prompts, logged clips): SILHOUETTE SEPARATION 3 → 6 ('7 distinct figures... the halo carves each believer out of the gloom'), FACING 2 → 4 ('the tilt tells the player these things are advancing'), the pools 'make them feel like physical entities interacting with the floor rather than floating sprites'. Legs remain cloth-hidden by design — the hem is the stride.",
+    status: "FINAL",
+  },
 ];
 
 function ProofShot({ proof }: { proof: (typeof VISUAL_PROOFS)[number] }) {
@@ -2321,7 +2369,7 @@ export default function Home() {
               index="06"
               kicker="VISUAL PROOFS"
               title="The reconstruction pass, on the record"
-              description="Real in-engine gameplay renders from the running game (1280×720 viewport). The visual reconstruction pass, then five world-building passes: THE LIVING CITY (far processions, measured strikes, ceremonies), THE CLOSEST WALLS (the foreground plane at 1.28x), THE GROUND YOU WALK ON (rendered climb ledges, per-district floorcraft, contact shadows), THE PERFORMERS (walk laws, wound cards, death as rotation, presence pools), THE WORLD RESPONDS (skirting stones, the ground answering fire, focal shafts, moths, vermin, ripples, posted law) — and THE RECORD IS A THING: the diegetic interface pass, where the HUD becomes a brass instrument, dialogue a hung parchment census record, system messages stamped citations, the OBSERVE readout a ruled ledger page with rows sealed under wax. Then the world kept deepening: THE AIR ITSELF (a positional sound stage on every element — flames that crackle, hearts that hum, bells that toll on their own seeded clocks), THE ARRIVAL (no space is born pre-lit — every room wakes near-first, flares and settles; revisits are quick because the city remembers), THE WORLD THINS (the core mechanic reaches the world's own renderers — flames lose conviction and miss beats, moths leave, the vessel stays real as the grade drains), THE THRESHOLD (the crossing between acts is a three-beat rite — the leaving, the inscribed rubric in the dark, the coming), THE VESSEL'S TRACE (every floor records the walker in its own material — ash holds, wet glistens, carpet presses lighter, the engine records nothing), THE OTHERS' PASSAGE (every creature writes the floor in the language of its body — the hollow's metronome echo, the believer's shuffle, the censor's erasure), THE ENDING'S RECORD (the floor keeps a bounded ledger of endings — organic sprawls, frozen last strides, where he fell), THE EXPERIENCE PASS (everything that already exists made truer — third rim bake, woven materials, tiled stone, the map's ink spline), THE FIST THAT LANDS (the motion experience pass — telegraphs read first, the roll is a decision, the chain speaks in arcs), THE THREE BEATS (every hit its own clock — the gather, the step-through, the dash's spent image), and THE WALKING FLOCK (the weight pass — the body rides its stride, each walker out of step). Every render is from the live game under a virtual display; every pass was VLM-audited before shipping. Procedural rigs remain in the build as a debug fallback (F9 in game)."
+              description="Real in-engine gameplay renders from the running game (1280×720 viewport). The visual reconstruction pass, then five world-building passes: THE LIVING CITY (far processions, measured strikes, ceremonies), THE CLOSEST WALLS (the foreground plane at 1.28x), THE GROUND YOU WALK ON (rendered climb ledges, per-district floorcraft, contact shadows), THE PERFORMERS (walk laws, wound cards, death as rotation, presence pools), THE WORLD RESPONDS (skirting stones, the ground answering fire, focal shafts, moths, vermin, ripples, posted law) — and THE RECORD IS A THING: the diegetic interface pass, where the HUD becomes a brass instrument, dialogue a hung parchment census record, system messages stamped citations, the OBSERVE readout a ruled ledger page with rows sealed under wax. Then the world kept deepening: THE AIR ITSELF (a positional sound stage on every element — flames that crackle, hearts that hum, bells that toll on their own seeded clocks), THE ARRIVAL (no space is born pre-lit — every room wakes near-first, flares and settles; revisits are quick because the city remembers), THE WORLD THINS (the core mechanic reaches the world's own renderers — flames lose conviction and miss beats, moths leave, the vessel stays real as the grade drains), THE THRESHOLD (the crossing between acts is a three-beat rite — the leaving, the inscribed rubric in the dark, the coming), THE VESSEL'S TRACE (every floor records the walker in its own material — ash holds, wet glistens, carpet presses lighter, the engine records nothing), THE OTHERS' PASSAGE (every creature writes the floor in the language of its body — the hollow's metronome echo, the believer's shuffle, the censor's erasure), THE ENDING'S RECORD (the floor keeps a bounded ledger of endings — organic sprawls, frozen last strides, where he fell), THE EXPERIENCE PASS (everything that already exists made truer — third rim bake, woven materials, tiled stone, the map's ink spline), THE FIST THAT LANDS (the motion experience pass — telegraphs read first, the roll is a decision, the chain speaks in arcs), THE THREE BEATS (every hit its own clock — the gather, the step-through, the dash's spent image), THE WALKING FLOCK (the weight pass — the body rides its stride, each walker out of step), and THE CENSER'S EDGE (the readability pass — the fourth rim bake lifts the congregation's gold edge, the robe answers its censer in warm light, the body leans into its walk, the pool burns at every footfall). Every render is from the live game under a virtual display; every pass was VLM-audited before shipping. Procedural rigs remain in the build as a debug fallback (F9 in game)."
             />
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {VISUAL_PROOFS.map((proof) => (

@@ -104,6 +104,9 @@ names = [
     "wb20_01_ride_in_motion", "wb20_02_the_cycle",
     "wb20_03_dip_still", "wb20_04_rise_still",
     "wb20_05_the_pair", "wb20_06_the_arch",
+    # WB-21: the censer's edge (the verdict strip; the four full-res stills
+    # and the lean pair are already-final JPEGs, copied below)
+    "wb21_05_the_motion_verdict",
 ]
 for n in names:
     p = os.path.join(src, n + ".png")
@@ -117,4 +120,6 @@ for n in names:
     print("ok:", n, im.size)
 EOF
 echo "CONVERT DONE"
-ls -la "$DST" | head -16
+# WB-21: the stills are already-final JPEGs (1280x720, q92) — copy straight
+cp /home/z/entity000/screenshots/wb21/*.jpg "$DST"/
+ls "$DST" | wc -l

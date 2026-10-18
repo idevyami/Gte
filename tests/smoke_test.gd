@@ -57,6 +57,7 @@ func _run() -> void:
         await _the_fist_that_lands()
         await _the_three_beats()
         await _the_walking_flock()
+        await _the_censers_edge()
         print("=== %d checks, %d failures ===" % [checks, fails])
         get_tree().quit(1 if fails > 0 else 0)
 
@@ -2523,6 +2524,135 @@ func _the_walking_flock() -> void:
                         Decor.arch_band_points(Vector2(400, 500), wv, wv * 300.0 / 414.0)))
         ok(not arch_tris[0].is_empty() and not arch_tris[1].is_empty() and not arch_tris[2].is_empty(),
                 "the procedural arch band triangulates (the dormant bowtie, closed)")
+
+# ------------------------------------------------------------------ WB-21
+func _the_censers_edge() -> void:
+        print("[THE CENSER'S EDGE — WB-21]")
+        # --- THE FOURTH BAKE: the congregation's edge reads at the vessel's
+        # strength — the honest audit's value-collapse finding (silhouette
+        # separation 3/10: robes 42 lum vs carpet 67) closed the way the
+        # vessel's own deep-room read was closed in WB-17, on the EDGE
+        var edge_ok := _rim_edge_margin("res://art/characters/believers/walk_0.png", 0.25)
+        ok(edge_ok, "the believers' rim reads far brighter than the body (the fourth bake)")
+        edge_ok = _rim_edge_margin("res://art/characters/believers/kneel_0.png", 0.25)
+        ok(edge_ok, "the kneeling robe carries the same edge (the praying rows read)")
+        # --- THE ROBE ANSWERS THE CENSER: a warm self-lift, alive and only
+        # alive (the audit: the robes' mid-tones sank into an amorphous mass)
+        game.transition_to("act5")
+        await _room("act5")
+        var flock21: Array = []
+        for node in get_tree().get_nodes_in_group("enemies"):
+                if node is Believer and not node.dead:
+                        flock21.append(node)
+        ok(flock21.size() >= 2, "the chapel holds a flock to judge (%d)" % flock21.size())
+        if flock21.size() < 2:
+                return
+        var b21: Believer = flock21[0]
+        var lift: Color = b21.skin_lift()
+        ok(absf(lift.r - 1.15) < 0.02 and absf(lift.g - 1.10) < 0.02,
+                "the robe answers the censer (self-lift %.2f/%.2f/%.2f)" % [lift.r, lift.g, lift.b])
+        ok(lift.r > lift.b, "the lift is warm — the censer burns gold, not white")
+        await _frames(6)
+        ok(b21._skin != null and absf(b21._skin.modulate.r - lift.r) < 0.02,
+                "the lift reaches the skin (modulate %.2f)" % (b21._skin.modulate.r if b21._skin else 0.0))
+        # --- THE CENSER ALWAYS BURNS: the pool decoupled from the crowd —
+        # the lamp the body carries pools its light standing alone
+        var lone := b21
+        lone.sep_k = 0.0
+        lone.state = lone.CHANT
+        lone.state_t = 0.0
+        await _wait_real(0.3)
+        ok(lone.pool_alpha() >= 0.05,
+                "the censer burns alone (pool %.3f at sep 0)" % lone.pool_alpha())
+        # the many censers burn brighter together (the breathe rides both
+        # readings the same — the measured gap is the press's own term)
+        lone.sep_k = 1.0
+        var together := lone.pool_alpha()
+        lone.sep_k = 0.0
+        ok(together >= lone.pool_alpha() + 0.10,
+                "the press adds its light (pool %.3f together)" % together)
+        # the corpse's lamp is out
+        var dead21: Believer = flock21[1]
+        dead21.dead = true
+        dead21.death_t = 0.0
+        ok(dead21.pool_alpha() < 0.004, "the corpse's lamp is out")
+        # --- THE LEAN: the body's axis tilts toward its walk (the audit's
+        # facing finding, 2/10) — mirrored with facing, upright off the walk
+        game.player.global_position = lone.global_position + Vector2(340, 0)
+        lone.state = lone.AGGRO
+        lone.state_t = 0.0
+        var leans: Array[float] = []
+        var t21 := Time.get_ticks_msec()
+        while Time.get_ticks_msec() - t21 < 900:
+                await get_tree().process_frame
+                if not is_instance_valid(lone) or lone.dead or lone._skin == null:
+                        break
+                if lone._skin.animation == "walk" and absf(lone.velocity.x) > 20.0:
+                        leans.append(lone._skin.rotation_degrees)
+        ok(leans.size() >= 30, "the lean holds long enough to judge (%d samples)" % leans.size())
+        if not leans.is_empty():
+                var lean_abs := 0.0
+                for l in leans:
+                        lean_abs = maxf(lean_abs, absf(l))
+                var sign_ok := true
+                for l in leans:
+                        if absf(l) > 0.6 and signf(l) != signf(lone.facing):
+                                sign_ok = false
+                ok(lean_abs >= 1.2 and lean_abs <= 3.2,
+                        "the body leans into its walk (%.2f deg at fullest)" % lean_abs)
+                ok(sign_ok, "the lean mirrors with facing (toward the walk)")
+        # the settle: upright off the walk
+        lone.state = lone.CHANT
+        lone.state_t = 0.0
+        await _wait_real(0.7)
+        ok(is_instance_valid(lone) and lone._skin != null and absf(lone._skin.rotation_degrees) < 0.05,
+                "the body settles upright off the walk")
+        # the corpse does not lean
+        dead21.velocity = Vector2.ZERO
+        await _wait_real(0.4)
+        ok(is_instance_valid(dead21) and dead21._skin != null and absf(dead21._skin.rotation_degrees) < 0.05,
+                "the corpse does not lean")
+        # --- THE BETWEEN-BODIES EDGE STRENGTHENS: 0.24 -> 0.32 at full press
+        ok(absf(E0.BELIEVER_RIM_A - 0.32) < 0.001,
+                "the between-bodies rim strengthens (a=%.2f)" % E0.BELIEVER_RIM_A)
+
+func _rim_edge_margin(path: String, margin: float) -> bool:
+        ## WB-21: the edge band (opaque within 2px of transparency) must
+        ## average BRIGHTER than the body's interior by at least MARGIN —
+        ## the quantified fourth-bake law (the generic law asks +0.015;
+        ## the congregation's rescue asks a real step).
+        var img := Image.new()
+        if img.load(path) != OK:
+                return false
+        var w := img.get_width()
+        var h := img.get_height()
+        if w < 8 or h < 8:
+                return false
+        var edge_n := 0
+        var edge_sum := 0.0
+        var inner_n := 0
+        var inner_sum := 0.0
+        for y in range(2, h - 2):
+                for x in range(2, w - 2):
+                        var a := img.get_pixel(x, y).a
+                        if a <= 0.5:
+                                continue
+                        var near_clear := false
+                        for dy in range(-2, 3):
+                                for dx in range(-2, 3):
+                                        if img.get_pixel(x + dx, y + dy).a <= 0.5:
+                                                near_clear = true
+                        var c := img.get_pixel(x, y)
+                        var lum := (c.r + c.g + c.b) / 3.0
+                        if near_clear:
+                                edge_n += 1
+                                edge_sum += lum
+                        else:
+                                inner_n += 1
+                                inner_sum += lum
+        if edge_n < 12 or inner_n < 12:
+                return false
+        return (edge_sum / edge_n) > (inner_sum / inner_n) + margin
 
 func _phase_at_impact() -> float:
         ## Ticks physics frames until the swing's blade meets, then returns

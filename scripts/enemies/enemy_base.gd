@@ -137,7 +137,10 @@ func _scatter_ash() -> void:
 func _sync_skin(_delta: float) -> void:
         _skin.visible = not GameState.debug_no_sprites
         _skin.flip_h = skin_facing() < 0
-        var m := Color(1.0, 1.0, 1.0, 1.0)
+        # WB-21 THE CENSER'S EDGE: the self-lift starts from the body's own
+        # light answer (the vessel's WB-17 law generalized) — the hurt flash
+        # and death fade still own their frames on top of it
+        var m := skin_lift()
         if hurt_flash > 0.0:
                 m = m.lerp(Color(1.0, 0.5, 0.42), (hurt_flash / 0.26) * 0.85)
         if dead and death_t >= 0.0:
@@ -168,6 +171,12 @@ func _physics_process(delta: float) -> void:
 
 func _act(_delta: float) -> void:
         pass
+
+func skin_lift() -> Color:
+        ## WB-21: the body's own answer to its light — the identity lift
+        ## leaves every other creature exactly as it was; the believer
+        ## overrides (the robe answers its censer, warm).
+        return Color(1.0, 1.0, 1.0, 1.0)
 
 # ------------------------------------------------------------- the passage
 
