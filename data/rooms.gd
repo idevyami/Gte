@@ -403,7 +403,7 @@ const ROOMS := {
                         {"kind": "censer_swing", "pos": Vector2(690, 504), "h": 170, "s": 0.5},
                         {"kind": "banner", "pos": Vector2(1150, 504), "w": 46, "h": 140, "s": 0.7},
                         {"kind": "banner", "pos": Vector2(1620, 504), "w": 46, "h": 140, "s": 0.2},
-                        {"kind": "mural", "pos": Vector2(1800, 640), "w": 220, "h": 140, "s": 0.5},
+                        {"kind": "mural", "pos": Vector2(1800, 616), "w": 196, "h": 120, "s": 0.5},
                         {"kind": "pew", "pos": Vector2(400, 840), "w": 105, "s": 0.15},
                         {"kind": "pew", "pos": Vector2(520, 840), "w": 105, "s": 0.42},
                         {"kind": "pew", "pos": Vector2(640, 840), "w": 105, "s": 0.78},
@@ -418,7 +418,11 @@ const ROOMS := {
                         {"kind": "candles", "pos": Vector2(1720, 840), "w": 60, "s": 0.8},
                         # -- living architecture: the chapel keeps its lights
                         {"kind": "chandelier", "pos": Vector2(430, 502), "h": 150, "s": 0.6},
-                        {"kind": "chandelier", "pos": Vector2(1530, 502), "h": 160, "s": 0.35},
+                        # WB-24: the second wheel sits OFF the arch's right
+                        # jamb — its glow lit the fluted column like a lit
+                        # statue and the audits kept tracing "a large pale
+                        # standing female figure" there
+                        {"kind": "chandelier", "pos": Vector2(1595, 502), "h": 160, "s": 0.35},
                         {"kind": "window", "pos": Vector2(60, 640), "w": 56, "h": 180, "s": 0.85},
                         {"kind": "window", "pos": Vector2(1940, 640), "w": 56, "h": 180, "s": 0.9},
                         {"kind": "candelabra", "pos": Vector2(1230, 840), "h": 120, "s": 0.55},
@@ -431,7 +435,13 @@ const ROOMS := {
                         {"pos": Vector2(1560, 620), "r": 270, "color": Color(0.9, 0.75, 0.4), "flicker": 0.2, "cone": 150, "a": 0.24},
                         {"pos": Vector2(1200, 700), "r": 190, "color": Color(0.85, 0.6, 0.3), "flicker": 0.35, "cone": 140, "a": 0.26},
                         {"pos": Vector2(500, 520), "r": 220, "color": Color(0.3, 0.85, 0.88), "flicker": 0.1},
-                        {"pos": Vector2(1830, 640), "r": 220, "color": Color(0.75, 0.6, 0.3), "flicker": 0.2, "a": 0.26},
+                        # WB-24: the ward's own light — lifted off the band's
+                        # core (the old y640/r220 wash sat ON the robes) but
+                        # kept strong enough that the WALL behind the corner
+                        # press reads a clear step above the black robes
+                        # (measured: robes 55 vs wall 55 collapsed; the
+                        # grammar needs the wall ahead)
+                        {"pos": Vector2(1830, 610), "r": 205, "color": Color(0.75, 0.6, 0.3), "flicker": 0.2, "a": 0.24},
                 ],
                 "props": [
                         {"entity": "HYMNAL", "instance": "HYMNAL_1", "kind": "hymnal", "pos": Vector2(1180, 840)},

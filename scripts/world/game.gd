@@ -657,6 +657,15 @@ func _build_enemy(e: Dictionary) -> void:
                         b.setup_believer(e["pos"], ward, bool(e.get("kneel", true)))
                         b.add_to_group("enemies")
                         world.add_child(b)
+                        # WB-24: THE WARD EATS ITS CHANT — the barrier's belief
+                        # is computed live from the flock, but the flock was
+                        # never WIRED to it (chanters stayed empty, belief read
+                        # 0, and the ward silently collapsed on the room's
+                        # first frame — every visit since it shipped). The
+                        # room builds the ward before its believers, so the
+                        # feed is live from the first kneel.
+                        if ward != null and is_instance_valid(ward):
+                                ward.chanters.append(b)
 
 func _build_ward(w: Dictionary) -> void:
         ward = WardBarrier.new()

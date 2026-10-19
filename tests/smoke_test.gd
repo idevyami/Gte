@@ -60,6 +60,7 @@ func _run() -> void:
         await _the_censers_edge()
         await _the_press_keeps_its_count()
         await _the_furniture_yields()
+        await _the_corner_yields()
         print("=== %d checks, %d failures ===" % [checks, fails])
         get_tree().quit(1 if fails > 0 else 0)
 
@@ -2890,6 +2891,136 @@ func _the_furniture_yields() -> void:
                 "the crown out-burns the hem (the bake is top-lit, walk)")
         ok(_rim_crown_over_hem("res://art/characters/believers/kneel_0.png", 8.0),
                 "the crown out-burns the hem (the bake is top-lit, kneel)")
+
+func _the_corner_yields() -> void:
+        print("[THE CORNER YIELDS — WB-24]")
+        # --- THE WARD EATS ITS CHANT (the latent bug this pass eradicated):
+        # the barrier's belief was computed live from a chanters array that
+        # NOTHING ever fed — belief read 0 and the ward silently collapsed
+        # on the room's first frame, every visit since it shipped. The flock
+        # is wired now; the regression is lawed.
+        game.transition_to("act5")
+        await _room("act5")
+        await _frames(20)
+        var ward24: WardBarrier = null
+        for node in get_tree().get_nodes_in_group("interactable"):
+                if node is WardBarrier:
+                        ward24 = node
+        ok(ward24 != null, "the ward stands at the reliquary corner")
+        if ward24:
+                ok(ward24.chanters.size() >= 5,
+                        "the flock feeds the ward's belief (%d chanters wired)" % ward24.chanters.size())
+                ok(not ward24.broken,
+                        "the ward SURVIVES the room's entry (the silent first-frame collapse is dead)")
+                ok(absf(ward24.belief_now() - 100.0) < 0.001,
+                        "the full congregation holds the ward at 100 (%.0f)" % ward24.belief_now())
+                ok(ward24.chanter_count() >= 5,
+                        "the chanter count reads the living flock (%d)" % ward24.chanter_count())
+                # --- THE BELIEF LIFECYCLE: belief is live physics. The relic
+                # bearer is admitted; and the first VIOLENCE un-believes the
+                # ward — harm one chanter and the whole flock answers, the
+                # chant stops, and the wall held up by nothing you can kill
+                # dies the way the design always said it would
+                GameState.set_flag(GameState.F_RELIQ_CARRIED, true)
+                ward24.update_state()
+                ok(ward24.passable, "the relic bearer is admitted through the ward")
+                ok(not ward24.broken, "the relic OPENS the ward, it does not break it")
+                GameState.set_flag(GameState.F_RELIQ_CARRIED, false)
+                ward24.update_state()
+                ok(not ward24.passable, "without the relic the ward holds its shape")
+                var flock24: Array = []
+                for node in get_tree().get_nodes_in_group("enemies"):
+                        if node is Believer:
+                                flock24.append(node)
+                ok(flock24.size() >= 5, "the congregation stands (%d bodies)" % flock24.size())
+                if flock24.size() > 0:
+                        (flock24[0] as Believer).take_hit(9999, Vector2(0, 0), true)
+                        var t24 := Time.get_ticks_msec()
+                        while Time.get_ticks_msec() - t24 < 3000 and not ward24.broken:
+                                await get_tree().process_frame
+                        ok(ward24.broken,
+                                "the first violence un-believes the ward — the chant stops, the wall falls")
+        # --- THE CORNER'S AMPLITUDES (rooms data): the ward's own light
+        # lifted off the band's core but kept strong enough that the wall
+        # behind the press reads a clear step above the black robes
+        var lights24: Array = Rooms.ROOMS["act5"].get("lights", [])
+        var ward_light: Dictionary = {}
+        for l in lights24:
+                if absf(float(l["pos"].x) - 1830.0) < 1.0:
+                        ward_light = l
+        ok(not ward_light.is_empty(), "the ward keeps its own light")
+        if not ward_light.is_empty():
+                ok(float(ward_light["pos"].y) <= 620.0,
+                        "the ward light lifts off the band's core (y %.0f)" % float(ward_light["pos"].y))
+                ok(float(ward_light["r"]) <= 210.0,
+                        "the ward light trims its wash (r %.0f)" % float(ward_light["r"]))
+                ok(float(ward_light.get("a", 0.34)) >= 0.20 and float(ward_light.get("a", 0.34)) <= 0.26,
+                        "the ward light keeps a measured voice (a %.2f)" % float(ward_light.get("a", 0.34)))
+        # --- THE MURAL HANGS DEEPER: smaller, higher, behind more air
+        var mural24: Dictionary = {}
+        var chandeliers24: Array = []
+        var kneel24 := 0
+        for d in Rooms.ROOMS["act5"].get("decor", []):
+                if String(d.get("kind", "")) == "mural":
+                        mural24 = d
+                if String(d.get("kind", "")) == "chandelier":
+                        chandeliers24.append(d)
+        for e in Rooms.ROOMS["act5"].get("enemies", []):
+                if bool(e.get("kneel", false)):
+                        kneel24 += 1
+        ok(kneel24 >= 5, "the reliquary keeps its kneel rows (%d stations)" % kneel24)
+        ok(not mural24.is_empty(), "the reliquary keeps its painted procession")
+        if not mural24.is_empty():
+                ok(float(mural24["h"]) <= 124.0,
+                        "the painted procession hangs smaller (h %.0f)" % float(mural24["h"]))
+                ok(float(mural24["pos"].y) <= 620.0,
+                        "the painted procession hangs higher (y %.0f)" % float(mural24["pos"].y))
+        var off_jamb := false
+        for c in chandeliers24:
+                if absf(float(c["pos"].x) - 1595.0) < 1.0:
+                        off_jamb = true
+        ok(off_jamb, "the second wheel sits off the arch's jamb (1595)")
+        # --- THE LAWS AS CONSTANTS (the audited amplitudes)
+        ok(absf(Decor.ARCH_VEIL - 0.18) < 0.001,
+                "the arches hang one step deeper in the room's air (%.2f)" % Decor.ARCH_VEIL)
+        ok(Decor.MURAL_VEIL >= 0.14,
+                "the mural's veil deepens past WB-17's (%.2f)" % Decor.MURAL_VEIL)
+        ok(Decor.MURAL_FOLD >= 0.09,
+                "the mural's floor-fold deepens (%.2f)" % Decor.MURAL_FOLD)
+        ok(Decor.CHANDELIER_WAX >= 0.5 and Decor.CHANDELIER_WAX <= 0.65,
+                "the chandelier's wax dims without going dark (%.2f)" % Decor.CHANDELIER_WAX)
+        # --- THE CURTAIN'S GRAMMAR (pure): a barrier reads as a FIELD with
+        # a breathing crown — never the 18px brass pole the audit read as a
+        # candelabrum
+        ok(WardBarrier.CURTAIN_WING >= 18.0,
+                "the shimmer carries wings past its core (%.0f px half-width)" % WardBarrier.CURTAIN_WING)
+        ok(WardBarrier.CURTAIN_WING_GAIN < 1.0,
+                "the wings speak softer than the core (%.2f)" % WardBarrier.CURTAIN_WING_GAIN)
+        ok(absf(WardBarrier.curtain_crown_gain(0.1, 0.0) - 1.25) < 0.001,
+                "the crown band's floor sits above the field (1.25)")
+        ok(absf(WardBarrier.curtain_crown_gain(0.1, 1.0) - 1.6) < 0.001,
+                "the crown band's breath peaks at 1.6")
+        ok(absf(WardBarrier.curtain_crown_gain(0.5, 1.0) - 1.0) < 0.001,
+                "below the crown the field speaks at unity")
+        # --- THE CHANT EXHALES (pure): the painted congregation regains the
+        # rising mark the fallback rig always had — the distant rows breathe
+        # gold; a statue does not
+        ok(absf(Believer.chant_mark_alpha(0.0) - 0.32) < 0.001,
+                "the chant mark strikes at full voice (0.32)")
+        ok(absf(Believer.chant_mark_alpha(0.5) - 0.16) < 0.001,
+                "the chant mark fades as it rises (0.16 mid-rise)")
+        ok(Believer.chant_mark_alpha(0.2) > Believer.chant_mark_alpha(0.8),
+                "the mark's alpha falls monotonically through its rise")
+        ok(absf(Believer.chant_mark_alpha(1.5)) < 0.001,
+                "the off-beat exhale is dark (the cycle rests)")
+        # --- THE HOOD BREATHES (pure): the face-glint carries the count at
+        # the press — five bodies, five out-of-phase glints
+        ok(absf(Believer.hood_glint_alpha(PI / 2.0) - 0.44) < 0.001,
+                "the glint peaks at 0.44")
+        ok(absf(Believer.hood_glint_alpha(-PI / 2.0) - 0.08) < 0.001,
+                "the glint troughs at 0.08 — never out")
+        ok(Believer.hood_glint_alpha(PI / 2.0) - Believer.hood_glint_alpha(-PI / 2.0) > 0.3,
+                "the glint's breath amplitude reads at a glance (0.36)")
 
 func _press_min_gap(px: float) -> float:
         ## the smallest gap between living, non-striking believers in the

@@ -51,6 +51,19 @@ func setup_believer(p_pos: Vector2, p_ward: WardBarrier = null, p_kneel := true)
         ward = p_ward
         state = CHANT if p_kneel else RISE
 
+static func chant_mark_alpha(ck: float) -> float:
+        ## WB-24 pure: the rising chant mark's alpha at cycle-fraction ck —
+        ## the mark lives the FIRST half of its 2s cycle and fades as it
+        ## rises (per-body phase; no two bodies exhale in step). At rest the
+        ## distant rows breathe gold; a statue does not.
+        return (1.0 - ck) * 0.32 if ck < 1.0 else 0.0
+
+static func hood_glint_alpha(phase: float) -> float:
+        ## WB-24 pure: the hood's warm face-glint alpha at breath-phase —
+        ## breathing 0.08..0.44 (a step stronger than it was: at the corner
+        ## press and at distance the COUNT lives in these breathing dots)
+        return 0.26 + 0.18 * sin(phase)
+
 func is_chanting() -> bool:
         return state == CHANT and not dead
 
@@ -339,6 +352,19 @@ func _draw_body() -> void:
         _draw_convergence_edge()
         # painted skin active: keep only the windup telegraph flash
         if _skin != null and not GameState.debug_no_sprites:
+                if state == CHANT:
+                        ## WB-24 THE CHANT EXHALES: the painted congregation
+                        ## lost the rising chant marks when the sprite path
+                        ## took over the fallback rig — at distance the kneel
+                        ## rows leaned gargoyle ("could be mistaken for
+                        ## carved statues") with no alive-cue left. The mark
+                        ## rises per-body (no two in step), gold toward the
+                        ## ward: the chant and the ward are the same gold.
+                        var ph := fmod(global_position.x * 0.37, 2.0)
+                        var ck := fmod(anim_t + ph, 2.0)
+                        if ck < 1.0:
+                                draw_rect(Rect2(-2.0, -58.0 - ck * 16.0, 4.0, 3.0),
+                                        Color(E0.GOLD.r, E0.GOLD.g, E0.GOLD.b, chant_mark_alpha(ck)))
                 if state == WINDUP:
                         var k2 := clampf(state_t / 0.5, 0.0, 1.0)
                         draw_line(Vector2(facing * 14.0, -36.0), Vector2(facing * (14.0 + 60.0 * k2), -36.0),
@@ -399,11 +425,14 @@ func _draw_convergence_edge() -> void:
                         Color(pcol.r, pcol.g, pcol.b, pa), 2.2)
         # THE HOOD KEEPS A FACE: a small warm glint inside the hood void,
         # breathing per-body — the strongest alive-person cue the dark owns
-        # (the corpse's lamp is out and so is its face)
-        var glint_a := 0.20 + 0.14 * sin(_sep_phase * 2.3 + global_position.x * 1.1)
+        # (the corpse's lamp is out and so is its face). WB-24: a step
+        # stronger and a touch larger — at the corner press and at distance
+        # the COUNT lives in these breathing dots (five bodies, five
+        # out-of-phase glints; a statue does not breathe)
+        var glint_a := hood_glint_alpha(_sep_phase * 2.3 + global_position.x * 1.1)
         var hood_y := -50.0 + (_rig_ride.y if not painted else _weight.y) * 0.6
         draw_circle(Vector2((_rig_ride.x if not painted else _weight.x) * 0.5 + facing * 1.5, hood_y),
-                1.8, Color(0.92, 0.78, 0.55, glint_a))
+                2.2, Color(0.92, 0.78, 0.55, glint_a))
         if sep_k <= 0.02:
                 return
         var breathe := 0.8 + 0.2 * sin(_sep_phase * 3.1 + global_position.x * 0.7)

@@ -12,6 +12,15 @@
 class_name Decor
 extends Node2D
 
+# WB-24 THE CORNER'S LAWS: the audited amplitudes, lawed —
+#   the arches hang one step deeper (the pale fluted jambs read as a statue)
+#   the mural's painted procession sits deeper in the room's air
+#   the chandelier's wax dims (pale verticals read as robes)
+const ARCH_VEIL := 0.18
+const MURAL_VEIL := 0.15
+const MURAL_FOLD := 0.10
+const CHANDELIER_WAX := 0.60
+
 var items: Array = []     # {kind, pos, w, h, s(seed), extra}
 var _last_stage := 1
 var _t := 0.0             # animation clock (drives every living surface)
@@ -252,6 +261,13 @@ func _arch_painted(pos: Vector2, w: float) -> void:
         _contact_shadow(pos + Vector2(w * 0.35, 0.0), w * 0.17, 0.3)
         _arch_interior(pos, w, draw_h * 0.88)
         draw_texture_rect(t, Rect2(x0, pos.y - draw_h, rect_w, draw_h), false)
+        # WB-24: the arch hangs one step deeper in the room's air — the pale
+        # fluted jambs at full texture brightness read (with a chandelier's
+        # glow behind them) as "a large pale standing figure"; architecture
+        # keeps its silhouette, loses the statue. (The residual pale-saint
+        # read at the chantry jamb is this pass's honest open tier — the
+        # room is literally named for one.)
+        draw_rect(Rect2(x0, pos.y - draw_h, rect_w, draw_h), Color(E0.VOID.r, E0.VOID.g, E0.VOID.b, ARCH_VEIL))
 
 func _arch_interior(pos: Vector2, w: float, h: float) -> void:
         ## The room beyond the arch: deep shadow with a warm/cold breath
@@ -375,9 +391,14 @@ func _mural_painted(pos: Vector2, w: float, h: float) -> void:
         # WB-17 — the painted panel sat too sharp against the wall (the audit
         # read it as a debug window): a veil of room air over the picture so
         # it hangs in the chapel's light, a deeper fold toward the floor, and
-        # a catch-light on the frame's top edge
-        draw_rect(Rect2(pos.x, pos.y - h, w, h), Color(E0.VOID.r, E0.VOID.g, E0.VOID.b, 0.09))
-        draw_rect(Rect2(pos.x, pos.y - h * 0.34, w, h * 0.34), Color(E0.VOID.r, E0.VOID.g, E0.VOID.b, 0.07))
+        # a catch-light on the frame's top edge.
+        # WB-24 DEEPER: the ward-corner audits kept reading the painted
+        # procession as "a row of figures (soldiers or statues)" — painted
+        # people competing with the living count. The panel hangs one more
+        # step deeper in the room's air (it is the FARTHEST thing from the
+        # player, and it must read as a painting, never as a crowd).
+        draw_rect(Rect2(pos.x, pos.y - h, w, h), Color(E0.VOID.r, E0.VOID.g, E0.VOID.b, MURAL_VEIL))
+        draw_rect(Rect2(pos.x, pos.y - h * 0.34, w, h * 0.34), Color(E0.VOID.r, E0.VOID.g, E0.VOID.b, MURAL_FOLD))
         draw_rect(Rect2(pos.x - frame, pos.y - h - frame, w + frame * 2.0, 1.6), Color(E0.BONE.r, E0.BONE.g, E0.BONE.b, 0.10))
         # top and side shading strips to fold the panel into the wall light
         draw_rect(Rect2(pos.x - frame, pos.y - h - frame, w + frame * 2.0, frame + 3.0), Color(E0.VOID.r, E0.VOID.g, E0.VOID.b, 0.35))
@@ -941,23 +962,46 @@ func _chandelier(pos: Vector2, h: float, s: float) -> void:
         ## Wheel chandelier on its chain: everything pivots at the ceiling
         ## mount (WB-2 law — it hangs FROM architecture), two rings of arms,
         ## candles with living flames, and a slow pendulum breath.
-        var sway := sin(_t * 0.5 + s * 8.0) * 0.045
+        ## WB-24: the fixture must read as a WHEEL OF CANDLES — the audits
+        ## kept tracing it as "a large pale standing figure with flowing
+        ## robes" (the wax columns read as robes, the column as a body). The
+        ## glow now spreads WIDE (the wheel's plane, not a vertical mass),
+        ## the wax dims a step (candles in the dark, not pale robes), and
+        ## the pendulum breath deepens (a hanging thing moves; a statue
+        ## does not).
+        var sway := sin(_t * 0.5 + s * 8.0) * 0.065
         # mount plate at the beam
         draw_rect(Rect2(pos.x - 10.0, pos.y - 4.0, 20.0, 5.0), E0.DIRTY_STONE)
         for sx in [pos.x - 7.0, pos.x + 7.0]:
                 draw_circle(Vector2(sx, pos.y - 1.5), 1.5, E0.GOLD.darkened(0.35))
         draw_set_transform_matrix(Transform2D(sway, pos))
         # warm bloom around the whole fixture (the chapel reads lit;
-        # WB-23: the bloom sits down with the furniture law)
-        draw_circle(Vector2(0.0, h * 0.42), 58.0, Color(E0.GOLD.r, E0.GOLD.g, E0.GOLD.b, (0.045 + 0.02 * sin(_t * 1.3 + s * 4.0)) * E0.FURNITURE_GLOW))
-        draw_circle(Vector2(0.0, h * 0.42 + 12.0), 34.0, Color(E0.GOLD.r, E0.GOLD.g, E0.GOLD.b, 0.06 * E0.FURNITURE_GLOW))
-        # suspension chain: three visible links
-        for i in 3:
+        # WB-23: the bloom sits down with the furniture law; WB-24: it
+        # spreads WIDE — the wheel's own plane — so the glow itself says
+        # "a round thing hung with candles", never "a tall pale figure")
+        var hub0 := Vector2(0.0, h * 0.42)
+        var bloom_a := (0.045 + 0.02 * sin(_t * 1.3 + s * 4.0)) * E0.FURNITURE_GLOW
+        var bloom_pts := PackedVector2Array()
+        for i in 20:
+                var ba := TAU * float(i) / 20.0
+                bloom_pts.append(hub0 + Vector2(cos(ba) * 84.0, sin(ba) * 46.0))
+        draw_colored_polygon(bloom_pts, Color(E0.GOLD.r, E0.GOLD.g, E0.GOLD.b, bloom_a))
+        draw_circle(hub0 + Vector2(0.0, 12.0), 34.0, Color(E0.GOLD.r, E0.GOLD.g, E0.GOLD.b, 0.06 * E0.FURNITURE_GLOW))
+        # suspension chain: five visible links (WB-24: the HANG must read —
+        # three links read as a neck; a chandelier is SUSPENDED, and the
+        # longer drop keeps the fixture reading as furniture in the air,
+        # never as a figure standing in the room)
+        for i in 5:
                 draw_arc(Vector2(0.0, 6.0 + i * 9.0), 4.5, 0, TAU, 8, E0.ASH, 2.5)
         var hub := Vector2(0.0, h * 0.42)
-        # central column + crown sphere
-        draw_line(Vector2(0.0, 28.0), hub + Vector2(0.0, -6.0), E0.ASH.lightened(0.06), 3.5)
-        draw_circle(hub + Vector2(0.0, -8.0), 5.0, E0.GOLD.darkened(0.3))
+        # central column + DROP finial (WB-24: a sphere ON TOP of the column
+        # reads as a head — "the large figure in the upper background is
+        # clearly a statue". The finial hangs BELOW the hub the way real
+        # wheel chandeliers carry theirs; the column thins to a rod)
+        draw_line(Vector2(0.0, 28.0), hub + Vector2(0.0, -6.0), E0.ASH.lightened(0.06), 2.4)
+        draw_circle(hub + Vector2(0.0, -8.0), 3.6, E0.GOLD.darkened(0.3))
+        draw_line(hub, hub + Vector2(0.0, 13.0), E0.ASH.lightened(0.06), 1.6)
+        draw_circle(hub + Vector2(0.0, 16.0), 3.0, E0.GOLD.darkened(0.35))
         # two wheel rings of arms — upper small, lower wide
         for ring in 2:
                 var ry := hub.y + ring * 16.0
@@ -972,11 +1016,12 @@ func _chandelier(pos: Vector2, h: float, s: float) -> void:
                         draw_line(Vector2(0.0, ry), mid, E0.ASH.lightened(0.04), 2.0)
                         draw_line(mid, tip, E0.ASH.lightened(0.04), 2.0)
                         # candle cup + wax column + living flame (fat enough
-                        # to read as candles at gameplay distance)
+                        # to read as candles at gameplay distance; WB-24: the
+                        # wax dims a step — pale verticals read as robes)
                         draw_circle(tip, 3.4, E0.GOLD.darkened(0.25))
                         var ch := 6.0 + ring * 2.5
-                        draw_rect(Rect2(tip.x - 2.2, tip.y - ch, 4.4, ch), Color(E0.PARCH.r, E0.PARCH.g, E0.PARCH.b, 0.85))
-                        draw_rect(Rect2(tip.x - 2.2, tip.y - ch, 1.4, ch), Color(E0.BONE.r, E0.BONE.g, E0.BONE.b, 0.3))
+                        draw_rect(Rect2(tip.x - 2.2, tip.y - ch, 4.4, ch), Color(E0.PARCH.r, E0.PARCH.g, E0.PARCH.b, CHANDELIER_WAX))
+                        draw_rect(Rect2(tip.x - 2.2, tip.y - ch, 1.4, ch), Color(E0.BONE.r, E0.BONE.g, E0.BONE.b, 0.18))
                         _flame_at(tip.x, tip.y - ch - 1.0, i * 2.7 + ring * 4.0 + s * 9.0, 1.0)
         draw_set_transform_matrix(Transform2D())
         # wax tear on the column

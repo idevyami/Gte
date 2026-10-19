@@ -113,6 +113,9 @@ names = [
     # WB-23: the furniture yields (the verdict strip; the five
     # full-res stills are already-final JPEGs, copied below)
     "wb23_06_the_verdict",
+    # WB-24: the corner yields (the verdict strip; the five
+    # full-res stills are already-final JPEGs, copied below)
+    "wb24_06_the_verdict",
 ]
 for n in names:
     p = os.path.join(src, n + ".png")
@@ -132,4 +135,6 @@ cp /home/z/entity000/screenshots/wb21/*.jpg "$DST"/
 cp /home/z/entity000/screenshots/wb22/*.jpg "$DST"/
 # WB-23: the same law — the grammar stills are final JPEGs
 cp /home/z/entity000/screenshots/wb23/*.jpg "$DST"/
+# WB-24: the same law — the corner stills are final JPEGs
+cp /home/z/entity000/screenshots/wb24/*.jpg "$DST"/
 ls "$DST" | wc -l
