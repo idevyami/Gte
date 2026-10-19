@@ -729,9 +729,10 @@ func _candles(pos: Vector2, w: float, s: float) -> void:
                 var lean := sin(_t * 2.9 + ph * 1.3) * 1.3
                 var fh := 3.2 + 2.2 * gutter
                 var fy := pos.y - ch - 1.0
-                # halo first (behind the flame core)
-                draw_circle(Vector2(cx, fy - 3.0), 7.0, Color(E0.GOLD.r, E0.GOLD.g, E0.GOLD.b, 0.06 + 0.05 * gutter))
-                draw_circle(Vector2(cx, fy - 3.0), 3.8, Color(E0.GOLD.r, E0.GOLD.g, E0.GOLD.b, 0.10 + 0.08 * gutter))
+                # halo first (behind the flame core) — WB-23: the halo sits
+                # down with the furniture; the flame core keeps its life
+                draw_circle(Vector2(cx, fy - 3.0), 7.0, Color(E0.GOLD.r, E0.GOLD.g, E0.GOLD.b, (0.06 + 0.05 * gutter) * E0.FURNITURE_GLOW))
+                draw_circle(Vector2(cx, fy - 3.0), 3.8, Color(E0.GOLD.r, E0.GOLD.g, E0.GOLD.b, (0.10 + 0.08 * gutter) * E0.FURNITURE_GLOW))
                 # flame core: outer crimson tongue + inner gold teardrop
                 draw_colored_polygon(PackedVector2Array([
                         Vector2(cx - 2.0 + lean * 0.4, fy), Vector2(cx + 2.0 + lean * 0.4, fy),
@@ -853,8 +854,10 @@ func _flame_at(cx: float, fy: float, ph: float, k := 1.0) -> void:
         var gutter := 0.62 + 0.38 * sin(_t * 6.3 + ph) * sin(_t * 2.1 + ph * 1.7)
         var lean := sin(_t * 2.9 + ph * 1.3) * 1.3 * k
         var fh := (3.2 + 2.2 * gutter) * k
-        draw_circle(Vector2(cx, fy - 3.0 * k), 7.0 * k, Color(E0.GOLD.r, E0.GOLD.g, E0.GOLD.b, 0.06 + 0.05 * gutter))
-        draw_circle(Vector2(cx, fy - 3.0 * k), 3.8 * k, Color(E0.GOLD.r, E0.GOLD.g, E0.GOLD.b, 0.10 + 0.08 * gutter))
+        # WB-23: the halo sits down with the furniture; the flame cores keep
+        # their full life — the flames stay lit, the glow stops competing
+        draw_circle(Vector2(cx, fy - 3.0 * k), 7.0 * k, Color(E0.GOLD.r, E0.GOLD.g, E0.GOLD.b, (0.06 + 0.05 * gutter) * E0.FURNITURE_GLOW))
+        draw_circle(Vector2(cx, fy - 3.0 * k), 3.8 * k, Color(E0.GOLD.r, E0.GOLD.g, E0.GOLD.b, (0.10 + 0.08 * gutter) * E0.FURNITURE_GLOW))
         draw_colored_polygon(PackedVector2Array([
                 Vector2(cx - 2.0 * k + lean * 0.4, fy), Vector2(cx + 2.0 * k + lean * 0.4, fy),
                 Vector2(cx + lean, fy - fh),
@@ -944,9 +947,10 @@ func _chandelier(pos: Vector2, h: float, s: float) -> void:
         for sx in [pos.x - 7.0, pos.x + 7.0]:
                 draw_circle(Vector2(sx, pos.y - 1.5), 1.5, E0.GOLD.darkened(0.35))
         draw_set_transform_matrix(Transform2D(sway, pos))
-        # warm bloom around the whole fixture (the chapel reads lit)
-        draw_circle(Vector2(0.0, h * 0.42), 58.0, Color(E0.GOLD.r, E0.GOLD.g, E0.GOLD.b, 0.045 + 0.02 * sin(_t * 1.3 + s * 4.0)))
-        draw_circle(Vector2(0.0, h * 0.42 + 12.0), 34.0, Color(E0.GOLD.r, E0.GOLD.g, E0.GOLD.b, 0.06))
+        # warm bloom around the whole fixture (the chapel reads lit;
+        # WB-23: the bloom sits down with the furniture law)
+        draw_circle(Vector2(0.0, h * 0.42), 58.0, Color(E0.GOLD.r, E0.GOLD.g, E0.GOLD.b, (0.045 + 0.02 * sin(_t * 1.3 + s * 4.0)) * E0.FURNITURE_GLOW))
+        draw_circle(Vector2(0.0, h * 0.42 + 12.0), 34.0, Color(E0.GOLD.r, E0.GOLD.g, E0.GOLD.b, 0.06 * E0.FURNITURE_GLOW))
         # suspension chain: three visible links
         for i in 3:
                 draw_arc(Vector2(0.0, 6.0 + i * 9.0), 4.5, 0, TAU, 8, E0.ASH, 2.5)
@@ -993,10 +997,11 @@ func _sconce(pos: Vector2, s: float) -> void:
         draw_line(elbow, cup, E0.ASH.lightened(0.05), 3.0)
         var curl_from := PI * 0.2 if arm_dir > 0 else PI * 1.9
         draw_arc(elbow, 5.0, curl_from, curl_from + PI * 0.9, 8, E0.ASH, 1.6)
-        # wall glow behind the flame (pressed onto the wall plane)
+        # wall glow behind the flame (pressed onto the wall plane; WB-23: the
+        # glow sits down with the furniture law)
         var glow := 0.5 + 0.2 * sin(_t * 2.1 + s * 9.0)
-        draw_circle(cup, 16.0, Color(E0.GOLD.r, E0.GOLD.g, E0.GOLD.b, 0.05 + 0.04 * glow))
-        draw_circle(cup, 9.0, Color(E0.GOLD.r, E0.GOLD.g, E0.GOLD.b, 0.07 + 0.05 * glow))
+        draw_circle(cup, 16.0, Color(E0.GOLD.r, E0.GOLD.g, E0.GOLD.b, (0.05 + 0.04 * glow) * E0.FURNITURE_GLOW))
+        draw_circle(cup, 9.0, Color(E0.GOLD.r, E0.GOLD.g, E0.GOLD.b, (0.07 + 0.05 * glow) * E0.FURNITURE_GLOW))
         # candle + flame
         draw_rect(Rect2(cup.x - 2.2, cup.y - 9.0, 4.4, 9.0), Color(E0.PARCH.r, E0.PARCH.g, E0.PARCH.b, 0.8))
         draw_circle(cup, 3.4, E0.GOLD.darkened(0.2))
@@ -1368,13 +1373,15 @@ func _candelabra(pos: Vector2, h: float, s: float) -> void:
         ## Standing candelabra: tripod foot, wound stem, three rising arms,
         ## candles at different stages of burning down — the light of the
         ## counted, still kept. Bright enough to read at gameplay distance.
+        ## WB-23: the brass sits down — a body-sized flame-holder at the play
+        ## plane must read as furniture, never as a rival figure candidate.
         _contact_shadow(pos, 16.0, 0.32 + 0.08 * s)
-        var metal := E0.GOLD.darkened(0.22)
-        var metal_hi := metal.lightened(0.14)
-        # warm halo pooled around the whole stand
+        var metal := E0.GOLD.darkened(E0.CANDELABRA_METAL_DARK)
+        var metal_hi := metal.lightened(0.10)
+        # warm halo pooled around the whole stand (WB-23: the halo sits down)
         var glow := 0.5 + 0.2 * sin(_t * 1.9 + s * 6.0)
-        draw_circle(pos + Vector2(0, -h * 0.6), 30.0, Color(E0.GOLD.r, E0.GOLD.g, E0.GOLD.b, 0.075 + 0.035 * glow))
-        draw_circle(pos + Vector2(0, -h * 0.6), 17.0, Color(E0.GOLD.r, E0.GOLD.g, E0.GOLD.b, 0.10 + 0.05 * glow))
+        draw_circle(pos + Vector2(0, -h * 0.6), 30.0, Color(E0.GOLD.r, E0.GOLD.g, E0.GOLD.b, (0.075 + 0.035 * glow) * E0.FURNITURE_GLOW))
+        draw_circle(pos + Vector2(0, -h * 0.6), 17.0, Color(E0.GOLD.r, E0.GOLD.g, E0.GOLD.b, (0.10 + 0.05 * glow) * E0.FURNITURE_GLOW))
         # tripod foot
         for i in 3:
                 var a := PI * 0.5 + TAU * i / 3 + 0.3

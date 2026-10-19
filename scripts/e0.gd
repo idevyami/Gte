@@ -119,6 +119,21 @@ const BELIEVER_JOSTLE_MIN := 34.0        # px of center spacing the press keeps 
 const BELIEVER_JOSTLE_K := 20.0          # px/s of shove per px of overlap
 const BELIEVER_JOSTLE_CAP := 320.0       # px/s — a shove, never a teleport
 const BELIEVER_WINDUP_MOBILITY := 0.25   # planted, not rooted — the press shifts a wound body a little
+# WB-23 THE FURNITURE YIELDS: the figure-vs-architecture grammar finding —
+# at the reliquary's busiest wall the audit traced 1 of 5 bodies (clarity
+# 2/10, "reads primarily as an empty ornate interior"; the mass parsed as
+# "twisted brass ornament", a body-sized candelabra as "a pile of gears and
+# pipes"). Pixel truth: the crowd's field sat at med 66 against the quiet
+# wall's 41, and the brass furniture's highlights (231) outshone the robes'
+# own censer-gold edges (~139) — so the eye parsed FURNITURE as the figure
+# candidates and the dark bodies as ornament holes. The grammar law (the
+# vessel's own law, extended to the crowd): at the body band, the strongest
+# warm presences must belong to BODIES — their rims, their pools, their
+# lift. The flame-holders keep their flames (the light of the counted stays
+# lit) but their halos and brass sit down; the wall's washes lift off the
+# band; the chapel's own air thickens. All amplitude of living systems.
+const FURNITURE_GLOW := 0.68             # the flame-holders' halos sit down (WB-23)
+const CANDELABRA_METAL_DARK := 0.38      # the standing brass reads as furniture, not a body-sized rival
 
 # --- Boss (locked) -----------------------------------------------------------
 const MARTYR_HP := 900

@@ -131,8 +131,13 @@ func _draw() -> void:
                 if th > 0.001:
                         k *= thin_at(pos, flicker, th, _t)
                 # --- radial falloff: one filtered gradient quad
+                # WB-23: the wash amplitude is authored per light ("a", the
+                # 0.34 default keeps every other room's law) — a light that
+                # must sit over the body band carries a softer voice, or the
+                # wash lights the black robes up to the wall's own value
+                # (the value-collapse the grammar pass closed)
                 draw_texture_rect(glow, Rect2(pos - Vector2(r, r), Vector2(r * 2.0, r * 2.0)), false,
-                        Color(col.r, col.g, col.b, 0.34 * k))
+                        Color(col.r, col.g, col.b, float(l.get("a", 0.34)) * k))
                 # --- hot core: the source itself reads as a lit wick / vein
                 for i in 3:
                         var ct := 1.0 - float(i) / 3.0

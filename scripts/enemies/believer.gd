@@ -379,6 +379,13 @@ func _draw_convergence_edge() -> void:
         ## pulse in step) — the ground pool grounds every living body (the
         ## censer's own law), the rim edges bodies only when they press
         ## together (the between-bodies light).
+        ## WB-23 THE RING BREAKS: a CLOSED uniform gold ring around a
+        ## near-black robe parses as a wheel or medallion, not a person
+        ## (the busy-wall audit read the pressed flock as "ornate golden
+        ## wheels"). A person reads by TOP-LIGHT — the lamp catches the
+        ## crown and shoulders, the robe falls away dark — so the rim is
+        ## an ARC over the hood, never a ring, and the hood keeps a warm
+        ## glint where a face would catch the censer's light.
         if dead:
                 return
         var painted := _skin != null and not GameState.debug_no_sprites
@@ -390,6 +397,13 @@ func _draw_convergence_edge() -> void:
                 # the floor does not walk
                 draw_polyline(_ellipse(Vector2(0, 1), 16.0, 4.6),
                         Color(pcol.r, pcol.g, pcol.b, pa), 2.2)
+        # THE HOOD KEEPS A FACE: a small warm glint inside the hood void,
+        # breathing per-body — the strongest alive-person cue the dark owns
+        # (the corpse's lamp is out and so is its face)
+        var glint_a := 0.20 + 0.14 * sin(_sep_phase * 2.3 + global_position.x * 1.1)
+        var hood_y := -50.0 + (_rig_ride.y if not painted else _weight.y) * 0.6
+        draw_circle(Vector2((_rig_ride.x if not painted else _weight.x) * 0.5 + facing * 1.5, hood_y),
+                1.8, Color(0.92, 0.78, 0.55, glint_a))
         if sep_k <= 0.02:
                 return
         var breathe := 0.8 + 0.2 * sin(_sep_phase * 3.1 + global_position.x * 0.7)
@@ -404,11 +418,24 @@ func _draw_convergence_edge() -> void:
         if state == CHANT or state == RISE:
                 cy = -22.0
                 ry = 25.0
+        # WB-23: the ARC over crown and shoulders (the top of the ellipse),
+        # open at the robe's flanks and hem — a lit crown, never a wheel
+        var pts := _rim_arc_points(rim_ride.x, cy, 13.5, ry)
+        draw_polyline(pts, Color(col.r, col.g, col.b, a), 2.6)
+
+func _rim_arc_points(rx: float, cy: float, r_x: float, r_y: float) -> PackedVector2Array:
+        ## WB-23 pure: the rim's ARC geometry — from the left shoulder up
+        ## over the crown to the right shoulder (~170 deg of the ellipse),
+        ## leaving the lower robe un-ringed. Pure so the smoke laws can
+        ## pin that the ring stays broken.
         var pts := PackedVector2Array()
-        for i in 22:
-                var t := TAU * i / 22.0
-                pts.append(Vector2(rim_ride.x, cy) + Vector2(cos(t) * 13.5, sin(t) * ry))
-        draw_polyline(pts, Color(col.r, col.g, col.b, a), 2.2)
+        var n := 16
+        var a0 := PI * 1.05
+        var a1 := TAU - PI * 0.05
+        for i in n:
+                var t := a0 + (a1 - a0) * float(i) / float(n - 1)
+                pts.append(Vector2(rx, cy) + Vector2(cos(t) * r_x, sin(t) * r_y))
+        return pts
 
 func _draw_kneeling(col: Color) -> void:
         var sway := sin(anim_t * 1.8 + global_position.x * 0.05) * 2.0

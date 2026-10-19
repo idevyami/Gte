@@ -367,8 +367,12 @@ const ROOMS := {
                 "fog_a": 0.38,
                 # THE AIR THE CENSERS FILL (WB-22): the chapel's own incense,
                 # thick at the height of the bodies that swing the lamps —
-                # the architecture behind the press sits one depth deeper
-                "depth_band": {"a": 0.20},
+                # the architecture behind the press sits one depth deeper.
+                # WB-23 THICKENS IT (0.20 -> 0.26): at the reliquary's busy
+                # wall the furniture's glow had to sit DOWN before the crowd
+                # read as N figures — the grammar law: the band's strongest
+                # warm presences belong to bodies, not brass
+                "depth_band": {"a": 0.26},
                 "music": "amb_a",
                 "ambient": [{"id": "choir", "vol": 0.5}, {"id": "fire", "vol": 0.18}],
                 "step_material": "carpet",
@@ -424,10 +428,10 @@ const ROOMS := {
                         {"kind": "puddle", "pos": Vector2(35, 840), "w": 60, "s": 0.5},
                 ],
                 "lights": [
-                        {"pos": Vector2(1560, 640), "r": 340, "color": Color(0.9, 0.75, 0.4), "flicker": 0.2, "cone": 260},
-                        {"pos": Vector2(1200, 700), "r": 240, "color": Color(0.85, 0.6, 0.3), "flicker": 0.35, "cone": 190},
+                        {"pos": Vector2(1560, 620), "r": 270, "color": Color(0.9, 0.75, 0.4), "flicker": 0.2, "cone": 150, "a": 0.24},
+                        {"pos": Vector2(1200, 700), "r": 190, "color": Color(0.85, 0.6, 0.3), "flicker": 0.35, "cone": 140, "a": 0.26},
                         {"pos": Vector2(500, 520), "r": 220, "color": Color(0.3, 0.85, 0.88), "flicker": 0.1},
-                        {"pos": Vector2(1830, 640), "r": 220, "color": Color(0.75, 0.6, 0.3), "flicker": 0.2},
+                        {"pos": Vector2(1830, 640), "r": 220, "color": Color(0.75, 0.6, 0.3), "flicker": 0.2, "a": 0.26},
                 ],
                 "props": [
                         {"entity": "HYMNAL", "instance": "HYMNAL_1", "kind": "hymnal", "pos": Vector2(1180, 840)},

@@ -59,6 +59,7 @@ func _run() -> void:
         await _the_walking_flock()
         await _the_censers_edge()
         await _the_press_keeps_its_count()
+        await _the_furniture_yields()
         print("=== %d checks, %d failures ===" % [checks, fails])
         get_tree().quit(1 if fails > 0 else 0)
 
@@ -2577,6 +2578,16 @@ func _the_censers_edge() -> void:
         dead21.dead = true
         dead21.death_t = 0.0
         ok(dead21.pool_alpha() < 0.004, "the corpse's lamp is out")
+        # the corpse does not lean — judged HERE, while the fade still holds
+        # the body (WB-23 finding: the old placement sat ~2.6s of lean
+        # sampling downstream, by which time the death fade had FREED the
+        # node — the freed-write SCRIPT ERROR silently aborted the function
+        # and this law, plus the rim law below it, had not RUN since WB-21;
+        # the suite's true count was 755, not 753)
+        dead21.velocity = Vector2.ZERO
+        await _wait_real(0.4)
+        ok(is_instance_valid(dead21) and dead21._skin != null and absf(dead21._skin.rotation_degrees) < 0.05,
+                "the corpse does not lean")
         # --- THE LEAN: the body's axis tilts toward its walk (the audit's
         # facing finding, 2/10) — mirrored with facing, upright off the walk
         game.player.global_position = lone.global_position + Vector2(340, 0)
@@ -2608,11 +2619,6 @@ func _the_censers_edge() -> void:
         await _wait_real(0.7)
         ok(is_instance_valid(lone) and lone._skin != null and absf(lone._skin.rotation_degrees) < 0.05,
                 "the body settles upright off the walk")
-        # the corpse does not lean
-        dead21.velocity = Vector2.ZERO
-        await _wait_real(0.4)
-        ok(is_instance_valid(dead21) and dead21._skin != null and absf(dead21._skin.rotation_degrees) < 0.05,
-                "the corpse does not lean")
         # --- THE BETWEEN-BODIES EDGE: WB-21 raised it 0.24 -> 0.32; WB-22
         # raises it again for the press (the many lamps burn brighter
         # together — the audit's ornament-read finding at the busy spot)
@@ -2801,6 +2807,90 @@ func _the_press_keeps_its_count() -> void:
                         haze_act1 = true
         ok(not haze_act1, "the street carries no incense (authored per room)")
 
+# ------------------------------------------------------------------ WB-23
+func _the_furniture_yields() -> void:
+        print("[THE FURNITURE YIELDS — WB-23]")
+        # --- THE GRAMMAR LAW'S AMPLITUDES: at the body band the strongest
+        # warm presences belong to BODIES — the flame-holders' halos and
+        # brass sit down (the audit: 1 of 5 bodies traced at the busy wall,
+        # the mass parsed as "twisted brass ornament")
+        ok(absf(E0.FURNITURE_GLOW - 0.68) < 0.001,
+                "the flame-holders' halos sit down (glow %.2f)" % E0.FURNITURE_GLOW)
+        ok(absf(E0.CANDELABRA_METAL_DARK - 0.38) < 0.001,
+                "the standing brass reads as furniture (metal dark %.2f)" % E0.CANDELABRA_METAL_DARK)
+        ok(E0.FURNITURE_GLOW < 0.75,
+                "the furniture's glow sits clearly below the body's own light")
+        # --- THE AIR THICKENS: WB-22 authored 0.20; the busy wall's grammar
+        # asked one step deeper (the crowd's field must sit quieter than the
+        # quiet wall's own 41-median reading)
+        var band: Dictionary = Rooms.ROOMS["act5"].get("depth_band", {})
+        ok(absf(float(band.get("a", 0.0)) - 0.26) < 0.001,
+                "the reliquary's air thickens (band %.2f)" % float(band.get("a", 0.0)))
+        # --- THE WALL'S WASHES LIFT OFF THE BAND: the altar glow and the
+        # candelabra cluster trim their reach so the wall behind the press
+        # quiets (the audited amplitudes, lawed from the room's data)
+        var lights23: Array = Rooms.ROOMS["act5"].get("lights", [])
+        ok(lights23.size() >= 2, "the chapel keeps its authored lights (%d)" % lights23.size())
+        if lights23.size() >= 2:
+                var altar: Dictionary = lights23[0]
+                var cluster: Dictionary = lights23[1]
+                ok(float(altar["r"]) <= 295.0,
+                        "the altar glow trims its wash (r %.0f)" % float(altar["r"]))
+                ok(float(altar.get("cone", 0.0)) <= 150.0,
+                        "the altar's shaft mouths above the hoods (cone %.0f)" % float(altar.get("cone", 0.0)))
+                ok(float(cluster["r"]) <= 210.0,
+                        "the candelabra cluster trims its wash (r %.0f)" % float(cluster["r"]))
+                ok(float(altar.get("a", 0.34)) <= 0.26,
+                        "the altar glow carries a softer voice over the band (a %.2f)" % float(altar.get("a", 0.34)))
+                ok(float(altar["pos"].y) <= 630.0,
+                        "the altar glow lifts off the body band (y %.0f)" % float(altar["pos"].y))
+        # --- THE BUILT TRUTH: the chapel's haze carries the thicker peak and
+        # the band still breathes inside WB-22's playing-strength law
+        game.transition_to("act5")
+        await _room("act5")
+        var haze23: PlaneHaze = null
+        for ch in game.world.get_children():
+                if ch is PlaneHaze:
+                        haze23 = ch
+        ok(haze23 != null and haze23.peak >= 0.24 and haze23.peak <= 0.30,
+                "the built air carries the thicker peak (%.3f)" % (haze23.peak if haze23 else 0.0))
+        ok(haze23 != null and haze23.band_alpha() >= 0.20,
+                "the breathing air holds the thicker band (%.3f)" % (haze23.band_alpha() if haze23 else 0.0))
+        # --- THE FLAME STILL LIVES: the furniture's glow sat down but its
+        # flames did not — a candelabra still draws its flame cores at the
+        # audited life (the light of the counted stays lit)
+        ok(E0.FURNITURE_GLOW > 0.5,
+                "the glow sits down without going dark (%.2f keeps the flames' field)" % E0.FURNITURE_GLOW)
+        # --- THE RING BREAKS (WB-23's grammar finding: a CLOSED uniform gold
+        # ring around a near-black robe parses as a wheel or medallion, not
+        # a person — the audit read the pressed flock as "ornate golden
+        # wheels"). The rim is an ARC over crown and shoulders; the robe's
+        # lower bounds stay un-ringed by law.
+        var probe := Believer.new()
+        var pts := probe._rim_arc_points(0.0, -30.0, 13.5, 33.0)
+        probe.free()
+        var top_y := 1e9
+        var bottom_y := -1e9
+        for p in pts:
+                top_y = minf(top_y, p.y)
+                bottom_y = maxf(bottom_y, p.y)
+        ok(pts.size() >= 12, "the rim arc carries enough points to draw (%d)" % pts.size())
+        ok(absf(top_y - (-30.0 - 33.0)) < 2.0,
+                "the arc reaches the crown (top %.1f vs hood top -63)" % top_y)
+        ok(bottom_y < -30.0 + 33.0 * 0.35,
+                "the ring stays broken below (lowest arc point %.1f vs hem -18.5)" % bottom_y)
+        # --- THE BAKE IS TOP-LIT (the fifth bake): the crown's edge band
+        # out-burns the hem's — light catches the crown and shoulders, the
+        # robe falls away dark (the wheel needed a UNIFORM ring)
+        ok(_rim_edge_margin("res://art/characters/believers/walk_0.png", 0.25),
+                "the congregation keeps its edge margin (walk, fifth bake)")
+        ok(_rim_edge_margin("res://art/characters/believers/kneel_0.png", 0.25),
+                "the congregation keeps its edge margin (kneel, fifth bake)")
+        ok(_rim_crown_over_hem("res://art/characters/believers/walk_0.png", 12.0),
+                "the crown out-burns the hem (the bake is top-lit, walk)")
+        ok(_rim_crown_over_hem("res://art/characters/believers/kneel_0.png", 8.0),
+                "the crown out-burns the hem (the bake is top-lit, kneel)")
+
 func _press_min_gap(px: float) -> float:
         ## the smallest gap between living, non-striking believers in the
         ## press zone around px — the strike's transits are exempt (the
@@ -2839,6 +2929,55 @@ func _stage_pair() -> Array:
         a.velocity = Vector2.ZERO
         b.velocity = Vector2.ZERO
         return [a, b]
+
+func _rim_crown_over_hem(path: String, want: float) -> bool:
+        ## WB-23: the fifth bake is TOP-LIT — the edge pixels whose normal
+        ## faces UP (crown, hood, shoulder tops) must out-burn those whose
+        ## normal faces DOWN (hem, underside) by at least WANT (0-255
+        ## luminance): light catches the crown and shoulders, the robe
+        ## falls away dark. A uniform ring reads as a wheel; a top-lit
+        ## silhouette reads as a person under a lamp. Grouped by the edge
+        ## NORMAL (the bake's own semantics), not by sprite thirds.
+        var img := Image.new()
+        if img.load(path) != OK:
+                return false
+        var w := img.get_width()
+        var h := img.get_height()
+        if w < 8 or h < 8:
+                return false
+        var up_n := 0
+        var up_sum := 0.0
+        var down_n := 0
+        var down_sum := 0.0
+        for y in range(2, h - 2):
+                for x in range(2, w - 2):
+                        if img.get_pixel(x, y).a <= 0.5:
+                                continue
+                        var near_clear := false
+                        for dy in range(-2, 3):
+                                for dx in range(-2, 3):
+                                        if img.get_pixel(x + dx, y + dy).a <= 0.5:
+                                                near_clear = true
+                        if not near_clear:
+                                continue
+                        # the edge normal from the alpha gradient
+                        var gy := img.get_pixel(x, y + 1).a - img.get_pixel(x, y - 1).a
+                        var gx := img.get_pixel(x + 1, y).a - img.get_pixel(x - 1, y).a
+                        var nlen := sqrt(gx * gx + gy * gy)
+                        if nlen < 1e-6:
+                                continue
+                        var ny := gy / nlen
+                        var c := img.get_pixel(x, y)
+                        var lum := (c.r + c.g + c.b) / 3.0
+                        if ny < -0.4:
+                                up_n += 1
+                                up_sum += lum
+                        elif ny > 0.4:
+                                down_n += 1
+                                down_sum += lum
+        if up_n < 6 or down_n < 6:
+                return false
+        return (up_sum / up_n - down_sum / down_n) * 255.0 >= want
 
 func _rim_edge_margin(path: String, margin: float) -> bool:
         ## WB-21: the edge band (opaque within 2px of transparency) must

@@ -1445,6 +1445,54 @@ const VISUAL_PROOFS: {
       "Three frames across the pass. Cluster count 0-1 → 5 of 5 ('individual hoods... jagged peaks'); the walking line's median gap 1.3 → 34 px; the air measurable and credited. Honest open tier: the busiest wall's figure-vs-architecture grammar — the mass reads as ornament there still; the press is a shadow edged in censer-gold, and at the reliquary the reliquary competes.",
     status: "FINAL",
   },
+  {
+    file: "wb23_01_the_wall",
+    num: "155",
+    title: "THE WALL, AGAIN",
+    caption:
+      "The same staging as WB-22's depth read — the flock pressed at the reliquary's busiest wall (great arch, chandelier, candles). The grammar pass's before/after pair: the audit now traces 5 of 5 bodies and credits the separation to silhouette and posture; no person-vs-architecture ambiguity remains at the wall.",
+    status: "FINAL",
+  },
+  {
+    file: "wb23_02_the_grammar",
+    num: "156",
+    title: "THE GRAMMAR AT THE CANDELABRA",
+    caption:
+      "The worst collision of the baseline: a body-sized brass stand among the bodies, which parsed as 'a pile of gears and pipes'. The brass now sits down (metal one step darker, halos at 0.68) and the stand reads as furniture — the honest open tier: the far-right corner still competes, the next pass's subject.",
+    status: "FINAL",
+  },
+  {
+    file: "wb23_03_the_air",
+    num: "157",
+    title: "THE KNEEL ROWS UNDER THICKER AIR",
+    caption:
+      "The congregation at rest under the thickened incense band (0.20 -> 0.26): the baseline read a far-right kneel row as 'a carved bas-relief or ornamental border'. The audit now traces 4+ kneeling bodies at 6/10 — better, and honestly not yet people at distance.",
+    status: "FINAL",
+  },
+  {
+    file: "wb23_04_the_walk",
+    num: "158",
+    title: "THE WALK ALONG THE WALL",
+    caption:
+      "The kite along the reliquary: the vessel retreats past the arch and the candelabra, the flock presses after him. Five bodies traced in motion, 6/10 — a clustered mass of converging pursuers, which at a press is partly the truth of the thing.",
+    status: "FINAL",
+  },
+  {
+    file: "wb23_05_the_arc",
+    num: "159",
+    title: "THE SHOULDER ARC",
+    caption:
+      "The pass's grammar finding, up close: a CLOSED uniform gold ring around a near-black robe parses as a wheel or medallion — the audit read the pressed flock as 'ornate golden wheels'. The rim is now an ARC over crown and shoulders (the lamp catches the crown, the robe falls away dark), the fifth bake is top-lit (crown 0.70 / flanks 0.46 / hem 0.28), and the hood keeps a small warm glint where a face would catch the censer's light.",
+    status: "FINAL",
+  },
+  {
+    file: "wb23_06_the_verdict",
+    num: "160",
+    title: "THE RE-AUDIT'S VERDICT",
+    caption:
+      "The busy wall, before and after. 1 of 5 figures -> 5 of 5; clarity 2/10 -> 7/10; 'reads primarily as an empty ornate interior' -> no ambiguity. The furniture yields (halos 0.68, brass darker, the altar glow lifts off the body band at a softer voice), the ring breaks, the bake is top-lit, the hood keeps its face. Honest open tier: the ward corner and the kneel rows at distance.",
+    status: "FINAL",
+  },
 ];
 
 function ProofShot({ proof }: { proof: (typeof VISUAL_PROOFS)[number] }) {
@@ -2417,7 +2465,7 @@ export default function Home() {
               index="06"
               kicker="VISUAL PROOFS"
               title="The reconstruction pass, on the record"
-              description="Real in-engine gameplay renders from the running game (1280×720 viewport). The visual reconstruction pass, then five world-building passes: THE LIVING CITY (far processions, measured strikes, ceremonies), THE CLOSEST WALLS (the foreground plane at 1.28x), THE GROUND YOU WALK ON (rendered climb ledges, per-district floorcraft, contact shadows), THE PERFORMERS (walk laws, wound cards, death as rotation, presence pools), THE WORLD RESPONDS (skirting stones, the ground answering fire, focal shafts, moths, vermin, ripples, posted law) — and THE RECORD IS A THING: the diegetic interface pass, where the HUD becomes a brass instrument, dialogue a hung parchment census record, system messages stamped citations, the OBSERVE readout a ruled ledger page with rows sealed under wax. Then the world kept deepening: THE AIR ITSELF (a positional sound stage on every element — flames that crackle, hearts that hum, bells that toll on their own seeded clocks), THE ARRIVAL (no space is born pre-lit — every room wakes near-first, flares and settles; revisits are quick because the city remembers), THE WORLD THINS (the core mechanic reaches the world's own renderers — flames lose conviction and miss beats, moths leave, the vessel stays real as the grade drains), THE THRESHOLD (the crossing between acts is a three-beat rite — the leaving, the inscribed rubric in the dark, the coming), THE VESSEL'S TRACE (every floor records the walker in its own material — ash holds, wet glistens, carpet presses lighter, the engine records nothing), THE OTHERS' PASSAGE (every creature writes the floor in the language of its body — the hollow's metronome echo, the believer's shuffle, the censor's erasure), THE ENDING'S RECORD (the floor keeps a bounded ledger of endings — organic sprawls, frozen last strides, where he fell), THE EXPERIENCE PASS (everything that already exists made truer — third rim bake, woven materials, tiled stone, the map's ink spline), THE FIST THAT LANDS (the motion experience pass — telegraphs read first, the roll is a decision, the chain speaks in arcs), THE THREE BEATS (every hit its own clock — the gather, the step-through, the dash's spent image), THE WALKING FLOCK (the weight pass — the body rides its stride, each walker out of step), THE CENSER'S EDGE (the readability pass — the fourth rim bake lifts the congregation's gold edge, the robe answers its censer in warm light, the body leans into its walk, the pool burns at every footfall), and THE PRESS KEEPS ITS COUNT (the cluster pass — the honest audit found five converged bodies stacked at 0.0 px gap for seven straight seconds, reading as empty space; the jostle now holds a robe's width and shoulder room between every living body, the strike carries through the crowd, and the chapel fills with its own incense at the bodies' height so the architecture sits one step deeper). Every render is from the live game under a virtual display; every pass was VLM-audited before shipping. Procedural rigs remain in the build as a debug fallback (F9 in game)."
+              description="Real in-engine gameplay renders from the running game (1280×720 viewport). The visual reconstruction pass, then five world-building passes: THE LIVING CITY (far processions, measured strikes, ceremonies), THE CLOSEST WALLS (the foreground plane at 1.28x), THE GROUND YOU WALK ON (rendered climb ledges, per-district floorcraft, contact shadows), THE PERFORMERS (walk laws, wound cards, death as rotation, presence pools), THE WORLD RESPONDS (skirting stones, the ground answering fire, focal shafts, moths, vermin, ripples, posted law) — and THE RECORD IS A THING: the diegetic interface pass, where the HUD becomes a brass instrument, dialogue a hung parchment census record, system messages stamped citations, the OBSERVE readout a ruled ledger page with rows sealed under wax. Then the world kept deepening: THE AIR ITSELF (a positional sound stage on every element — flames that crackle, hearts that hum, bells that toll on their own seeded clocks), THE ARRIVAL (no space is born pre-lit — every room wakes near-first, flares and settles; revisits are quick because the city remembers), THE WORLD THINS (the core mechanic reaches the world's own renderers — flames lose conviction and miss beats, moths leave, the vessel stays real as the grade drains), THE THRESHOLD (the crossing between acts is a three-beat rite — the leaving, the inscribed rubric in the dark, the coming), THE VESSEL'S TRACE (every floor records the walker in its own material — ash holds, wet glistens, carpet presses lighter, the engine records nothing), THE OTHERS' PASSAGE (every creature writes the floor in the language of its body — the hollow's metronome echo, the believer's shuffle, the censor's erasure), THE ENDING'S RECORD (the floor keeps a bounded ledger of endings — organic sprawls, frozen last strides, where he fell), THE EXPERIENCE PASS (everything that already exists made truer — third rim bake, woven materials, tiled stone, the map's ink spline), THE FIST THAT LANDS (the motion experience pass — telegraphs read first, the roll is a decision, the chain speaks in arcs), THE THREE BEATS (every hit its own clock — the gather, the step-through, the dash's spent image), THE WALKING FLOCK (the weight pass — the body rides its stride, each walker out of step), THE CENSER'S EDGE (the readability pass — the fourth rim bake lifts the congregation's gold edge, the robe answers its censer in warm light, the body leans into its walk, the pool burns at every footfall), THE PRESS KEEPS ITS COUNT (the cluster pass — the honest audit found five converged bodies stacked at 0.0 px gap for seven straight seconds, reading as empty space; the jostle now holds a robe's width and shoulder room between every living body, the strike carries through the crowd, and the chapel fills with its own incense at the bodies' height so the architecture sits one step deeper), and THE FURNITURE YIELDS (the figure-vs-architecture grammar pass — the audit traced 1 of 5 bodies at the busiest wall and read the mass as 'twisted brass ornament'; the rim's closed gold ring broke into a shoulder arc, the fifth rim bake went top-lit so light catches the crown while the robe falls away dark, the hood keeps a warm glint where a face would catch the censer's light, the flame-holders' halos and brass sat down, and the altar glow lifted off the body band at a softer voice — the same wall now traces 5 of 5 at 7/10). Every render is from the live game under a virtual display; every pass was VLM-audited before shipping. Procedural rigs remain in the build as a debug fallback (F9 in game)."
             />
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {VISUAL_PROOFS.map((proof) => (
