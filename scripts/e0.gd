@@ -119,6 +119,14 @@ const BELIEVER_JOSTLE_MIN := 34.0        # px of center spacing the press keeps 
 const BELIEVER_JOSTLE_K := 20.0          # px/s of shove per px of overlap
 const BELIEVER_JOSTLE_CAP := 320.0       # px/s — a shove, never a teleport
 const BELIEVER_WINDUP_MOBILITY := 0.25   # planted, not rooted — the press shifts a wound body a little
+# WB-25 THE PILE KEEPS ITS COUNT: the windup used to trigger on POSITION
+# alone — a walker entered the strike window and planted MID-OVERLAP, and
+# the cornered press's settled line sat at 12-21px gaps (the audit traced
+# 2-3 of 5; the churn's median 8px). The plant now waits for its own
+# ground: a robe's width minus the shoulder the jostle is still working.
+const BELIEVER_PLANT_CLEARANCE := 26.0   # px to the nearest standing neighbor before a body may plant
+const BELIEVER_QUEUE_HOLD := 30.0        # px — a standing neighbour this close toward the vessel packs the line
+const BELIEVER_QUEUE_CREEP := 0.15       # the packed line's gait fraction — the back ranks lean in, never grind
 # WB-23 THE FURNITURE YIELDS: the figure-vs-architecture grammar finding —
 # at the reliquary's busiest wall the audit traced 1 of 5 bodies (clarity
 # 2/10, "reads primarily as an empty ornate interior"; the mass parsed as

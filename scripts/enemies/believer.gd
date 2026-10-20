@@ -102,8 +102,22 @@ func _act(delta: float) -> void:
                                 state_t = 0.0
                 AGGRO:
                         aggro = true
-                        velocity.x = signf(pp.x - global_position.x) * 120.0
-                        if absf(pp.x - global_position.x) < 44.0 and state_t > 0.5:
+                        var dir := signf(pp.x - global_position.x)
+                        velocity.x = dir * 120.0
+                        # WB-25: THE QUEUE HOLDS ITS GROUND — when the line ahead
+                        # toward the vessel is already packed, the back ranks
+                        # CREEP instead of grinding (the full walk used to
+                        # transmit through the chain and compress the settled
+                        # line to 16-22px; the gait stays alive, the press
+                        # still presses)
+                        if _line_ahead_packed(dir):
+                                velocity.x = dir * 120.0 * E0.BELIEVER_QUEUE_CREEP
+                        # WB-25: the plant waits for its own ground — a walker
+                        # used to wind up MID-OVERLAP and the cornered press
+                        # settled at 12-21px gaps (2-3 of 5 traced); the ones
+                        # that cannot fit the strike window queue behind it
+                        if absf(pp.x - global_position.x) < 44.0 and state_t > 0.5 \
+                                        and _holds_ground():
                                 state = WINDUP
                                 state_t = 0.0
                                 telegraph_t = 0.45   # the warning ring, wound once
@@ -153,6 +167,48 @@ func _jostle(delta: float) -> void:
         if push != 0.0:
                 global_position.x += clampf(push * mobility,
                         -E0.BELIEVER_JOSTLE_CAP, E0.BELIEVER_JOSTLE_CAP) * delta
+
+func _line_ahead_packed(dir: float) -> bool:
+        ## WB-25 THE QUEUE HOLDS ITS GROUND: a standing neighbour within a
+        ## robe's width toward the vessel — the line is packed, so this body
+        ## creeps instead of walking its full gait into the backs ahead (the
+        ## walk force used to transmit down the chain and compress the
+        ## settled line to 16-22px). Striking bodies are transits (the line
+        ## advances into the space they cross); the dead are ground to walk
+        ## past; another plane's press is not this press.
+        for node in get_tree().get_nodes_in_group("enemies"):
+                var b := node as Believer
+                if b == null or b == self or b.dead:
+                        continue
+                if b.state == b.STRIKE:
+                        continue
+                if absf(global_position.y - b.global_position.y) > 48.0:
+                        continue
+                var dx := (b.global_position.x - global_position.x) * dir
+                if dx > 0.0 and dx < E0.BELIEVER_QUEUE_HOLD:
+                        return true
+        return false
+
+func _holds_ground() -> bool:
+        ## WB-25 THE PILE KEEPS ITS COUNT: the windup's plant clearance — a
+        ## body may plant only when no STANDING neighbour sits inside a
+        ## robe's-width-minus-the-working-shoulder. Striking bodies are
+        ## transits (the lunge carries through by design), the dead are
+        ## ground, and another plane's press is not this press. Walkers
+        ## that cannot plant stay AGGRO — fully mobile, fully jostled —
+        ## and part BEFORE they strike, so the settled line keeps its
+        ## count and the queue behind it holds its own hoods.
+        for node in get_tree().get_nodes_in_group("enemies"):
+                var b := node as Believer
+                if b == null or b == self or b.dead:
+                        continue
+                if b.state == b.STRIKE:
+                        continue          # a transit, not a standing neighbour
+                if absf(global_position.y - b.global_position.y) > 48.0:
+                        continue
+                if absf(global_position.x - b.global_position.x) < E0.BELIEVER_PLANT_CLEARANCE:
+                        return false
+        return true
 
 func _push_from(b: Believer) -> float:
         ## the shove this body takes from ONE neighbor, px/s — every

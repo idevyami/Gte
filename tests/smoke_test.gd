@@ -61,6 +61,7 @@ func _run() -> void:
         await _the_press_keeps_its_count()
         await _the_furniture_yields()
         await _the_corner_yields()
+        await _the_pile_keeps_its_count()
         print("=== %d checks, %d failures ===" % [checks, fails])
         get_tree().quit(1 if fails > 0 else 0)
 
@@ -3021,6 +3022,205 @@ func _the_corner_yields() -> void:
                 "the glint troughs at 0.08 — never out")
         ok(Believer.hood_glint_alpha(PI / 2.0) - Believer.hood_glint_alpha(-PI / 2.0) > 0.3,
                 "the glint's breath amplitude reads at a glance (0.36)")
+
+func _the_pile_keeps_its_count() -> void:
+        print("[THE PILE KEEPS ITS COUNT — WB-25]")
+        # --- THE PLANT AND THE QUEUE (the audited constants): the windup
+        # used to trigger on POSITION alone — walkers planted MID-OVERLAP
+        # and the cornered press settled at 12-21px gaps (the audit traced
+        # 2-3 of 5; the churn's median 8px). The plant now waits for its
+        # own ground, and the packed line creeps instead of transmitting
+        # the full walk down the chain.
+        ok(absf(E0.BELIEVER_PLANT_CLEARANCE - 26.0) < 0.01,
+                "the plant waits for a robe's width minus the working shoulder (%.0f px)" % E0.BELIEVER_PLANT_CLEARANCE)
+        ok(absf(E0.BELIEVER_QUEUE_HOLD - 30.0) < 0.01,
+                "the queue holds behind a packed line (%.0f px)" % E0.BELIEVER_QUEUE_HOLD)
+        ok(E0.BELIEVER_QUEUE_CREEP >= 0.08 and E0.BELIEVER_QUEUE_CREEP <= 0.35,
+                "the packed line creeps, never grinds (%.2f gait fraction)" % E0.BELIEVER_QUEUE_CREEP)
+        # --- THE SAINT SITS DEEPER (the asset law): the chapel backdrop's
+        # painted saint — the room's namesake, traced by every audit as
+        # "the primary light-colored focal point" — dimmed to the
+        # architecture's own voice (her body zone mean was 91, outshining
+        # even the believers' lit hoods at 75). The candelabras flanking
+        # her keep their full voice — the mask touched only her.
+        var bd25 := Image.new()
+        var bd_ok := bd25.load("res://art/backdrops/backdrop_chapel.png") == OK
+        ok(bd_ok, "the chapel backdrop loads for the saint's law")
+        if bd_ok and bd25.get_width() >= 1000:
+                var saint_n := 0
+                var saint_s := 0.0
+                var cand_n := 0
+                var cand_s := 0.0
+                for y in range(300, 741, 2):
+                        for x in range(590, 681, 2):
+                                var c := bd25.get_pixel(x, y)
+                                saint_s += 0.299 * c.r8 + 0.587 * c.g8 + 0.114 * c.b8
+                                saint_n += 1
+                        for x2 in range(750, 831, 2):
+                                var c2 := bd25.get_pixel(x2, y)
+                                cand_s += 0.299 * c2.r8 + 0.587 * c2.g8 + 0.114 * c2.b8
+                                cand_n += 1
+                var saint_mean := saint_s / maxf(saint_n, 1.0)
+                var cand_mean := cand_s / maxf(cand_n, 1.0)
+                ok(saint_mean >= 55.0 and saint_mean <= 72.0,
+                        "the painted saint sits at the architecture's voice (zone mean %.0f)" % saint_mean)
+                ok(cand_mean >= 68.0,
+                        "the candelabra flanking her keeps its full voice (mean %.0f)" % cand_mean)
+        # --- THE PLANT WAITS FOR ITS OWN GROUND (behavioral): two stacked
+        # bodies inside the strike window — the OLD windup would plant both
+        # at 0px gap. Now neither may ENTER windup while a standing
+        # neighbour sits inside the clearance; they part first (the jostle
+        # is fully mobile in AGGRO), then plant apart.
+        var pair25 := _stage_pair()
+        if pair25.size() == 2:
+                var pa: Believer = pair25[0]
+                var pb: Believer = pair25[1]
+                game.player.global_position = Vector2(1130, 780)
+                game.player.velocity = Vector2.ZERO
+                pa.global_position = Vector2(1150, 814)
+                pb.global_position = Vector2(1150, 814)
+                pa.velocity = Vector2.ZERO
+                pb.velocity = Vector2.ZERO
+                pa.state = pa.AGGRO
+                pb.state = pb.AGGRO
+                pa.state_t = 0.0
+                pb.state_t = 0.0
+                var plant_ok := true
+                var plant_checks := 0
+                var prev_a := pa.state
+                var prev_b := pb.state
+                var t25 := Time.get_ticks_msec()
+                while Time.get_ticks_msec() - t25 < 1600:
+                        await get_tree().physics_frame
+                        # the vessel does not die inside the instrument (the
+                        # pair's strikes would reload the room and free the
+                        # bodies mid-law)
+                        if game.player.hp < game.player.max_hp:
+                                game.player.hp = game.player.max_hp
+                                EventBus.player_health_changed.emit(game.player.hp, game.player.max_hp)
+                        if not is_instance_valid(pa) or not is_instance_valid(pb):
+                                break
+                        for pair in [[pa, prev_a, pb], [pb, prev_b, pa]]:
+                                var self_b: Believer = pair[0]
+                                var was: int = pair[1]
+                                var other: Believer = pair[2]
+                                if not is_instance_valid(self_b) or not is_instance_valid(other):
+                                        continue
+                                if self_b.state == self_b.WINDUP and was != self_b.WINDUP and not other.dead:
+                                        plant_checks += 1
+                                        if absf(self_b.global_position.x - other.global_position.x) < E0.BELIEVER_PLANT_CLEARANCE - 1.5:
+                                                if other.state != other.STRIKE and absf(self_b.global_position.y - other.global_position.y) <= 48.0:
+                                                        plant_ok = false
+                        prev_a = pa.state
+                        prev_b = pb.state
+                ok(plant_ok,
+                        "no body plants on a standing neighbour (entry clearance held at %d plants)" % plant_checks)
+                if is_instance_valid(pa) and is_instance_valid(pb):
+                        ok(absf(pa.global_position.x - pb.global_position.x) >= 1.0,
+                                "the stacked pair parts the same deterministic way (%.1f px)" % absf(pa.global_position.x - pb.global_position.x))
+                # THE PAIR STANDS DOWN: no strikes may chase the vessel
+                # through the fade — a death mid-transition queues a second
+                # room rebuild and the corner's staging would stage ghosts
+                if is_instance_valid(pa):
+                        pa.state = pa.CHANT
+                        pa.state_t = 0.0
+                if is_instance_valid(pb):
+                        pb.state = pb.CHANT
+                        pb.state_t = 0.0
+                game.player.hp = game.player.max_hp
+        # --- THE CORNERED PRESS (the WB-24 honest open tier, closed): the
+        # vessel camps at the ward's foot, the flock presses, and the
+        # churn's non-striking line keeps its count — the median gap of the
+        # standing press at the corner (the strike's transits stay exempt:
+        # the lunge carries through by design)
+        game.transition_to("act5")
+        await _room("act5")
+        # the fade's tail outlives state=="playing" — a transition_to fired
+        # in that window gets QUEUED and rebuilds the room a second time,
+        # staging ghosts (the flock resets to stations, the vessel to spawn)
+        var t25f := Time.get_ticks_msec()
+        while game._transitioning and Time.get_ticks_msec() - t25f < 3000:
+                await get_tree().physics_frame
+        game.player.global_position = Vector2(1760, 780)
+        game.player.velocity = Vector2.ZERO
+        await _wait_real(0.3)
+        var corner_flock: Array = []
+        for node in get_tree().get_nodes_in_group("enemies"):
+                var b25 := node as Believer
+                if b25 != null and not b25.dead and absf(b25.global_position.x - 1760.0) < 900.0:
+                        corner_flock.append(b25)
+        corner_flock.sort_custom(func(a, b): return absf(a.global_position.x - 1760.0) < absf(b.global_position.x - 1760.0))
+        var placed25 := 0
+        var idx25 := 0
+        while placed25 < 5 and idx25 < corner_flock.size():
+                var cb: Believer = corner_flock[idx25]
+                idx25 += 1
+                var slot := float(placed25) - 2.0
+                cb.global_position = Vector2(clampf(1760.0 + slot * 36.0, 60.0, 1940.0), 780.0)
+                cb.velocity = Vector2.ZERO
+                cb.state = cb.AGGRO
+                cb.state_t = 0.0
+                placed25 += 1
+        ok(placed25 >= 5, "the corner stages its press (%d bodies)" % placed25)
+        if placed25 >= 5:
+                var t25w := Time.get_ticks_msec()
+                while Time.get_ticks_msec() - t25w < 2200:
+                        await get_tree().physics_frame
+                        # the vessel does not die inside the instrument (the
+                        # cornered press would reload the room and scatter
+                        # the flock mid-law)
+                        if game.player.hp < game.player.max_hp:
+                                game.player.hp = game.player.max_hp
+                                EventBus.player_health_changed.emit(game.player.hp, game.player.max_hp)
+                var cmins: Array[float] = []
+                var creep_checks := 0
+                var creep_ok := true
+                var creep_streaks := {}          # instance id -> consecutive full-gait-while-packed frames
+                var t25c := Time.get_ticks_msec()
+                while Time.get_ticks_msec() - t25c < 1400:
+                        await get_tree().physics_frame
+                        if game.player.hp < game.player.max_hp:
+                                game.player.hp = game.player.max_hp
+                        var m := _press_min_gap(game.player.global_position.x)
+                        if m >= 0.0:
+                                cmins.append(m)
+                        # the packed line creeps: a body with a standing
+                        # neighbour within QUEUE_HOLD toward the vessel
+                        # advances at a CREEP — the frame-level velocity can
+                        # race (a neighbour's own jostle crosses the hold
+                        # boundary mid-frame), so the law judges the NET
+                        # advance over a sustained packed window: a quarter
+                        # second at creep is ~5px; the full gait is ~30px
+                        for node in get_tree().get_nodes_in_group("enemies"):
+                                var qb := node as Believer
+                                if qb == null or qb.dead or qb.state != qb.AGGRO:
+                                        continue
+                                if qb.state_t < 0.05:
+                                        continue          # the strike's carry-over frame keeps its 260 — the creep judges the steady walk
+                                var dir := signf(game.player.global_position.x - qb.global_position.x)
+                                if qb._line_ahead_packed(dir):
+                                        creep_checks += 1
+                                        var key := qb.get_instance_id()
+                                        if not creep_streaks.has(key):
+                                                creep_streaks[key] = {"n": 0, "x0": qb.global_position.x}
+                                        var st: Dictionary = creep_streaks[key]
+                                        st["n"] = int(st["n"]) + 1
+                                        if int(st["n"]) >= 15:
+                                                var advance := (qb.global_position.x - float(st["x0"])) * dir
+                                                if advance > 30.0:
+                                                        creep_ok = false
+                                else:
+                                        creep_streaks.erase(qb.get_instance_id())
+                cmins.sort()
+                ok(cmins.size() >= 60, "the cornered press held bodies to judge (%d samples)" % cmins.size())
+                if not cmins.is_empty():
+                        var cmed := cmins[cmins.size() / 2]
+                        ok(cmed >= 16.0,
+                                "the cornered press keeps its count (median standing gap %.1f px)" % cmed)
+                        ok(cmins[cmins.size() - 1] >= 30.0,
+                                "the corner's line breathes apart at its widest (%.1f px)" % cmins[cmins.size() - 1])
+                ok(creep_ok and creep_checks >= 10,
+                        "the packed line creeps behind the plant (%d packed frames, all at creep)" % creep_checks)
 
 func _press_min_gap(px: float) -> float:
         ## the smallest gap between living, non-striking believers in the

@@ -116,6 +116,9 @@ names = [
     # WB-24: the corner yields (the verdict strip; the five
     # full-res stills are already-final JPEGs, copied below)
     "wb24_06_the_verdict",
+    # WB-25: the pile keeps its count (the verdict strip; the five
+    # full-res stills are already-final JPEGs, copied below)
+    "wb25_06_the_verdict",
 ]
 for n in names:
     p = os.path.join(src, n + ".png")
@@ -137,4 +140,6 @@ cp /home/z/entity000/screenshots/wb22/*.jpg "$DST"/
 cp /home/z/entity000/screenshots/wb23/*.jpg "$DST"/
 # WB-24: the same law — the corner stills are final JPEGs
 cp /home/z/entity000/screenshots/wb24/*.jpg "$DST"/
+# WB-25: the same law — the pile stills are final JPEGs
+cp /home/z/entity000/screenshots/wb25/*.jpg "$DST"/
 ls "$DST" | wc -l
