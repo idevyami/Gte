@@ -44,6 +44,9 @@ var room_size := Vector2(1280, 720)
 
 var state := "boot"           # boot | title | playing | dialogue | transition | dead | ending
 var active := false
+var _hp_crossing := 0         # the vessel's hp carried across a door (WB-26)
+var _arena_lock: StaticBody2D = null
+var _arena_visual = null
 signal options_requested
 
 # OBSERVE state
@@ -257,6 +260,8 @@ func load_room(id: String) -> void:
                 child.queue_free()
         boss = null
         ward = null
+        _arena_lock = null
+        _arena_visual = null
         rotors = []
         penitent = null
         monument = null
@@ -621,7 +626,12 @@ func _build_door(d: Dictionary) -> void:
 
 func _build_prop(p: Dictionary) -> void:
         var node := EntityNode.new()
-        node.setup(String(p.get("entity", "")), String(p.get("instance", "")), String(p.get("kind", "prop")), p.get("extra", {}))
+        # WB-26: the extra dict is DUPLICATED — rooms.gd's ROOMS is a const
+        # tree (deep read-only in GDScript), and rotor_pulled writes
+        # extra["pulled"] at runtime: the const reference made every rotor
+        # pull a SCRIPT ERROR, the sequence never completed, the heart never
+        # aligned — THE GAME WAS UNWINNABLE. Found by the WB-26 playthrough.
+        node.setup(String(p.get("entity", "")), String(p.get("instance", "")), String(p.get("kind", "prop")), (p.get("extra", {}) as Dictionary).duplicate())
         node.position = p["pos"]
         world.add_child(node)
         if String(p.get("kind", "")) == "rotor":
@@ -684,6 +694,29 @@ func _build_boss(b: Dictionary) -> void:
                 bb.add_to_group("enemies")
                 world.add_child(bb)
                 boss._bearers.append(bb)
+        # WB-26: THE CHAINS TAKE THE DOOR — the martyr is BOUND to his arena
+        # (the shamble reflects at the pillars), but nothing stopped the
+        # vessel from simply walking past the whole fight and camping at the
+        # reliquary gate in perfect safety (found by the WB-26 playthrough:
+        # 200s of a frozen player, a patient boss, and a locked door). When
+        # the fight begins the reliquary's own chains seal the aisle behind
+        # the pillar; when he falls they let go.
+        var arena: Vector2 = b.get("arena", Vector2(300, 1300))
+        _arena_lock = StaticBody2D.new()
+        _arena_lock.collision_layer = E0.L_WORLD
+        _arena_lock.collision_mask = 0
+        var lock_shape := CollisionShape2D.new()
+        var lock_rect := RectangleShape2D.new()
+        lock_rect.size = Vector2(16.0, 900.0)
+        lock_shape.shape = lock_rect
+        lock_shape.position = Vector2(0.0, -450.0)
+        _arena_lock.add_child(lock_shape)
+        _arena_lock.position = Vector2(arena.y + 60.0, float(b.get("floor_y", 840.0)))
+        _arena_lock.get_child(0).set_deferred("disabled", true)
+        world.add_child(_arena_lock)
+        _arena_visual = _ArenaChainsVisual.new()
+        _arena_visual.position = _arena_lock.position
+        world.add_child(_arena_visual)
 
 func _build_hidden(h: Dictionary) -> void:
         var body := StaticBody2D.new()
@@ -1090,8 +1123,14 @@ func transition_to(next_room: String) -> void:
                 return
         _transitioning = true
         state = "transition"
+        # WB-26: THE WOUNDS CROSS — _spawn_player_at builds a fresh Player
+        # (full hp) on every room build, so every door was a full heal:
+        # the anchor's saved hp was fiction and any fight could be walked
+        # off through the nearest exit. The vessel's hp now crosses with
+        # him (found by the WB-26 playthrough).
         if player:
                 player.input_locked = true
+                _hp_crossing = player.hp
         if dialogue_box and dialogue_box.active:
                 dialogue_box.close()
         # THE THRESHOLD: the first crossing of a GOLDEN edge (the nine acts
@@ -1113,6 +1152,9 @@ func transition_to(next_room: String) -> void:
                 await get_tree().create_timer(Threshold.QUICK_IN + 0.05, true, false, true).timeout
         _transitioning = false
         threshold = null
+        if player and _hp_crossing > 0:
+                player.hp = _hp_crossing
+                _hp_crossing = 0
         if not _pending_room.is_empty():
                 var queued := _pending_room
                 _pending_room = ""
@@ -1176,6 +1218,12 @@ func _on_dialogue_finished(key: String) -> void:
                         if boss:
                                 boss.begin_fight()
                                 hud.set_boss(boss)
+                                if _arena_lock != null and is_instance_valid(_arena_lock):
+                                        _arena_lock.get_child(0).set_deferred("disabled", false)
+                                        _arena_visual.sealed = true
+                                        AudioManager.play_sfx("sfx_boss_chain", -2.0)
+                                        FX.shake(4.0, 0.4)
+                                        system_message("THE CHAINS TAKE THE AISLE. THE RECORD WANTS ITS FIGHT.", "warn")
                 "penitent":
                         if penitent and is_instance_valid(penitent):
                                 penitent.vanish()
@@ -1237,6 +1285,11 @@ func _on_boss_defeated(_entity_id: String) -> void:
         on_boss_defeated()
 
 func on_boss_defeated() -> void:
+        if _arena_lock != null and is_instance_valid(_arena_lock):
+                _arena_lock.get_child(0).set_deferred("disabled", true)
+                _arena_visual.sealed = false
+                AudioManager.play_sfx("sfx_door_open", -2.0)
+                system_message("THE CHAINS LET GO. THE WAY TO THE MONUMENT IS HIS NOW.", "quiet")
         hud.set_boss(null)
         AudioManager.set_combat_layer(false)
         AudioManager.play_music("aftermath")
@@ -1346,7 +1399,14 @@ func _restore_after_death() -> void:
                 load_room(String(data.get("room", room_id)))
                 var pos_dict: Dictionary = data.get("pos", {})
                 _spawn_player_at(Vector2(float(pos_dict.get("x", 120.0)), float(pos_dict.get("y", 620.0))))
-                player.hp = int(data.get("hp", E0.P_MAX_HP))
+                # WB-26: THE RECORD RE-MAKES THE VESSEL — death restores FULL
+                # hp. The old code restored the anchor save's hp snapshot,
+                # and with no healing anywhere a hurt save meant dying
+                # forever at that hp (the playthrough's death spiral: the
+                # boss fight entered at 40, saved at 40, respawned at 40).
+                # The save's hp stays for CONTINUE-from-title (a session's
+                # resume); death is a new vessel, whole.
+                player.hp = E0.P_MAX_HP
         else:
                 load_room(room_id)
                 _spawn_player_at(room_data["spawn"] as Vector2)
@@ -1368,6 +1428,29 @@ func _notify_title() -> void:
                 main.return_to_title()
 
 # ------------------------------------------------------------------ hidden platform visual
+class _ArenaChainsVisual:
+        extends Node2D
+        var sealed := false:
+                set(v):
+                        sealed = v
+                        queue_redraw()
+        var _t := 0.0
+        func _process(delta: float) -> void:
+                _t += delta
+                if sealed:
+                        queue_redraw()
+        func _draw() -> void:
+                if not sealed:
+                        return
+                var sway := sin(_t * 0.8) * 3.0
+                for i in 22:
+                        var y := -i * 38.0
+                        var x := sin(i * 1.7 + _t * 0.8) * 2.0
+                        draw_circle(Vector2(x, y), 9.0 - float(i) * 0.12, Color(0.16, 0.15, 0.14, 0.95))
+                        draw_circle(Vector2(x, y), 6.0 - float(i) * 0.08, Color(0.24, 0.22, 0.19, 0.95))
+                draw_circle(Vector2(sway, -6.0), 12.0, Color(0.2, 0.19, 0.17))
+                draw_circle(Vector2(sway, -6.0), 8.0, Color(0.3, 0.28, 0.24))
+
 class _HiddenPlatformVisual:
         extends Node2D
         var size := Vector2(200, 22)
@@ -1419,11 +1502,17 @@ func _on_property_modified(instance_key: String, prop_name: String, _old: Varian
                 _abandon_all_believers()
                 system_message("THE CHANT STOPS. BELIEF IS A MACHINE AND MACHINES CAN BE SWITCHED OFF.", "warn")
         # The toll gate opens when the machine is settled (BROKEN).
-        if instance_key == "TOLL_MACHINE_03" and prop_name == "state" and String(new_value) == "BROKEN":
-                for door in _gate_doors:
-                        if String(door.extra.get("mode", "")) == "toll":
-                                door.try_open_from_flag()
-                system_message("THE ACCOUNT IS SETTLED. THE GATE FORGETS IT WAS CLOSED.")
+        # WB-26: the check is the LIVE NODE's own toll mode — the old key
+        # match ("TOLL_MACHINE_03") never fired because the door's instance
+        # is TOLL_GATE_03: the settlement path charged 8 consistency and the
+        # gate never opened. Found by the WB-26 playthrough. The toll door
+        # is its own machine — opening the modified node itself.
+        if prop_name == "state" and String(new_value) == "BROKEN":
+                for node in EntityDB.live_nodes():
+                        if node != null and is_instance_valid(node) and node is Door and String(node.extra.get("mode", "")) == "toll" and node.instance_key == instance_key:
+                                node.try_open_from_flag()
+                                system_message("THE ACCOUNT IS SETTLED. THE GATE FORGETS IT WAS CLOSED.")
+                                break
         # The archive ledger reconciled: the records stop arguing, and something notices.
         if instance_key == "DISCREPANCY_LEDGER" and prop_name == "record" and String(new_value) == "RECONCILED":
                 GameState.set_flag(GameState.F_ARCHIVE_FIXED)

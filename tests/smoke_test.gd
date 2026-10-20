@@ -22,6 +22,12 @@ func ok(cond: bool, label: String) -> void:
 
 func _run() -> void:
         print("=== ENTITY_000 SMOKE TEST ===")
+        # WB-26 SAVE HYGIENE: the suite writes TEST saves into user:// — a
+        # stale one left behind becomes the NEXT session's CONTINUE (a real
+        # player dying without a save of their own inherits the suite's
+        # ending world: boss_defeated, the finale room, 5 hp — found by the
+        # WB-26 playthrough). The suite now starts AND ends clean.
+        GameState.clear_save()
         var packed := load("res://main.tscn") as PackedScene
         main = packed.instantiate()
         get_tree().root.add_child(main)
@@ -62,8 +68,107 @@ func _run() -> void:
         await _the_furniture_yields()
         await _the_corner_yields()
         await _the_pile_keeps_its_count()
+        await _the_players_own_hands()
         print("=== %d checks, %d failures ===" % [checks, fails])
+        GameState.clear_save()
         get_tree().quit(1 if fails > 0 else 0)
+
+func _the_players_own_hands() -> void:
+        print("[THE PLAYER'S OWN HANDS — WB-26]")
+        # THE PLAYTHROUGH: a virtual player walked the golden path with real
+        # key events (proof_wb26.gd) and the game broke six ways. These are
+        # the regression laws for each fix — the playthrough is now part of
+        # the record.
+
+        # --- 1. THE ROTORS TURN (the game was unwinnable): rooms.gd's ROOMS
+        # is a const tree, deep read-only in GDScript — _build_prop handed
+        # the rotor the const extra dict, and rotor_pulled's
+        # extra["pulled"] = true was a SCRIPT ERROR on every pull. The heart
+        # could never align. THE FIX: the extra is duplicated at build.
+        game.load_room("act7")
+        await _room("act7")
+        var seq_rotors: Array = game.rotors.duplicate()
+        seq_rotors.sort_custom(func(a, b): return int(a.extra.get("seq", 0)) < int(b.extra.get("seq", 0)))
+        ok(seq_rotors.size() == 3, "three rotors stand in the sanctum")
+        for r in seq_rotors:
+                game.rotor_pulled(r)
+                ok(bool(r.extra.get("pulled", false)),
+                        "rotor %s turns — its extra is writable (the const tree no longer strangles the pull)" % String(r.extra.get("label", "?")))
+        ok(GameState.has_flag(GameState.F_HEART_ALIGNED), "the sequence aligns the heart")
+        var sanctum_open := false
+        for d in game._gate_doors:
+                if String(d.extra.get("flag", "")) == "heart_aligned":
+                        sanctum_open = d.open
+        ok(sanctum_open, "the sanctum gate answers the aligned heart")
+
+        # --- 2. THE TOLL SETTLES (the settlement was a lie): the watcher
+        # checked instance TOLL_MACHINE_03 but the door's instance is
+        # TOLL_GATE_03 — the account charged 8 consistency and the gate
+        # never opened. THE FIX: the live toll-mode node itself.
+        game.load_room("act4")
+        await _room("act4")
+        var toll: Door = null
+        for node in get_tree().get_nodes_in_group("interactable"):
+                var d2 := node as Door
+                if d2 and String(d2.extra.get("mode", "")) == "toll":
+                        toll = d2
+        ok(toll != null, "the toll gate stands in the contradiction")
+        if toll != null:
+                var paid := EntityDB.modify(toll, "state")
+                ok(paid and toll.open, "the settled account opens the gate (the toll key no longer mismatches)")
+
+        # --- 3. THE WOUNDS CROSS (every door was a full heal):
+        # _spawn_player_at builds a fresh Player per room, so crossing any
+        # door restored full hp — the anchor's saved hp was fiction and any
+        # fight could be walked off. THE FIX: hp crosses with the vessel.
+        game.load_room("act1")
+        await _room("act1")
+        game.player.hp = 37
+        game.transition_to("act2")
+        await _room("act2")
+        await _settle_playing(1.4)   # the crossing's fade tail applies the carry after 'playing'
+        ok(game.player.hp == 37, "the vessel's wounds cross the door with him (%d hp)" % game.player.hp)
+
+        # --- 4. DEATH RE-MAKES THE VESSEL WHOLE (the death spiral): death
+        # used to restore the anchor save's hp snapshot — and with no
+        # healing anywhere, a hurt save meant dying forever at that hp.
+        # THE FIX: death is a new vessel; the save's hp stays for CONTINUE.
+        GameState.save_game("act2", Vector2(200, 600), 5, "WB26_ANCHOR")
+        game._restore_after_death()
+        await _room("act2")
+        ok(game.player.hp == E0.P_MAX_HP, "death re-makes the vessel whole (%d hp)" % game.player.hp)
+        GameState.clear_save()
+        ok(not GameState.has_save(), "the law's own save is cleared")
+
+        # --- 5. THE CHAINS TAKE THE AISLE (the fight could be walked
+        # around): the martyr is bound to his arena but nothing stopped the
+        # vessel from strolling past the whole fight and camping at the
+        # reliquary gate in perfect safety. THE FIX: the reliquary's own
+        # chains seal the aisle when the fight begins and let go when he
+        # falls.
+        game.load_room("act8")
+        await _room("act8")
+        await _frames(4)   # the build's deferred disable must flush
+        ok(game._arena_lock != null and game.boss != null, "the reliquary builds its chains and its martyr")
+        if game._arena_lock != null:
+                var lock_shape: CollisionShape2D = game._arena_lock.get_child(0) as CollisionShape2D
+                ok(lock_shape != null and lock_shape.disabled, "the chains wait, unseen")
+                game._on_dialogue_finished("martyr_intro")
+                await _frames(3)
+                ok(lock_shape != null and not lock_shape.disabled and game._arena_visual.sealed,
+                        "the chains take the aisle when the fight begins")
+                game.on_boss_defeated()
+                await _frames(3)
+                ok(lock_shape != null and lock_shape.disabled and not game._arena_visual.sealed,
+                        "the chains let go when he falls")
+
+        # --- 6. THE SUITE LEAVES NO SAVE (the smoke-ending ghost): the
+        # suite's TEST saves stayed in user:// — a later session's CONTINUE
+        # (or a death restore) inherited the suite's ending world:
+        # boss_defeated, the finale room, 5 hp. THE FIX: the suite starts
+        # and ends clean.
+        GameState.clear_save()
+        ok(not GameState.has_save(), "the suite leaves no save in the vessel's user://")
 
 func _frames(n: int) -> void:
         for i in n:

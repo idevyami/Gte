@@ -33,6 +33,7 @@ import {
   HeartCrack,
   Loader2,
   Lock,
+  MonitorPlay,
   ScanEye,
   Users,
 } from "lucide-react";
@@ -1933,7 +1934,7 @@ export default function Home() {
               </span>
               <span className="hidden items-center gap-1.5 rounded-sm border border-[#2b2b2e] px-2 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-[#7fd8d8]/80 sm:inline-flex">
                 <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-[#7fd8d8]/70" />
-                BUILD 818 / VERTICAL SLICE
+                BUILD 838 / VERTICAL SLICE
               </span>
             </div>
             <nav aria-label="Page sections">
@@ -2018,8 +2019,9 @@ export default function Home() {
                         ENTITY_000 runs as a native desktop game inside the Godot
                         4.4+ engine.
                       </span>{" "}
-                      Download the project below and open it in Godot — there is no
-                      browser version by design.
+                      Take a standalone build below — no Godot, no installation —
+                      or the full project source. There is no browser version by
+                      design.
                     </p>
                   </div>
                 </div>
@@ -2039,6 +2041,67 @@ export default function Home() {
             />
 
             <div className="grid gap-4 md:grid-cols-2 md:gap-6">
+              {/* The standalone builds — what a player actually runs */}
+              <Reveal delay={0.05}>
+                <Card className="h-full gap-4 rounded-md border-[#2b2b2e] bg-[#141416] py-6 transition-colors hover:border-[#4a463f]">
+                  <CardHeader className="px-6">
+                    <div className="flex items-center justify-between gap-3">
+                      <CardTitle className="font-mono text-base uppercase tracking-[0.22em] text-[#cfc8b8]">
+                        STANDALONE BUILDS
+                      </CardTitle>
+                      <MonitorPlay
+                        className="size-5 shrink-0 text-[#b08d3e]"
+                        aria-hidden="true"
+                      />
+                    </div>
+                    <CardDescription className="font-mono text-[10px] uppercase tracking-[0.22em] text-[#857d6c]">
+                      WINDOWS X64 · LINUX X64 · RUN AND PLAY
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4 px-6">
+                    <p className="text-sm leading-relaxed text-[#a89f8c]">
+                      The playable game itself, exported from the current head —
+                      rebuilt after the WB-26 playability pass with a real
+                      input-driven playthrough of the full golden path (title to
+                      ending, one honest death at the martyr, zero assists).
+                    </p>
+                    <ul className="space-y-1.5 font-mono text-[11px] leading-relaxed text-[#a89f8c]/90">
+                      <li className="flex gap-2">
+                        <span aria-hidden="true" className="text-[#b08d3e]">›</span>
+                        WB-26 fixes inside: the rotor sequence (the game was
+                        unwinnable), the toll settlement, whole-vessel respawns,
+                        wounds that cross doors, the martyr&apos;s sealing chains.
+                      </li>
+                      <li className="flex gap-2">
+                        <span aria-hidden="true" className="text-[#b08d3e]">›</span>
+                        Unsigned indie download — if your OS warns, choose{" "}
+                        <span className="text-[#cfc8b8]">keep</span>.
+                      </li>
+                    </ul>
+                  </CardContent>
+                  <div className="flex flex-col gap-2 px-4 sm:flex-row sm:gap-3 sm:px-6">
+                    <a
+                      href="/ENTITY_000_Windows_x64.zip"
+                      download
+                      aria-label="Download the ENTITY_000 Windows x64 standalone build"
+                      className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-sm border border-[#b08d3e]/50 bg-[#b08d3e]/10 px-6 font-mono text-[11px] uppercase tracking-[0.22em] text-[#b08d3e] transition-colors hover:border-[#b08d3e] hover:bg-[#b08d3e]/20"
+                    >
+                      <ArrowDownToLine aria-hidden="true" />
+                      WINDOWS .ZIP
+                    </a>
+                    <a
+                      href="/ENTITY_000_Linux_x64.zip"
+                      download
+                      aria-label="Download the ENTITY_000 Linux x64 standalone build"
+                      className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-sm border border-[#b08d3e]/50 bg-[#b08d3e]/10 px-6 font-mono text-[11px] uppercase tracking-[0.22em] text-[#b08d3e] transition-colors hover:border-[#b08d3e] hover:bg-[#b08d3e]/20"
+                    >
+                      <ArrowDownToLine aria-hidden="true" />
+                      LINUX .ZIP
+                    </a>
+                  </div>
+                </Card>
+              </Reveal>
+
               {/* The Godot project */}
               <Reveal delay={0.05}>
                 <Card className="h-full gap-4 rounded-md border-[#2b2b2e] bg-[#141416] py-6 transition-colors hover:border-[#4a463f]">
@@ -2561,7 +2624,7 @@ export default function Home() {
               index="06"
               kicker="VISUAL PROOFS"
               title="The reconstruction pass, on the record"
-              description="Real in-engine gameplay renders from the running game (1280×720 viewport). The visual reconstruction pass, then five world-building passes: THE LIVING CITY (far processions, measured strikes, ceremonies), THE CLOSEST WALLS (the foreground plane at 1.28x), THE GROUND YOU WALK ON (rendered climb ledges, per-district floorcraft, contact shadows), THE PERFORMERS (walk laws, wound cards, death as rotation, presence pools), THE WORLD RESPONDS (skirting stones, the ground answering fire, focal shafts, moths, vermin, ripples, posted law) — and THE RECORD IS A THING: the diegetic interface pass, where the HUD becomes a brass instrument, dialogue a hung parchment census record, system messages stamped citations, the OBSERVE readout a ruled ledger page with rows sealed under wax. Then the world kept deepening: THE AIR ITSELF (a positional sound stage on every element — flames that crackle, hearts that hum, bells that toll on their own seeded clocks), THE ARRIVAL (no space is born pre-lit — every room wakes near-first, flares and settles; revisits are quick because the city remembers), THE WORLD THINS (the core mechanic reaches the world's own renderers — flames lose conviction and miss beats, moths leave, the vessel stays real as the grade drains), THE THRESHOLD (the crossing between acts is a three-beat rite — the leaving, the inscribed rubric in the dark, the coming), THE VESSEL'S TRACE (every floor records the walker in its own material — ash holds, wet glistens, carpet presses lighter, the engine records nothing), THE OTHERS' PASSAGE (every creature writes the floor in the language of its body — the hollow's metronome echo, the believer's shuffle, the censor's erasure), THE ENDING'S RECORD (the floor keeps a bounded ledger of endings — organic sprawls, frozen last strides, where he fell), THE EXPERIENCE PASS (everything that already exists made truer — third rim bake, woven materials, tiled stone, the map's ink spline), THE FIST THAT LANDS (the motion experience pass — telegraphs read first, the roll is a decision, the chain speaks in arcs), THE THREE BEATS (every hit its own clock — the gather, the step-through, the dash's spent image), THE WALKING FLOCK (the weight pass — the body rides its stride, each walker out of step), THE CENSER'S EDGE (the readability pass — the fourth rim bake lifts the congregation's gold edge, the robe answers its censer in warm light, the body leans into its walk, the pool burns at every footfall), THE PRESS KEEPS ITS COUNT (the cluster pass — the honest audit found five converged bodies stacked at 0.0 px gap for seven straight seconds, reading as empty space; the jostle now holds a robe's width and shoulder room between every living body, the strike carries through the crowd, and the chapel fills with its own incense at the bodies' height so the architecture sits one step deeper), and THE FURNITURE YIELDS (the figure-vs-architecture grammar pass — the audit traced 1 of 5 bodies at the busiest wall and read the mass as 'twisted brass ornament'; the rim's closed gold ring broke into a shoulder arc, the fifth rim bake went top-lit so light catches the crown while the robe falls away dark, the hood keeps a warm glint where a face would catch the censer's light, the flame-holders' halos and brass sat down, and the altar glow lifted off the body band at a softer voice — the same wall now traces 5 of 5 at 7/10), and THE CORNER YIELDS (the corner pass — the ward's belief was computed from a chanters array that nothing ever fed, so the barrier silently collapsed on the room's first frame every visit since it shipped; the flock is wired now and the ward LIVES — a curtain of belief with soft wings and a breathing crown that the audit reads as 'a magical seal', while the painted procession hangs smaller and deeper in the room's air, the chandelier's wax dims and its glow spreads wide like the wheel it is, the arches sit one step deeper, the painted congregation exhales its rising chant-marks again, and the distant rows read as living people at 7/10 with the statues sorted out on their own), and THE PILE KEEPS ITS COUNT (the dead-end pass — the cornered press's settled line sat at 12-21px gaps because the windup planted walkers MID-OVERLAP and the packed queue transmitted its full walk down the chain into the backs ahead; the plant now waits for a robe's width of its own ground and the packed line creeps, so the corner's median standing gap is 25.8px and the audit traces 5 of 5 — while the 'chantry jamb's pale saint' the audits kept tracing turned out to be the backdrop's own painted namesake, tiled to giant scale and outshining even the believers' lit hoods; she keeps her silhouette, her pose and her altar, dimmed to the architecture's own voice). Every render is from the live game under a virtual display; every pass was VLM-audited before shipping. Procedural rigs remain in the build as a debug fallback (F9 in game)."
+              description="Real in-engine gameplay renders from the running game (1280×720 viewport). The visual reconstruction pass, then five world-building passes: THE LIVING CITY (far processions, measured strikes, ceremonies), THE CLOSEST WALLS (the foreground plane at 1.28x), THE GROUND YOU WALK ON (rendered climb ledges, per-district floorcraft, contact shadows), THE PERFORMERS (walk laws, wound cards, death as rotation, presence pools), THE WORLD RESPONDS (skirting stones, the ground answering fire, focal shafts, moths, vermin, ripples, posted law) — and THE RECORD IS A THING: the diegetic interface pass, where the HUD becomes a brass instrument, dialogue a hung parchment census record, system messages stamped citations, the OBSERVE readout a ruled ledger page with rows sealed under wax. Then the world kept deepening: THE AIR ITSELF (a positional sound stage on every element — flames that crackle, hearts that hum, bells that toll on their own seeded clocks), THE ARRIVAL (no space is born pre-lit — every room wakes near-first, flares and settles; revisits are quick because the city remembers), THE WORLD THINS (the core mechanic reaches the world's own renderers — flames lose conviction and miss beats, moths leave, the vessel stays real as the grade drains), THE THRESHOLD (the crossing between acts is a three-beat rite — the leaving, the inscribed rubric in the dark, the coming), THE VESSEL'S TRACE (every floor records the walker in its own material — ash holds, wet glistens, carpet presses lighter, the engine records nothing), THE OTHERS' PASSAGE (every creature writes the floor in the language of its body — the hollow's metronome echo, the believer's shuffle, the censor's erasure), THE ENDING'S RECORD (the floor keeps a bounded ledger of endings — organic sprawls, frozen last strides, where he fell), THE EXPERIENCE PASS (everything that already exists made truer — third rim bake, woven materials, tiled stone, the map's ink spline), THE FIST THAT LANDS (the motion experience pass — telegraphs read first, the roll is a decision, the chain speaks in arcs), THE THREE BEATS (every hit its own clock — the gather, the step-through, the dash's spent image), THE WALKING FLOCK (the weight pass — the body rides its stride, each walker out of step), THE CENSER'S EDGE (the readability pass — the fourth rim bake lifts the congregation's gold edge, the robe answers its censer in warm light, the body leans into its walk, the pool burns at every footfall), THE PRESS KEEPS ITS COUNT (the cluster pass — the honest audit found five converged bodies stacked at 0.0 px gap for seven straight seconds, reading as empty space; the jostle now holds a robe's width and shoulder room between every living body, the strike carries through the crowd, and the chapel fills with its own incense at the bodies' height so the architecture sits one step deeper), and THE FURNITURE YIELDS (the figure-vs-architecture grammar pass — the audit traced 1 of 5 bodies at the busiest wall and read the mass as 'twisted brass ornament'; the rim's closed gold ring broke into a shoulder arc, the fifth rim bake went top-lit so light catches the crown while the robe falls away dark, the hood keeps a warm glint where a face would catch the censer's light, the flame-holders' halos and brass sat down, and the altar glow lifted off the body band at a softer voice — the same wall now traces 5 of 5 at 7/10), and THE CORNER YIELDS (the corner pass — the ward's belief was computed from a chanters array that nothing ever fed, so the barrier silently collapsed on the room's first frame every visit since it shipped; the flock is wired now and the ward LIVES — a curtain of belief with soft wings and a breathing crown that the audit reads as 'a magical seal', while the painted procession hangs smaller and deeper in the room's air, the chandelier's wax dims and its glow spreads wide like the wheel it is, the arches sit one step deeper, the painted congregation exhales its rising chant-marks again, and the distant rows read as living people at 7/10 with the statues sorted out on their own), and THE PILE KEEPS ITS COUNT (the dead-end pass — the cornered press's settled line sat at 12-21px gaps because the windup planted walkers MID-OVERLAP and the packed queue transmitted its full walk down the chain into the backs ahead; the plant now waits for a robe's width of its own ground and the packed line creeps, so the corner's median standing gap is 25.8px and the audit traces 5 of 5 — while the 'chantry jamb's pale saint' the audits kept tracing turned out to be the backdrop's own painted namesake, tiled to giant scale and outshining even the believers' lit hoods; she keeps her silhouette, her pose and her altar, dimmed to the architecture's own voice), and THE PLAYER'S OWN HANDS (the playability pass — a virtual player walked the full golden path with real key events, title to ending, and the game broke six honest ways: the rotor sequence wrote into a read-only const tree so THE GAME WAS UNWINNABLE, the toll settlement charged its price and never opened, every door was a full heal, death restored a hurt save's hp forever with no healing anywhere, the boss fight could be walked around entirely, and the test suite's own saves haunted the next session's CONTINUE — all six eradicated, each under its own regression law, and the playthrough now completes unassisted with one honest death at the martyr). Every render is from the live game under a virtual display; every pass was VLM-audited before shipping. Procedural rigs remain in the build as a debug fallback (F9 in game)."
             />
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {VISUAL_PROOFS.map((proof) => (
