@@ -1869,6 +1869,49 @@ const FALLBACK_NAMES: Record<DownloadType, string> = {
 
 type ArchivistMessage = { role: "user" | "assistant"; content: string };
 
+const ARCHIVIST_STORAGE_KEY = "e0_archivist_thread_v1";
+const ARCHIVIST_MAX_STORED = 30; // keep the scroll lean; the API caps at 24 anyway
+
+function loadArchivistThread(): ArchivistMessage[] {
+  try {
+    const raw = window.localStorage.getItem(ARCHIVIST_STORAGE_KEY);
+    if (!raw) return [ARCHIVIST_GREETING];
+    const parsed = JSON.parse(raw) as ArchivistMessage[];
+    if (!Array.isArray(parsed)) return [ARCHIVIST_GREETING];
+    const clean = parsed.filter(
+      (m) =>
+        m &&
+        (m.role === "user" || m.role === "assistant") &&
+        typeof m.content === "string" &&
+        m.content.trim().length > 0,
+    );
+    return clean.length > 0 ? clean.slice(-ARCHIVIST_MAX_STORED) : [ARCHIVIST_GREETING];
+  } catch {
+    return [ARCHIVIST_GREETING];
+  }
+}
+
+function saveArchivistThread(messages: ArchivistMessage[]): void {
+  try {
+    window.localStorage.setItem(
+      ARCHIVIST_STORAGE_KEY,
+      JSON.stringify(messages.slice(-ARCHIVIST_MAX_STORED)),
+    );
+  } catch {
+    /* storage unavailable (private mode etc.) — the chat still works in-memory */
+  }
+}
+
+/* Display-only scrub: the Archivist is prompted for plain text, but any
+   stray markdown (**bold**, #headers, `code`) must never reach the bubble
+   as literal symbols. */
+function scrubArchivistText(text: string): string {
+  return text
+    .replace(/\*\*(.+?)\*\*/gu, "$1")
+    .replace(/^#{1,4}\s+/gmu, "")
+    .replace(/`([^`]+)`/gu, "$1");
+}
+
 const ARCHIVIST_GREETING: ArchivistMessage = {
   role: "assistant",
   content:
@@ -1892,10 +1935,42 @@ export default function Home() {
   const [chatMessages, setChatMessages] = useState<ArchivistMessage[]>([
     ARCHIVIST_GREETING,
   ]);
+  const [chatRestored, setChatRestored] = useState(false);
   const [chatInput, setChatInput] = useState("");
   const [chatBusy, setChatBusy] = useState(false);
   const chatScrollRef = useRef<HTMLDivElement>(null);
   const chatInputRef = useRef<HTMLTextAreaElement>(null);
+
+  /* Hydrate the persisted thread after mount (SSR-safe) and mark the
+     launcher as seen for returning visitors. */
+  useEffect(() => {
+    const stored = loadArchivistThread();
+    if (stored.length > 1) setChatMessages(stored);
+    try {
+      setChatSeen(window.localStorage.getItem(ARCHIVIST_STORAGE_KEY) !== null);
+    } catch {
+      /* ignore */
+    }
+    setChatRestored(true);
+  }, []);
+
+  /* Persist every settled exchange (typing placeholder never saved).
+     A thread that holds nothing but the greeting IS an empty thread —
+     remove the key so "clear" survives reloads and the launcher's beckon
+     pulse correctly returns for a fresh visitor. */
+  useEffect(() => {
+    if (!chatRestored) return;
+    const settled = chatMessages.filter((m) => m.content.trim().length > 0);
+    if (settled.length > 1) {
+      saveArchivistThread(settled);
+    } else {
+      try {
+        window.localStorage.removeItem(ARCHIVIST_STORAGE_KEY);
+      } catch {
+        /* ignore */
+      }
+    }
+  }, [chatMessages, chatRestored]);
 
   useEffect(() => {
     if (chatOpen) chatInputRef.current?.focus();
@@ -1956,6 +2031,11 @@ export default function Home() {
     setChatMessages([ARCHIVIST_GREETING]);
     setChatInput("");
     if (chatInputRef.current) chatInputRef.current.style.height = "auto";
+    try {
+      window.localStorage.removeItem(ARCHIVIST_STORAGE_KEY);
+    } catch {
+      /* ignore */
+    }
   }
 
   useEffect(() => {
@@ -2915,7 +2995,9 @@ export default function Home() {
                               : "border-[#2b2b2e] bg-[#18181b] text-[#cfc8b8]"
                           }`}
                         >
-                          {m.content}
+                          {m.role === "user"
+                            ? m.content
+                            : scrubArchivistText(m.content)}
                         </div>
                       )}
                     </div>
