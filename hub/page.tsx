@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
-import { MotionConfig, motion } from "framer-motion";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { AnimatePresence, MotionConfig, motion } from "framer-motion";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -33,9 +33,13 @@ import {
   HeartCrack,
   Loader2,
   Lock,
+  MessagesSquare,
   MonitorPlay,
+  RotateCcw,
   ScanEye,
+  Send,
   Users,
+  X,
 } from "lucide-react";
 
 /* ---------------------------------------------------------------------------
@@ -70,6 +74,23 @@ const PAGE_STYLES = `
 
 @media (prefers-reduced-motion: reduce) {
   .e0-glitch--crimson, .e0-glitch--cyan { animation: none; opacity: 0; }
+}
+
+/* The Archivist chat */
+@keyframes e0-ink-dot {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.35; }
+  30% { transform: translateY(-3px); opacity: 1; }
+}
+.e0-ink-dot { animation: e0-ink-dot 1.1s ease-in-out infinite; }
+.e0-ink-dot:nth-child(2) { animation-delay: 0.18s; }
+.e0-ink-dot:nth-child(3) { animation-delay: 0.36s; }
+@keyframes e0-archivist-beckon {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(176, 141, 62, 0); }
+  50% { box-shadow: 0 0 0 7px rgba(176, 141, 62, 0.14); }
+}
+.e0-archivist-beckon { animation: e0-archivist-beckon 2.6s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .e0-ink-dot, .e0-archivist-beckon { animation: none; }
 }
 `;
 
@@ -1842,10 +1863,100 @@ const FALLBACK_NAMES: Record<DownloadType, string> = {
  * Page
  * ------------------------------------------------------------------------- */
 
+/* ---------------------------------------------------------------------------
+ * The Archivist — the Bureau's records keeper (AI chat, backend /api/chat)
+ * ------------------------------------------------------------------------- */
+
+type ArchivistMessage = { role: "user" | "assistant"; content: string };
+
+const ARCHIVIST_GREETING: ArchivistMessage = {
+  role: "assistant",
+  content:
+    "You have reached the Bureau's records. I am the Archivist — ask me about the game, the controls, or the way forward.\nبه بایگانیِ اداره رسیدی. من بایگانی‌بانم — دربارهٔ بازی، کنترل‌ها یا مسیرِ جلو بپرس.",
+};
+
+const ARCHIVIST_PROMPTS: { label: string; question: string }[] = [
+  { label: "CONTROLS · کنترل‌ها", question: "کنترل‌های بازی چی هستن؟" },
+  { label: "THE GAME · خود بازی", question: "ENTITY_000 درباره‌ی چیه؟" },
+  { label: "A HINT · راهنمایی", question: "یه راهنمایی بده — نمی‌دونم باید برم کجا." },
+  { label: "DOWNLOAD · دانلود", question: "بازی رو از کجا دانلود کنم؟" },
+];
+
 export default function Home() {
   const [busy, setBusy] = useState<DownloadType | null>(null);
   const [docsStatus, setDocsStatus] = useState<DocsStatus>("checking");
   const [projectBytes, setProjectBytes] = useState<number | null>(null);
+
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatSeen, setChatSeen] = useState(false);
+  const [chatMessages, setChatMessages] = useState<ArchivistMessage[]>([
+    ARCHIVIST_GREETING,
+  ]);
+  const [chatInput, setChatInput] = useState("");
+  const [chatBusy, setChatBusy] = useState(false);
+  const chatScrollRef = useRef<HTMLDivElement>(null);
+  const chatInputRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (chatOpen) chatInputRef.current?.focus();
+  }, [chatOpen]);
+
+  useEffect(() => {
+    const el = chatScrollRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [chatMessages, chatBusy, chatOpen]);
+
+  useEffect(() => {
+    if (!chatOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setChatOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [chatOpen]);
+
+  async function askArchivist(raw: string) {
+    const text = raw.trim();
+    if (!text || chatBusy) return;
+    const history: ArchivistMessage[] = [
+      ...chatMessages.filter((m) => m.content),
+      { role: "user", content: text },
+    ];
+    setChatMessages([...history, { role: "assistant", content: "" }]);
+    setChatInput("");
+    if (chatInputRef.current) chatInputRef.current.style.height = "auto";
+    setChatBusy(true);
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: history.slice(-24).map((m) => ({
+            role: m.role,
+            content: m.content,
+          })),
+        }),
+      });
+      if (!res.ok) throw new Error(`status ${res.status}`);
+      const data = (await res.json()) as { reply?: string };
+      const reply = data.reply?.trim();
+      if (!reply) throw new Error("empty reply");
+      setChatMessages([...history, { role: "assistant", content: reply }]);
+    } catch {
+      setChatMessages(history);
+      toast.error("The Archivist is unreachable.", {
+        description: "The line to the records went dead — try again in a moment.",
+      });
+    } finally {
+      setChatBusy(false);
+    }
+  }
+
+  function resetArchivist() {
+    setChatMessages([ARCHIVIST_GREETING]);
+    setChatInput("");
+    if (chatInputRef.current) chatInputRef.current.style.height = "auto";
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -2716,6 +2827,190 @@ export default function Home() {
             </p>
           </div>
         </footer>
+
+        {/* ----------------------------------------------------------------- */
+          /* The Archivist — the Bureau's records keeper answers (fixed)      */
+        /* ---------------------------------------------------------------- */}
+        <AnimatePresence>
+          {chatOpen && (
+            <motion.section
+              key="archivist-panel"
+              role="dialog"
+              aria-label="The Archivist — ask about ENTITY_000"
+              initial={{ opacity: 0, y: 16, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 16, scale: 0.98 }}
+              transition={{ duration: 0.18, ease: "easeOut" }}
+              className="fixed inset-x-3 bottom-[calc(1.25rem+env(safe-area-inset-bottom))] z-50 flex h-[min(68vh,540px)] flex-col overflow-hidden rounded-md border border-[#3a352c] bg-[#111113]/95 shadow-2xl shadow-black/60 backdrop-blur sm:inset-x-auto sm:right-6 sm:w-[400px]"
+            >
+              <header className="flex items-center justify-between gap-3 border-b border-[#2b2b2e] bg-[#141416] px-4 py-3">
+                <div className="flex min-w-0 items-center gap-3">
+                  <span className="relative flex size-2 shrink-0">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#b08d3e] opacity-60" />
+                    <span className="relative inline-flex size-2 rounded-full bg-[#b08d3e]" />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[#cfc8b8]">
+                      THE ARCHIVIST
+                    </p>
+                    <p className="truncate font-mono text-[9px] uppercase tracking-[0.18em] text-[#857d6c]">
+                      بایگانی‌بان · BUREAU OF THE COUNT
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={resetArchivist}
+                    aria-label="Clear the conversation"
+                    className="flex size-9 items-center justify-center rounded-sm text-[#857d6c] transition-colors hover:bg-[#1e1e21] hover:text-[#cfc8b8]"
+                  >
+                    <RotateCcw className="size-4" aria-hidden="true" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setChatOpen(false)}
+                    aria-label="Close the Archivist"
+                    className="flex size-9 items-center justify-center rounded-sm text-[#857d6c] transition-colors hover:bg-[#1e1e21] hover:text-[#cfc8b8]"
+                  >
+                    <X className="size-4" aria-hidden="true" />
+                  </button>
+                </div>
+              </header>
+
+              <div
+                ref={chatScrollRef}
+                aria-live="polite"
+                aria-label="Conversation with the Archivist"
+                className="e0-scroll flex-1 space-y-3 overflow-y-auto px-4 py-4"
+              >
+                {chatMessages.map((m, i) => {
+                  const isTyping =
+                    m.role === "assistant" &&
+                    m.content === "" &&
+                    i === chatMessages.length - 1 &&
+                    chatBusy;
+                  return (
+                    <div
+                      key={i}
+                      dir="auto"
+                      className={`flex flex-col ${
+                        m.role === "user" ? "items-end" : "items-start"
+                      }`}
+                    >
+                      {isTyping ? (
+                        <div
+                          className="flex items-center gap-1.5 rounded-sm border border-[#2b2b2e] bg-[#18181b] px-3.5 py-3"
+                          aria-label="The Archivist is writing"
+                        >
+                          <span className="e0-ink-dot size-1.5 rounded-full bg-[#b08d3e]" />
+                          <span className="e0-ink-dot size-1.5 rounded-full bg-[#b08d3e]" />
+                          <span className="e0-ink-dot size-1.5 rounded-full bg-[#b08d3e]" />
+                        </div>
+                      ) : (
+                        <div
+                          className={`max-w-[88%] whitespace-pre-wrap rounded-sm border px-3.5 py-2.5 text-[13px] leading-relaxed ${
+                            m.role === "user"
+                              ? "border-[#b08d3e]/40 bg-[#b08d3e]/10 text-[#e8dfc8]"
+                              : "border-[#2b2b2e] bg-[#18181b] text-[#cfc8b8]"
+                          }`}
+                        >
+                          {m.content}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+                {chatMessages.length <= 1 && !chatBusy && (
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    {ARCHIVIST_PROMPTS.map((p) => (
+                      <button
+                        key={p.label}
+                        type="button"
+                        onClick={() => askArchivist(p.question)}
+                        className="rounded-sm border border-[#3a352c] bg-transparent px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-[0.12em] text-[#a89f8c] transition-colors hover:border-[#b08d3e]/60 hover:text-[#cfc8b8]"
+                      >
+                        {p.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  askArchivist(chatInput);
+                }}
+                className="border-t border-[#2b2b2e] bg-[#141416] p-3"
+              >
+                <div className="flex items-end gap-2">
+                  <label htmlFor="archivist-input" className="sr-only">
+                    Ask the Archivist
+                  </label>
+                  <textarea
+                    id="archivist-input"
+                    ref={chatInputRef}
+                    rows={1}
+                    dir="auto"
+                    value={chatInput}
+                    onChange={(e) => {
+                      setChatInput(e.target.value);
+                      e.target.style.height = "auto";
+                      e.target.style.height = `${Math.min(e.target.scrollHeight, 112)}px`;
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        askArchivist(chatInput);
+                      }
+                    }}
+                    placeholder="Write to the records… / بنویس…"
+                    maxLength={600}
+                    className="e0-scroll max-h-28 min-h-11 flex-1 resize-none rounded-sm border border-[#2b2b2e] bg-[#0d0d0f] px-3 py-2.5 text-[13px] leading-relaxed text-[#e8dfc8] placeholder:text-[#5c574c] focus:border-[#b08d3e]/60 focus:outline-none"
+                  />
+                  <button
+                    type="submit"
+                    disabled={chatBusy || !chatInput.trim()}
+                    aria-label="Send message to the Archivist"
+                    className="flex size-11 shrink-0 items-center justify-center rounded-sm border border-[#b08d3e]/50 bg-[#b08d3e]/10 text-[#b08d3e] transition-colors hover:border-[#b08d3e] hover:bg-[#b08d3e]/20 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    {chatBusy ? (
+                      <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                    ) : (
+                      <Send className="size-4" aria-hidden="true" />
+                    )}
+                  </button>
+                </div>
+              </form>
+            </motion.section>
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {!chatOpen && (
+            <motion.button
+              key="archivist-button"
+              type="button"
+              onClick={() => {
+                setChatOpen(true);
+                setChatSeen(true);
+              }}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 12 }}
+              transition={{ duration: 0.18 }}
+              aria-label="Ask the Archivist about ENTITY_000"
+              className={`fixed bottom-[calc(1.25rem+env(safe-area-inset-bottom))] right-4 z-50 flex h-12 items-center gap-2.5 rounded-sm border border-[#b08d3e]/60 bg-[#141416]/95 px-4 font-mono text-[11px] uppercase tracking-[0.18em] text-[#b08d3e] shadow-lg shadow-black/50 backdrop-blur transition-colors hover:border-[#b08d3e] hover:bg-[#1a1712] sm:right-6 ${
+                chatSeen ? "" : "e0-archivist-beckon"
+              }`}
+            >
+              <MessagesSquare className="size-4 shrink-0" aria-hidden="true" />
+              <span className="hidden sm:inline">ASK THE ARCHIVIST</span>
+              <span className="sm:hidden">ARCHIVIST</span>
+            </motion.button>
+          )}
+        </AnimatePresence>
       </div>
     </MotionConfig>
   );
