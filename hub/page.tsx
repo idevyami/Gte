@@ -2001,6 +2001,16 @@ export default function Home() {
     setChatInput("");
     if (chatInputRef.current) chatInputRef.current.style.height = "auto";
     setChatBusy(true);
+
+    let assistantText = "";
+    const paint = () => {
+      setChatMessages([
+        ...history,
+        { role: "assistant", content: assistantText },
+      ]);
+    };
+
+    /* Preferred path: consume the server's SSE stream, painting each delta. */
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
@@ -2012,19 +2022,72 @@ export default function Home() {
           })),
         }),
       });
-      if (!res.ok) throw new Error(`status ${res.status}`);
-      const data = (await res.json()) as { reply?: string };
-      const reply = data.reply?.trim();
-      if (!reply) throw new Error("empty reply");
-      setChatMessages([...history, { role: "assistant", content: reply }]);
+      if (!res.ok || !res.body) throw new Error(`status ${res.status}`);
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let carry = "";
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        carry += decoder.decode(value, { stream: true });
+        const events = carry.split("\n\n");
+        carry = events.pop() ?? "";
+        for (const evt of events) {
+          const line = evt.trim();
+          if (!line.startsWith("data:")) continue;
+          let parsed: { delta?: string; done?: boolean; error?: string };
+          try {
+            parsed = JSON.parse(line.slice(5).trim());
+          } catch {
+            continue;
+          }
+          if (parsed.error === "fallback") throw new Error("fallback");
+          if (parsed.delta) {
+            assistantText += parsed.delta;
+            paint();
+          }
+        }
+      }
+      if (assistantText.trim().length === 0) throw new Error("empty stream");
     } catch {
-      setChatMessages(history);
-      toast.error("The Archivist is unreachable.", {
-        description: "The line to the records went dead — try again in a moment.",
-      });
-    } finally {
-      setChatBusy(false);
+      /* Buffered fallback: one JSON round-trip, no streaming. */
+      let ok = false;
+      try {
+        const res = await fetch("/api/chat?buffered=1", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            messages: history.slice(-24).map((m) => ({
+              role: m.role,
+              content: m.content,
+            })),
+          }),
+        });
+        if (res.ok) {
+          const data = (await res.json()) as { reply?: string };
+          const reply = data.reply?.trim();
+          if (reply) {
+            assistantText = reply;
+            ok = true;
+          }
+        }
+      } catch {
+        /* fall through to the error toast */
+      }
+      if (!ok) {
+        setChatMessages(history);
+        toast.error("The Archivist is unreachable.", {
+          description:
+            "The line to the records went dead — try again in a moment.",
+        });
+        setChatBusy(false);
+        return;
+      }
     }
+
+    setChatMessages([...history, { role: "assistant", content: assistantText }]);
+    setChatBusy(false);
   }
 
   function resetArchivist() {
@@ -3049,7 +3112,7 @@ export default function Home() {
                     }}
                     placeholder="Write to the records… / بنویس…"
                     maxLength={600}
-                    className="e0-scroll max-h-28 min-h-11 flex-1 resize-none rounded-sm border border-[#2b2b2e] bg-[#0d0d0f] px-3 py-2.5 text-[13px] leading-relaxed text-[#e8dfc8] placeholder:text-[#5c574c] focus:border-[#b08d3e]/60 focus:outline-none"
+                    className="e0-scroll max-h-28 min-h-11 flex-1 resize-none rounded-sm border border-[#2b2b2e] bg-[#0d0d0f] px-3 py-2.5 text-base leading-relaxed text-[#e8dfc8] placeholder:text-[#5c574c] focus:border-[#b08d3e]/60 focus:outline-none sm:text-[13px]"
                   />
                   <button
                     type="submit"

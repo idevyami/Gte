@@ -31,7 +31,8 @@ The game:
 - The player is a silent pilgrim called THE VESSEL, carrying an ANCHOR, walking through a city ruled by a census Bureau that counts people like inventory. The world's materials: ink, stamps, parchment records, tolls, and belief.
 - The golden path is nine acts, in order: I THE VESSEL CHAMBER (the womb where you wake) → II THE FIRST DOOR (the undercity) → III THE CITY OF ASH → IV THE CONTRADICTION (the archive) → V THE CHAPEL OF THE PALE SAINT → VI THE WATCHING → VII THE ENGINE SANCTUM (you must align the heart) → VIII THE BOUND MARTYR (the boss arena; chains seal the aisle when the fight begins) → IX AFTERMATH (the monument and the ending).
 - Entities the vessel meets: THE HOLLOW (a vacant figure), THE BELIEVERS (a robed flock that presses and queues), THE CENSOR (a tall watcher), THE BOUND MARTYR (the boss — kill the bearers first, watch his telegraphed strikes, the anchor sits at the arena mouth), THE PENITENT, THE NULL CHILDREN, MEASURER OREN (a talking NPC), and TERMINAL_019 (a machine that speaks).
-- Mechanics: there is NO healing anywhere in the game; wounds follow the vessel across doors; if the vessel falls, it is remade whole at the last anchor (the save point) — progress is kept, death is not a spiral; a toll gate charges consistency before it opens; the Tab key observes and reads records.
+- Mechanics (all verified from the game's source constants — never invent numbers): there is NO hp healing anywhere; wounds follow the vessel across doors; if the vessel falls, it is remade whole at the last anchor — progress is kept, death is not a spiral. CONSISTENCY is the second resource: it starts at 100 and drains through six escalating stages (S1 WHISPERS, S2 ENVIRONMENTAL INCONSISTENCIES, S3 NPC AWARENESS, S4 THE CENSOR HUNTS, S5 REALITY ACTIVELY HUNTS, S6 HIDDEN STRUCTURES) — as it drains, reality itself loses coherence; restoring it heals the world. Known drains: opening a normal door costs 6, null termination 4, forcing a contradiction 5, abandoning believers 8, breaking the toll 8, archive fixes 5, the Censor's touch 4, a Correction's touch 2, and the boss's aura in phase two drains about 1 per second in radius. Each anchor's FIRST communion restores +12 consistency, but only while consistency is at least 60. THE MODIFY KEY (E) works only while observing (Tab): it cycles a modifiable property of the observed entity to its next value for a consistency cost — and some things cannot be modified ("NOTHING HERE IS MODIFIABLE. SOME THINGS ARE ONLY TRUE."). The toll gate charges consistency before it opens. The Tab key observes entities and reads records.
+- THE FOUR FRAGMENTS (collectible memories, verified): FRAGMENT 01 — THE LITURGY OF THE MARTYR ("He gave himself gladly."); FRAGMENT 02 — ARCHIVE LOG 7-11 (CORRUPTED, ends "entity_000_001 did not… [UNREADABLE]"); FRAGMENT 03 — MEASURER FIELD NOTE ("Do not tell them what the engine eats."); FRAGMENT 04 — YOUR OWN DESIGNATION (CONTRADICTED — "ENTITY_000_818. You are not the first."), recovered at the ending if not found earlier.
 - THE ENDING (verified from source — never deviate): there is ONE ending sequence. In Act IX the vessel reads the MONUMENT; a SYSTEM dialogue reveals the vessel is ENTITY_000_818 — the 818th attempt, the list goes DOWN not up (817 failed, 816 failed). Then the end screen opens: a ledger of the run's true numbers (edits made, consistency spent, fragments recovered out of 4, entities observed, inscriptions read, districts entered out of 9, deaths, time). Up to one JUDGMENT line reflects how the run was played: never spent any consistency ("YOU TOUCHED NOTHING"), spent deeply / consistency 40 or less ("THE SEAMS SHOWED YOU THEIR SECRETS"), or recovered all four fragments ("YOU LISTENED"). There is NO dialogue choice that changes the ending and NO way to refuse the count — the count always continues. Do not invent choices, characters, or numbers beyond this.
 - Controls (keyboard): WASD or arrow keys move, SPACE jump, SHIFT roll, J or left mouse button attack, TAB observe, E modify, F or ENTER interact, ESC pause. Gamepad: left stick or D-pad move, A jump, B roll, Y observe, right shoulder modify, START pause. A bilingual READ_ME with these controls ships inside the downloadable zips.
 
@@ -40,6 +41,7 @@ The hub (the website the user is on right now):
 - THE GODOT PROJECT card downloads the full source.
 - The gallery shows 170+ in-engine proof screenshots from 26 development passes.
 - The current build is verified by an automated suite of 838 checks.
+- The builds are UNSIGNED (indie exports): Windows SmartScreen and some browsers will show a warning — that is expected; the visitor should choose "keep" / "keep anyway". This is stated in the READ_ME inside the zips.
 
 POLICIES:
 - TRUTH FIRST: you speak only from the facts above. If a question needs details you were not given (specific dialogue lines, secret areas, exact numbers you do not know), say plainly that the record does not say, and offer what you DO know. NEVER invent dialogue options, choices, names, or numbers — a fabricated answer is worse than an honest blank.
@@ -100,6 +102,58 @@ async function askTheRecords(turns: ChatTurn[]): Promise<string> {
   return reply.trim();
 }
 
+/* Streaming variant: the SDK yields raw SSE byte chunks (Uint8Array),
+   which we decode and re-emit to the client as plain `data: {json}` SSE.
+   Falls back to the non-streaming call if anything at all goes wrong. */
+async function streamTheRecords(
+  turns: ChatTurn[],
+  onDelta: (text: string) => void,
+): Promise<number> {
+  const zai = await ZAI.create();
+  const stream = (await zai.chat.completions.create({
+    messages: [
+      { role: "assistant", content: SYSTEM_PROMPT },
+      ...turns.map((t) => ({ role: t.role, content: t.content })),
+    ],
+    stream: true,
+    thinking: { type: "disabled" },
+  })) as unknown as AsyncIterable<Uint8Array>;
+
+  const decoder = new TextDecoder();
+  let carry = ""; // SSE line split across chunk boundaries
+  let emitted = 0;
+
+  const consumeLine = (line: string): void => {
+    const trimmed = line.trim();
+    if (!trimmed.startsWith("data:")) return;
+    const payload = trimmed.slice(5).trim();
+    if (payload === "[DONE]" || payload.length === 0) return;
+    try {
+      const json = JSON.parse(payload) as {
+        choices?: { delta?: { content?: string } }[];
+      };
+      const delta = json.choices?.[0]?.delta?.content ?? "";
+      if (delta) {
+        emitted += delta.length;
+        onDelta(delta);
+      }
+    } catch {
+      /* malformed/partial line — skip, the next chunk completes it */
+    }
+  };
+
+  for await (const piece of stream) {
+    const text = carry + decoder.decode(piece, { stream: true });
+    const lines = text.split("\n");
+    carry = lines.pop() ?? ""; // keep the unterminated tail
+    for (const line of lines) consumeLine(line);
+  }
+  if (carry.length > 0) consumeLine(carry);
+
+  if (emitted === 0) throw new Error("stream produced no content");
+  return emitted;
+}
+
 export async function POST(request: NextRequest): Promise<Response> {
   const ip =
     request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
@@ -130,7 +184,69 @@ export async function POST(request: NextRequest): Promise<Response> {
     );
   }
 
-  // Two attempts with a short backoff, plus a hard timeout guard.
+  // Preferred path: STREAM the reply as SSE. If the stream fails before the
+  // first byte, fall back to the buffered call so the visitor still gets an
+  // answer. Hard timeout guards both paths. `?buffered=1` skips streaming
+  // entirely (used by the client's own fallback path).
+  const buffered = request.nextUrl.searchParams.get("buffered") === "1";
+  if (!buffered) {
+  try {
+    const encoder = new TextEncoder();
+    let firstByteSent = false;
+    const stream = new ReadableStream<Uint8Array>({
+      async start(controller) {
+        const send = (obj: unknown): void => {
+          controller.enqueue(
+            encoder.encode(`data: ${JSON.stringify(obj)}\n\n`),
+          );
+        };
+        try {
+          await Promise.race([
+            streamTheRecords(turns, (delta) => {
+              firstByteSent = true;
+              send({ delta });
+            }),
+            new Promise<never>((_, reject) =>
+              setTimeout(
+                () => reject(new Error("completion timeout")),
+                COMPLETION_TIMEOUT_MS,
+              ),
+            ),
+          ]);
+          send({ done: true });
+        } catch (error) {
+          const message =
+            error instanceof Error ? error.message : "unknown error";
+          console.error("[chat] stream failed:", message);
+          // No bytes flowed yet -> a clean JSON fallback is still possible.
+          if (!firstByteSent) {
+            send({ error: "fallback" });
+          } else {
+            send({ done: true }); // partial reply beats a dead panel
+          }
+        } finally {
+          controller.close();
+        }
+      },
+    });
+
+    return new Response(stream, {
+      headers: {
+        "Content-Type": "text/event-stream; charset=utf-8",
+        "Cache-Control": "no-store, no-transform",
+        Connection: "keep-alive",
+        "X-Accel-Buffering": "no",
+      },
+    });
+  } catch (error) {
+    console.error(
+      "[chat] stream setup failed:",
+      error instanceof Error ? error.message : error,
+    );
+  }
+  } // end !buffered
+
+  // Buffered fallback (also serves clients with no streaming support).
   for (let attempt = 1; attempt <= 2; attempt++) {
     try {
       const reply = await Promise.race([
