@@ -95,7 +95,7 @@ func _draw() -> void:
                         draw_string(E0.mono, Vector2(lx, y + 12.0), judgment, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(E0.CRIMSON.r, E0.CRIMSON.g, E0.CRIMSON.b, 0.9))
         if anim_t > 3.0 and E0.mono:
                 if fmod(anim_t, 1.2) < 0.75:
-                        var foot := "[F] RETURN TO THE TITLE \u2014 THE RECORD STANDS"
+                        var foot := "[" + GameState.key_hint("F", "A") + "] RETURN TO THE TITLE \u2014 THE RECORD STANDS"
                         var fw := E0.mono.get_string_size(foot, HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x
                         draw_string(E0.mono, Vector2((vp.x - fw) * 0.5, vp.y - 34.0), foot, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, E0.DIM)
                 var credit := "A VERTICAL SLICE · END OF RECORD"

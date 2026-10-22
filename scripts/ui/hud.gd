@@ -280,14 +280,16 @@ func _draw_prompt_plaque(vp: Vector2, mono: FontFile) -> void:
         var pivot := plaque.get_center()
         draw_set_transform(pivot - Vector2(pop, pop) * pivot, 0.0, Vector2(pop, pop))
         UICraft.brass(self, plaque, 0.1, true)
-        # the key cap: a raised square die carrying F
+        # the key cap: a raised square die carrying the act's key — the hand
+        # that last spoke names it (GP-3: the pad's A, the keyboard's F)
+        var key_label := GameState.key_hint("F", "A")
         var cap := Rect2(px + 12.0, py + 9.0, 22.0, 22.0)
         draw_rect(cap, Color(E0.VOID.r, E0.VOID.g, E0.VOID.b, 0.92))
         draw_rect(Rect2(cap.position + Vector2(1.5, 1.5), cap.size - Vector2(3.0, 4.5)), Color(E0.PARCH.r * 0.5, E0.PARCH.g * 0.5, E0.PARCH.b * 0.5, 0.95))
         draw_rect(Rect2(cap.position + Vector2(1.5, 1.5), Vector2(cap.size.x - 3.0, 2.0)), Color(1, 1, 1, 0.14))
         draw_rect(cap, Color(E0.GOLD.r + 0.1, E0.GOLD.g + 0.08, E0.GOLD.b + 0.04, 0.8), false, 1.0)
-        draw_string(mono, Vector2(cap.position.x + 8.6, cap.end.y - 6.4), "F", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(0.03, 0.03, 0.03, 0.8))
-        draw_string(mono, Vector2(cap.position.x + 8.0, cap.end.y - 7.0), "F", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(E0.BONE.r, E0.BONE.g, E0.BONE.b, 0.92))
+        draw_string(mono, Vector2(cap.position.x + 8.6, cap.end.y - 6.4), key_label, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(0.03, 0.03, 0.03, 0.8))
+        draw_string(mono, Vector2(cap.position.x + 8.0, cap.end.y - 7.0), key_label, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(E0.BONE.r, E0.BONE.g, E0.BONE.b, 0.92))
         last_prompt_keycap = true
         # diamond separator then the engraved verb
         var dx := cap.end.x + 9.0

@@ -226,7 +226,7 @@ func _draw() -> void:
         if E0.mono:
                 var fy := vp.y - 66.0
                 draw_line(Vector2(cx - 240.0, fy - 22.0), Vector2(cx + 240.0, fy - 22.0), Color(E0.ASH.r, E0.ASH.g, E0.ASH.b, 0.45), 1.0)
-                var l1 := "A/D OR ARROWS ADJUST · F CONFIRM · ESC BACK"
+                var l1 := GameState.key_hint("A/D OR ARROWS ADJUST · F CONFIRM · ESC BACK", "STICK OR D-PAD ADJUST · A CONFIRM · START BACK")
                 var l1w := E0.mono.get_string_size(l1, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
                 draw_string(E0.mono, Vector2(cx - l1w * 0.5, fy), l1, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(E0.DIM.r, E0.DIM.g, E0.DIM.b, 0.95))
                 var l2 := "GAMEPAD · STICK/D-PAD MOVE · A CONFIRM · B BACK · START PAUSE"

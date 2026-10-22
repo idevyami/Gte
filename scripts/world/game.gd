@@ -209,7 +209,16 @@ func _build_ui() -> void:
 func set_active(v: bool) -> void:
         active = v
         world.visible = v
-        world.process_mode = Node.PROCESS_MODE_INHERIT if v else Node.PROCESS_MODE_DISABLED
+        # GP-3 THE PAUSE WAS A VEIL, NOT A HOLD: the game node must keep
+        # running while paused (it owns the pause key and the modals), and
+        # world INHERITED that immunity — the vessel walked 260px in a
+        # one-second paused hold (probe-pinned), enemies struck behind the
+        # veil, the boss's aura drained while the record stood still. The
+        # world is PAUSABLE: get_tree().paused now actually pauses it. The
+        # conductor (this node), the UI layer, FX and audio keep their
+        # immunity — the sheets still file, the fades still fade, the music
+        # still plays under the veil.
+        world.process_mode = Node.PROCESS_MODE_PAUSABLE if v else Node.PROCESS_MODE_DISABLED
         ui_layer.visible = v
         set_process(v)
         if not v:
@@ -900,6 +909,13 @@ func _unhandled_input(event: InputEvent) -> void:
         match state:
                 "dialogue":
                         if event.is_action_pressed("interact"):
+                                # GP-3 THE SHARED A: the press that files the
+                                # sheet's last line unlocks the vessel in the
+                                # same frame — silence it as a jump so the pad's
+                                # one button does not leap him off the step.
+                                if event.is_action_pressed("jump") \
+                                                and player != null and player.is_on_floor():
+                                        player.silence_jump()
                                 dialogue_box.advance()
                         return
                 "playing":
@@ -909,7 +925,7 @@ func _unhandled_input(event: InputEvent) -> void:
         if event.is_action_pressed("observe"):
                 _observe_key()
         elif event.is_action_pressed("interact"):
-                _interact_key()
+                _interact_key(event)
         elif event.is_action_pressed("modify"):
                 _modify_key()
         elif event.is_action_pressed("move_up"):
@@ -919,10 +935,19 @@ func _unhandled_input(event: InputEvent) -> void:
                 if observe_active:
                         _cycle_property(1)
 
-func _interact_key() -> void:
+func _interact_key(event: InputEvent = null) -> void:
         if observe_active:
                 return
         if _nearest_interactable:
+                # GP-3 THE SHARED A: the pad's one button carries both JUMP and
+                # INTERACT — the title has always promised "A JUMP/INTERACT",
+                # but the code fired both at once (a hop with every door, a
+                # reading sheet mid-leap). Standing at the record, the press
+                # FILES: the same event that answers here is silenced as a
+                # jump, so the vessel does not leap off the step it took.
+                if event != null and event.is_action_pressed("jump") \
+                                and player != null and player.is_on_floor():
+                        player.silence_jump()
                 _nearest_interactable.interact(self)
                 if player:
                         player.play_interact()
@@ -1236,7 +1261,9 @@ func _on_dialogue_finished(key: String) -> void:
                         _finish_game()
 
 func system_message(text: String, mode := "system") -> void:
-        system_log.push(text, mode)
+        # GP-3: the census speaks to the hand that is actually holding the
+        # vessel — bracketed key marks name the speaking device's own buttons.
+        system_log.push(GameState.key_marks(text), mode)
 
 # ------------------------------------------------------------------ hunted
 func _hunted(delta: float, allow := -1.0) -> void:

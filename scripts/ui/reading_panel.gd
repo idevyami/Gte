@@ -68,6 +68,12 @@ func _unhandled_input(event: InputEvent) -> void:
                 if _chars < float(_total_chars):
                         _chars = float(_total_chars)     # first press finishes the text
                 else:
+                        # GP-3 THE SHARED A: the press that closes the sheet
+                        # returns control in the same frame — silence it as a
+                        # jump so the pad's one button does not leap the vessel.
+                        if event.is_action_pressed("jump") and game != null \
+                                        and game.player != null and game.player.is_on_floor():
+                                game.player.silence_jump()
                         close()
 
 # ------------------------------------------------------------------ layout
@@ -153,7 +159,7 @@ func _draw() -> void:
 
         # ---- footer
         var foot_y := plate.position.y + plate_h - 26.0
-        var foot := "F / TAB — CLOSE"
+        var foot := GameState.key_hint("F / TAB — CLOSE", "A / Y — CLOSE")
         var blink := 0.55 + 0.3 * sin(Time.get_ticks_msec() * 0.004)
         draw_string(E0.mono, Vector2(x, foot_y), foot, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(E0.DIM.r, E0.DIM.g, E0.DIM.b, blink))
         # read state, right side

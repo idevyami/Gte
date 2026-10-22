@@ -70,6 +70,7 @@ func _run() -> void:
         await _the_corner_yields()
         await _the_pile_keeps_its_count()
         await _the_players_own_hands()
+        await _the_second_hand()
         await _the_records_wording_live()
         print("=== %d checks, %d failures ===" % [checks, fails])
         GameState.clear_save()
@@ -616,6 +617,118 @@ func _the_records_wording() -> void:
                 if " ".join(PackedStringArray(panel.wrap_memory_lines(obs, vmax))) != obs:
                         lost += 1
         ok(lost == 0, "every memory in the record is legible through the wrap (entities + inscriptions)")
+
+# ------------------------------------------------------------------ GP-3: the second hand
+func _the_second_hand() -> void:
+        print("[THE SECOND HAND — GP-3]")
+        # --- THE PAUSE HOLDS THE WORLD (the veil was never a hold: the vessel
+        #     walked 260px behind it in a one-second probe before this pass)
+        game.transition_to("act3")
+        await _room("act3")
+        await _settle_playing(0.6)
+        var p := game.player
+        var x0 := p.global_position.x
+        game.pause_menu.open()
+        await _frames(2)
+        ok(get_tree().paused, "the pause menu holds the tree")
+        ok(not p.can_process(), "the vessel cannot process while paused")
+        Input.action_press("move_right")
+        await _wait_real(0.5)
+        Input.action_release("move_right")
+        ok(absf(p.global_position.x - x0) < 1.0, "the world stands still while paused (the vessel does not walk behind the veil)")
+        game.pause_menu.close()
+        await _frames(2)
+        ok(not get_tree().paused, "closing the menu restores the tree")
+        Input.action_press("move_left")
+        await _wait_real(0.35)
+        Input.action_release("move_left")
+        ok(absf(p.global_position.x - x0) > 20.0, "the vessel still walks unpaused (the freeze is the pause's own)")
+
+        # --- THE HAND THAT LAST SPOKE OWNS THE LABELS (device tracker)
+        var lb := InputEventJoypadButton.new()
+        lb.button_index = JOY_BUTTON_LEFT_SHOULDER
+        lb.pressed = true
+        GameState.pad_last = false
+        Input.parse_input_event(lb)
+        await _frames(1)
+        ok(GameState.pad_last, "a pad press makes the pad the speaking hand")
+        ok(GameState.key_hint("F", "A") == "A", "the pad names its own button")
+        ok(GameState.key_marks("READ IT WITH [TAB].") == "READ IT WITH [Y].", "the census re-marks [TAB] for the pad")
+        ok(GameState.key_marks("[ROLL] PAST THE GATE") == "[B] PAST THE GATE", "the census re-marks [ROLL] for the pad")
+        ok(GameState.key_marks("FILE [F] / [E] / [ESC]") == "FILE [A] / [RB] / [START]", "the census re-marks F, E and ESC for the pad")
+        var kk := InputEventKey.new()
+        kk.physical_keycode = KEY_K
+        kk.pressed = true
+        Input.parse_input_event(kk)
+        await _frames(1)
+        ok(not GameState.pad_last, "a key press returns the voice to the keyboard")
+        ok(GameState.key_hint("F", "A") == "F", "the keyboard names its own key")
+        ok(GameState.key_marks("READ IT WITH [TAB].") == "READ IT WITH [TAB].", "the keyboard's marks stand")
+
+        # --- THE FUNNEL SPEAKS TO THE HAND THAT HOLDS THE VESSEL
+        GameState.pad_last = true
+        game.system_message("SEALED. READ IT WITH [TAB].")
+        await _frames(1)
+        ok(String(game.system_log.entries[game.system_log.entries.size() - 1]["text"]).contains("[Y]"),
+                "the census message names the pad's button (the funnel re-marks)")
+        GameState.pad_last = false
+        game.system_message("SEALED. READ IT WITH [TAB].")
+        await _frames(1)
+        ok(String(game.system_log.entries[game.system_log.entries.size() - 1]["text"]).contains("[TAB]"),
+                "the census message names the keyboard's key")
+
+        # --- THE SHARED A FILES, NOT LEAPS (the pad's one button carries both)
+        #     act2 keeps ANCHOR_A — a non-locking interact (the communion does
+        #     not seize the frame, so an unsilenced A would leap the vessel).
+        #     The witness is the CEREMONY (save_fx_t), not the saving flag —
+        #     that one is a re-entrancy guard that closes within the same call.
+        game.transition_to("act2")
+        await _room("act2")
+        await _settle_playing(0.6)
+        p = game.player
+        var anchor: Anchor = null
+        for n in game.world.get_children():
+                if n is Anchor:
+                        anchor = n
+                        break
+        ok(anchor != null, "act2 keeps its anchor")
+        var cons0 := GameState.consistency
+        p.global_position = anchor.global_position + Vector2(-46.0, 0.0)
+        await _frames(8)
+        ok(game._nearest_interactable == anchor, "the vessel stands at the record (the anchor is nearest)")
+        var press_a := func(pressed: bool) -> void:
+                var ev := InputEventJoypadButton.new()
+                ev.button_index = JOY_BUTTON_A
+                ev.pressed = pressed
+                Input.parse_input_event(ev)
+        press_a.call(true)
+        await _frames(2)
+        ok(anchor.save_fx_t >= 0.0, "the shared A files at the record (the communion ceremony answers)")
+        ok(p._jump_press == 0.0, "the same press is silenced as a jump (no buffered leap off the communion)")
+        await _wait_real(0.35)
+        press_a.call(false)
+        ok(p.is_on_floor() and absf(p.velocity.y) < 1.0, "the vessel stays on the ground through the filing")
+        GameState.consistency = cons0
+
+        # away from every record, the same A is the leap
+        # (x1100: clear of every interactable — r04 260 · terminal 620 · r05 940 ·
+        #  plaque 1420 · door 1522 · anchor 1850 · r06 2000, all at y660)
+        p.global_position = Vector2(1100, 620)
+        await _frames(8)
+        ok(game._nearest_interactable == null, "the open floor keeps no record")
+        press_a.call(true)
+        await _wait_real(0.25)
+        press_a.call(false)
+        ok(p.velocity.y < -50.0 or not p.is_on_floor(), "away from the record, the pad's A leaps (the jump lives)")
+
+        # --- THE README NAMES THE PAD'S OWN FIGHT (the attack was silent)
+        var readme := FileAccess.get_file_as_string("res://tools/standalone_readme.txt")
+        ok(readme.contains("Attack ....... X"), "the README teaches the pad's attack (X)")
+        ok(readme.contains("Interact ..... A"), "the README teaches the pad's interact (A)")
+        ok(readme.contains("حمله ....... X"), "the Persian README teaches the pad's attack")
+        ok(readme.contains("تعامل ...... A"), "the Persian README teaches the pad's interact")
+        # suite hygiene: the keyboard speaks for the sections that follow
+        GameState.pad_last = false
 
 # ------------------------------------------------------------------ GP-2 live: the record speaks, on the real page
 func _the_records_wording_live() -> void:

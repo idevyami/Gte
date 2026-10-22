@@ -133,6 +133,15 @@ func _confirm() -> void:
         match String(menu[idx]["action"]):
                 "resume":
                         close()
+                        # GP-3 THE SHARED A (and the keyboard's own twin): the
+                        # menu confirms on INTERACT *or* JUMP — so the very
+                        # press that resumes (pad A, or Space on a keyboard)
+                        # would arm the buffered leap the frame the world
+                        # unpauses. The record takes this press; the vessel
+                        # does not hop off the resume.
+                        var g := get_tree().get_first_node_in_group("game")
+                        if g and g.player:
+                                g.player.silence_jump()
                         resume_requested.emit()
                 "records":
                         screen = 1
@@ -221,7 +230,7 @@ func _draw_codex(vp: Vector2) -> void:
                 _draw_records(vp)
         # footer hints
         if E0.mono:
-                var hint := "LEFT/RIGHT SWITCH · UP/DOWN SCROLL · F BACK"
+                var hint := GameState.key_hint("LEFT/RIGHT SWITCH · UP/DOWN SCROLL · F BACK", "STICK SWITCH · STICK SCROLL · A BACK")
                 var hw := E0.mono.get_string_size(hint, HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x
                 draw_string(E0.mono, Vector2(120.0, vp.y - 48.0), hint, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, E0.DIM)
 

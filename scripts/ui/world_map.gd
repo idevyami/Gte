@@ -188,7 +188,7 @@ func _draw() -> void:
                         HORIZONTAL_ALIGNMENT_RIGHT, -1, 9, Color(E0.PARCH.r, E0.PARCH.g, E0.PARCH.b, 0.7 * ease))
 
         # ---- footer
-        var foot := "ESC / F — CLOSE"
+        var foot := GameState.key_hint("ESC / F — CLOSE", "START / A — CLOSE")
         var blink := 0.5 + 0.3 * sin(Time.get_ticks_msec() * 0.004)
         draw_string(E0.mono, Vector2(vp.x * 0.5, vp.y - 40.0), foot, HORIZONTAL_ALIGNMENT_CENTER, -1, 11,
                 Color(E0.DIM.r, E0.DIM.g, E0.DIM.b, blink))

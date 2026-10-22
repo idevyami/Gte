@@ -185,7 +185,8 @@ func _draw() -> void:
                 var dcol := Color(E0.GOLD.r, E0.GOLD.g, E0.GOLD.b, 0.9) if fmod(_blink, 0.9) < 0.55 else Color(E0.GOLD.r, E0.GOLD.g, E0.GOLD.b, 0.4)
                 _diamond(Vector2(x + w - 116.0, y + h - 8.0 + bounce), 2.6, dcol)
                 if E0.mono and fmod(_blink, 0.9) < 0.7:
-                        UICraft.stamp_text(self, E0.mono, Vector2(x + w - 104.0, y + h - 2.0), "FILE  [F]", Color(0.30, 0.22, 0.14, 0.85), 12, 0.035, 5)
+                        # GP-3: the hand that last spoke names the filing key
+                        UICraft.stamp_text(self, E0.mono, Vector2(x + w - 104.0, y + h - 2.0), "FILE  [" + GameState.key_hint("F", "A") + "]", Color(0.30, 0.22, 0.14, 0.85), 12, 0.035, 5)
         if E0.mono:
                 UICraft.stamp_text(self, E0.mono, Vector2(x + 30, y + h - 2.0), "%d / %d" % [line_idx + 1, lines.size()], Color(0.35, 0.28, 0.20, 0.6), 12, -0.01, 9)
 

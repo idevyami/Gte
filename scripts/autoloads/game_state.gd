@@ -90,6 +90,38 @@ func _process(delta: float) -> void:
 
 signal consistency_low_warning
 
+# --- GP-3 THE SECOND HAND: the last device that spoke owns the labels ----------
+# The game has always been playable on a pad (every action is bound), but the
+# world's hints named only the keyboard's keys — a pad player was told to press
+# F by a plaque that would not answer to it. The hand that last spoke decides
+# which key the record names.
+var pad_last := false
+
+func _input(event: InputEvent) -> void:
+        # Read-only: never accepts, never consumes — the labels only listen.
+        if event is InputEventJoypadButton and event.pressed:
+                pad_last = true
+        elif event is InputEventJoypadMotion and absf(event.axis_value) > 0.5:
+                pad_last = true
+        elif (event is InputEventKey or event is InputEventMouseButton) and event.pressed:
+                pad_last = false
+
+func key_hint(kb: String, pad: String) -> String:
+        ## The device's own name for the same act. Pure, testable.
+        return pad if pad_last else kb
+
+func key_marks(text: String) -> String:
+        ## Bracketed key marks swap for the speaking device's own buttons:
+        ## the pad reads [Y] where the keyboard reads [TAB]. Pure, testable.
+        if not pad_last:
+                return text
+        return text.replace("[TAB]", "[Y]") \
+                        .replace("[ROLL]", "[B]") \
+                        .replace("[E]", "[RB]") \
+                        .replace("[F]", "[A]") \
+                        .replace("[ESC]", "[START]") \
+                        .replace("[W/S]", "[STICK]")
+
 # --- Settings (persisted user://settings.json; P2 options pass) ------------------
 const SETTINGS_PATH := "user://settings.json"
 var settings := {

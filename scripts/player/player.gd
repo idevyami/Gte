@@ -27,6 +27,16 @@ var _hit_done := false
 var _iframes := 0.0
 var _step_accum := 0.0
 var _hurt_flash := 0.0
+# GP-3 THE SHARED A: on a pad the one A button carries both JUMP and
+# INTERACT. When the vessel stands at an interactable, the press belongs to
+# the record, not the leap — Game silences the jump for that press. The
+# window is a few frames (this same press, never the next one).
+var _jump_silence_until_msec := 0
+
+func silence_jump(window_msec := 60) -> void:
+        _jump_press = 0.0
+        _jump_silence_until_msec = Time.get_ticks_msec() + window_msec
+
 # WB-19 THE GATHER: the crouch before the leave — the sprite reads the
 # compression through the squash channel and the stretch of the launch
 var _jump_windup := 0.0
@@ -368,8 +378,10 @@ func _process(delta: float) -> void:
         if _attack_idx >= 0 and sprite:
                 queue_redraw()   # weapon trail follows the painted swing
         # input buffers: captured on idle frames, consumed by physics — inputs
-        # are never swallowed by a missed physics tick
-        if Input.is_action_just_pressed("jump"):
+        # are never swallowed by a missed physics tick. The shared-A silence
+        # (GP-3) lets the interact consume this press instead of the leap.
+        if Input.is_action_just_pressed("jump") \
+                        and Time.get_ticks_msec() >= _jump_silence_until_msec:
                 _jump_press = E0.P_BUFFER
         if Input.is_action_just_pressed("attack"):
                 _attack_press = 0.14

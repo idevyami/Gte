@@ -154,4 +154,8 @@ for f in gp2_01_census gp2_02_law_obs gp2_04_cradle; do
   cp "/home/z/entity000/screenshots/gp2/${f}.jpg" "$DST"/
 done
 cp /home/z/entity000/screenshots/gp2/gp2_strip_*.jpg "$DST"/
+# GP-3: the same law — the second-hand stills are final JPEGs
+for f in gp3_01_plaque_pad gp3_02_plaque_kb gp3_03_dialogue_pad gp3_04_reading_pad; do
+  cp "/home/z/entity000/screenshots/gp3/${f}.jpg" "$DST"/
+done
 ls "$DST" | wc -l

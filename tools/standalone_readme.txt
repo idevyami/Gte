@@ -17,8 +17,11 @@ CONTROLS (keyboard)
 
 CONTROLS (gamepad)
   Move ......... Left Stick or D-Pad
-  Jump ......... A   Roll ....... B
+  Jump ......... A   (near a door or record, A interacts instead)
+  Roll ......... B
+  Attack ....... X
   Observe ...... Y   Modify ..... Right Shoulder
+  Interact ..... A   (same button as Jump — context decides)
   Pause ........ Start
 
 If your browser/OS warns about an unsigned download, that is normal for
@@ -40,8 +43,11 @@ indie games — choose "keep".
 
 کنترل‌ها (دسته‌ی بازی)
   حرکت ........ اهرم چپ یا جهت‌نما
-  پرش ........ A    غلت ...... B
+  پرش ........ A   (کنار در یا سند، همان A تعامل می‌کند)
+  غلت ........ B
+  حمله ....... X
   مشاهده ..... Y    تغییر ..... شانه‌ی راست
+  تعامل ...... A   (همان دکمه‌ی پرش — بسته به موقعیت)
   منو ........ Start
 
 اگر مرورگر یا ویندوز درباره‌ی فایل دانلود‌شده هشدار داد، طبیعی است —

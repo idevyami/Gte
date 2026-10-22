@@ -158,7 +158,7 @@ func _draw() -> void:
                                 yy += 19.0
         # footer help: pencil marginalia (bright enough to squint-test)
         if E0.mono:
-                var foot := "TAB: NEXT / EXIT   W/S: SELECT   E: MODIFY"
+                var foot := GameState.key_hint("TAB: NEXT / EXIT   W/S: SELECT   E: MODIFY", "Y: NEXT / EXIT   STICK: SELECT   RB: MODIFY")
                 draw_string(E0.mono, Vector2(cx, y + h - 18.0), foot, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(0.45, 0.40, 0.32, 0.88))
 
 ## GP-2 THE MEMORY WRAPS: the ledger's single-line economy ellipsized at
