@@ -91,7 +91,7 @@
                 {"id": "r13_census_ward", "room": "act4", "kind": "stele", "pos": [860, 940],
                  "title": "WARD 3 — INHABITANTS",
                  "body": ["MARROW, O. — DEFINITION 71%", "LOAVES, T. — DEFINITION 54%", "PSALM, A. — DEFINITION 12%", "KETTLE, R. — DEFINITION 9%"],
-                 "stamp": "FOUR OF THE ABOVE HAVE BEEN STRUCK. THE STRIKING HAND IS VERY STEADY.",
+                 "stamp": "TWO OF THE ABOVE HAVE BEEN STRUCK. THE STRIKING HAND IS VERY STEADY.",
                  "margin": "it looks like prayer, if you watch it being done.",
                  "prompt": "READ THE CENSUS STELE",
                  "obs": "the struck names are shallower than the living ones. give it a year."},
@@ -109,7 +109,7 @@
                  "stamp": "LAW: CONSENSUS DATA OUTWEIGHS SINGLE RECORDS.",
                  "margin": "collective faith creates saints. she is listening.",
                  "prompt": "READ THE POSTED LAW",
-                 "obs": "gold leaf, chapel grade. the civic copy on process street is painted wood."},
+                 "obs": "gold leaf, chapel grade. the civic copy on procession street is painted wood."},
 
                 {"id": "r16_saint_legend", "room": "act5", "kind": "scripture", "pos": [700, 840],
                  "title": "THE PALE SAINT — VERSICLES",
@@ -151,7 +151,7 @@
                  "obs": "no record of who wrote this. the ink refuses to fade. the archive has noticed and elected not to act."},
 
                 {"id": "r22_correction_notice", "room": "act6", "kind": "notice", "pos": [1950, 840],
-                 "title": "NOTICE — MURAL, CHANTY WALL",
+                 "title": "NOTICE — MURAL, CHANT WALL",
                  "body": ["THE MURAL HAS BEEN CORRECTED BY HAND.", "THE HAND HAS BEEN NOTED.", "THE HAND IS NO LONGER EMPLOYED HERE."],
                  "stamp": "THE COUNT REMAINS DISPUTED. THE COUNT REMAINS OFFICIAL.",
                  "prompt": "READ THE NOTICE",

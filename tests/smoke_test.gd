@@ -45,6 +45,7 @@ func _run() -> void:
         await _consistency_and_censor()
         await _boss()
         await _ending()
+        await _the_records_wording()
         await _options_and_settings()
         await _gamepad_and_codex()
         await _living_city()
@@ -69,6 +70,7 @@ func _run() -> void:
         await _the_corner_yields()
         await _the_pile_keeps_its_count()
         await _the_players_own_hands()
+        await _the_records_wording_live()
         print("=== %d checks, %d failures ===" % [checks, fails])
         GameState.clear_save()
         get_tree().quit(1 if fails > 0 else 0)
@@ -520,6 +522,129 @@ func _ending() -> void:
                         "the prompt keeps its own row above the credit (%.0f vs %.0f)" % [geo["prompt"], geo["credit"]])
         ok(geo["ledger_first"] >= geo["question2"] + 40.0,
                         "the ledger never crowds the question (%.0f clear)" % (geo["ledger_first"] - geo["question2"]))
+
+# ------------------------------------------------------------------ GP-2: the record speaks
+func _the_records_wording() -> void:
+        print("[THE RECORD SPEAKS — GP-2]")
+        # --- the words the city actually says had never been proofread as
+        # published text — three defects, each on a surface the player reads
+        var rdata: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://data/readables.json"))
+        ok(rdata.has("readables"), "readables corpus parses")
+        var by_id := {}
+        for entry in rdata.get("readables", []):
+                by_id[String(entry.get("id", ""))] = entry
+        # (1) the mural notice names the wall the chant owns — CHANTY was a
+        # ghost spelling that existed nowhere else in the record
+        ok(String(by_id["r22_correction_notice"]["title"]) == "NOTICE \u2014 MURAL, CHANT WALL",
+                        "the mural notice names the CHANT WALL")
+        # (2) the fourth fundamental's record agrees with the street's own
+        # name (the boundary stone, the measurer and the zone stamp all say
+        # PROCESSION)
+        ok(String(by_id["r15_fundamental_four"]["obs"]).contains("procession street"),
+                        "the gold-leaf copy hangs on procession street")
+        # (3) the census counts its struck honestly: four inhabitants listed,
+        # the stamp struck two — the obs still speaks of living ones
+        var r13: Dictionary = by_id["r13_census_ward"]
+        ok(String(r13["stamp"]).begins_with("TWO OF THE ABOVE HAVE BEEN STRUCK"),
+                        "the census strikes two of four (the obs speaks of the living)")
+        ok((r13["body"] as Array).size() == 4, "the census stele lists its four inhabitants")
+        # --- corpus hygiene: no ghost spelling, no renamed street ------------
+        var chanty := 0
+        var renamed := 0
+        for entry in rdata.get("readables", []):
+                for field in ["title", "stamp", "margin", "obs", "prompt"]:
+                        var s := String(entry.get(field, ""))
+                        if s.contains("CHANTY"):
+                                chanty += 1
+                        if s.contains("process street"):
+                                renamed += 1
+                for line in entry.get("body", []):
+                        if String(line).contains("CHANTY"):
+                                chanty += 1
+        ok(chanty == 0, "no ghost spelling survives in the corpus (CHANTY)")
+        ok(renamed == 0, "no street is renamed by a stray abbreviation")
+        # --- mechanical law: every published string is typographically clean
+        var dirty := [0]
+        var check := func(s: String) -> void:
+                if "  " in s or s != s.strip_edges() or "..." in s or " ," in s or " ." in s:
+                        dirty[0] += 1
+        var ddata: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://data/dialogue.json"))
+        for key in ddata.keys():
+                for line in ddata[key].get("lines", []):
+                        check.call(String(line.get("text", "")))
+        var edata: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://data/entities.json"))
+        for ekey in edata.keys():
+                check.call(String(edata[ekey].get("memory", "")))
+                for note in edata[ekey].get("notes", []):
+                        check.call(String(note))
+        for entry in rdata.get("readables", []):
+                for field in ["title", "stamp", "margin", "obs", "prompt"]:
+                        check.call(String(entry.get(field, "")))
+                for line in entry.get("body", []):
+                        check.call(String(line))
+        ok(dirty[0] == 0, "every published string is typographically clean")
+        # --- THE MEMORY WRAPS: the ledger's single-line economy cut every
+        # long memory at ~29 characters — 34 of the record's memories run
+        # longer, so the observe readout hid most of the city's own record
+        # (the screaming cradle read 'eleven opened early. one of…'). The
+        # value now wraps on ruled lines; the ellipsis survives only past
+        # the four-line cap.
+        var panel := game.observe_panel
+        var vmax := 394.0 * 0.56        # the ledger's own value column
+        var cradle := String(edata["CRADLE_SHELF"]["memory"])
+        var lines := panel.wrap_memory_lines(cradle, vmax)
+        ok(lines.size() >= 3, "the longest memory (74 chars) wraps onto ruled lines (%d)" % lines.size())
+        ok(" ".join(PackedStringArray(lines)) == cradle, "the screaming cradle is read WHOLE (no ellipsis)")
+        ok(panel.wrap_memory_lines("we were ten thousand once.", vmax).size() == 1,
+                        "a short memory keeps its single ruled line")
+        var capped := panel.wrap_memory_lines("word ".repeat(60), vmax)
+        ok(capped.size() == 4, "the ledger never lays more than four memory lines")
+        ok(String(capped[3]).ends_with("\u2026"), "past the cap the fourth line keeps the census ellipsis")
+        # --- the whole corpus is legible: every entity memory and every
+        # inscription obs survives the wrap without loss
+        var lost := 0
+        for ekey in edata.keys():
+                var mem := String(edata[ekey].get("memory", ""))
+                if mem.is_empty():
+                        continue
+                if " ".join(PackedStringArray(panel.wrap_memory_lines(mem, vmax))) != mem:
+                        lost += 1
+        for entry in rdata.get("readables", []):
+                var obs := String(entry.get("obs", ""))
+                if obs.is_empty():
+                        continue
+                if " ".join(PackedStringArray(panel.wrap_memory_lines(obs, vmax))) != obs:
+                        lost += 1
+        ok(lost == 0, "every memory in the record is legible through the wrap (entities + inscriptions)")
+
+# ------------------------------------------------------------------ GP-2 live: the record speaks, on the real page
+func _the_records_wording_live() -> void:
+        print("[THE RECORD SPEAKS, LIVE — GP-2]")
+        # --- live: the cradle the vessel walks past at birth -----------------
+        # runs LAST on purpose: the section walks the real game (a transition
+        # into act1, a true observe), and the suite's earlier sections each
+        # inherit the world the previous one left — a guest pass does not
+        # repaint the house mid-tour
+        var edata: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://data/entities.json"))
+        var cradle := String(edata["CRADLE_SHELF"]["memory"])
+        game.transition_to("act1")
+        await _room("act1")
+        game.player.global_position = Vector2(300, 970)
+        GameState.observe_installed = true
+        await _frames(30)
+        game.observe_enter()
+        var tries := 0
+        while game.observe_active and game._current_target() != null \
+                        and String(game._current_target().instance_key) != "CRADLE_SHELF_1" and tries < 24:
+                game.observe_cycle()
+                tries += 1
+                await _frames(4)
+        await _frames(20)
+        ok(String(game._current_target().instance_key) == "CRADLE_SHELF_1", "the ledger reads the cradle shelf")
+        ok(" ".join(PackedStringArray(game.observe_panel.last_memory_lines)) == cradle,
+                        "the live ledger draws the whole memory (wrapped, ruled)")
+        game.observe_exit()
+        await _frames(10)
 
 # ------------------------------------------------------------------ options & comfort (P2)
 func _options_and_settings() -> void:

@@ -13,6 +13,7 @@ var receipt_t := 0.0
 # draw-state accessors (smoke pins the laws)
 var last_seal_count := 0
 var last_ruling_count := 0
+var last_memory_lines: Array = []      # GP-2: the wrapped memory, as drawn
 var ledger_page := true
 
 func _ready() -> void:
@@ -121,7 +122,7 @@ func _draw() -> void:
         cy += 4.0
         _field("PURPOSE", "\u201c%s\u201d" % data.purpose, cy, cx, w - pad * 2.0, true); cy += 22.0
         if not data.memory.is_empty():
-                _field("MEMORY", data.memory, cy, cx, w - pad * 2.0, true); cy += 22.0
+                cy = _memory_field(data.memory, cy, cx, w - pad * 2.0)
         if data.belief > 0.0:
                 _field("BELIEF", "%.0f" % data.belief, cy, cx, w - pad * 2.0); cy += 22.0
                 # belief as a mercury line: inked gauge on the ruling
@@ -159,6 +160,59 @@ func _draw() -> void:
         if E0.mono:
                 var foot := "TAB: NEXT / EXIT   W/S: SELECT   E: MODIFY"
                 draw_string(E0.mono, Vector2(cx, y + h - 18.0), foot, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(0.45, 0.40, 0.32, 0.88))
+
+## GP-2 THE MEMORY WRAPS: the ledger's single-line economy ellipsized at
+## ~29 characters — and 34 of the record's own memories run longer, so the
+## observe readout never showed more than the first breath of the record's
+## richest text layer (the screaming cradle read 'eleven opened early. one
+## of…'). The value now wraps onto up to four ruled lines with a hanging
+## indent at the value column; the census's ellipsis law survives only past
+## the cap — the page still never bleeds.
+func _memory_field(value: String, y: float, x: float, width: float) -> float:
+        if E0.mono == null:
+                return y + 22.0
+        var size := 12
+        var vcol := x + width * 0.40
+        var vmax := x + width * 0.96 - vcol
+        draw_string(E0.mono, Vector2(x, y), "MEMORY", HORIZONTAL_ALIGNMENT_LEFT, -1, size, INK_DIM)
+        var lines := wrap_memory_lines(value, vmax)
+        last_memory_lines = lines
+        var ly := y
+        for i in lines.size():
+                draw_string(E0.mono, Vector2(vcol, ly), String(lines[i]), HORIZONTAL_ALIGNMENT_LEFT, -1, size, INK)
+                UICraft.ruling(self, Vector2(x, ly + 5.0), Vector2(x + width * 0.96, ly + 5.0))
+                last_ruling_count += 1
+                ly += 22.0
+        return ly
+
+## The wrap itself, pure: word-boundary lines within vmax, at most four,
+## ellipsis only past the cap. Measured against the ledger's own mono, so
+## the suite can law the whole record's legibility against the same math.
+func wrap_memory_lines(value: String, vmax: float) -> Array:
+        var lines: Array = []
+        if E0.mono == null:
+                return [value]
+        var size := 12
+        var max_lines := 4
+        var rest := value.strip_edges()
+        while not rest.is_empty() and lines.size() < max_lines:
+                var take := rest
+                while take.length() > 4 and E0.mono.get_string_size(take, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x > vmax:
+                        take = take.substr(0, take.length() - 4)
+                if take.is_empty():
+                        take = rest.substr(0, 4)
+                # snap back to the last full word so a line never splits one
+                if take.length() < rest.length():
+                        var cut := take.rfind(" ")
+                        if cut > 0:
+                                take = take.substr(0, cut)
+                # the final line keeps the census's economy past the cap
+                if lines.size() == max_lines - 1 and take.length() < rest.length():
+                        take = take.substr(0, maxi(4, take.length() - 1)).strip_edges() + "\u2026"
+                        rest = ""
+                lines.append(take)
+                rest = rest.substr(take.length()).strip_edges()
+        return lines
 
 func _field(name: String, value: String, y: float, x: float, width: float, small := false) -> void:
         if E0.mono == null:

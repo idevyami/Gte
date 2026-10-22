@@ -149,4 +149,9 @@ for f in gp1_01_title gp1_03_death_card gp1_04_monument \
 done
 # GP-1: the last-frame verdict strips are final JPEGs
 cp /home/z/entity000/screenshots/gp1_verdict_*.jpg "$DST"/
+# GP-2: the same law — the text-integrity stills are final JPEGs
+for f in gp2_01_census gp2_02_law_obs gp2_04_cradle; do
+  cp "/home/z/entity000/screenshots/gp2/${f}.jpg" "$DST"/
+done
+cp /home/z/entity000/screenshots/gp2/gp2_strip_*.jpg "$DST"/
 ls "$DST" | wc -l
