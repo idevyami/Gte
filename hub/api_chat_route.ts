@@ -195,10 +195,17 @@ export async function POST(request: NextRequest): Promise<Response> {
     let firstByteSent = false;
     const stream = new ReadableStream<Uint8Array>({
       async start(controller) {
+        let clientGone = false;
         const send = (obj: unknown): void => {
-          controller.enqueue(
-            encoder.encode(`data: ${JSON.stringify(obj)}\n\n`),
-          );
+          if (clientGone) return;
+          try {
+            controller.enqueue(
+              encoder.encode(`data: ${JSON.stringify(obj)}\n\n`),
+            );
+          } catch {
+            /* the visitor closed the tab mid-ink — stop writing quietly */
+            clientGone = true;
+          }
         };
         try {
           await Promise.race([
@@ -217,7 +224,9 @@ export async function POST(request: NextRequest): Promise<Response> {
         } catch (error) {
           const message =
             error instanceof Error ? error.message : "unknown error";
-          console.error("[chat] stream failed:", message);
+          if (!clientGone) {
+            console.error("[chat] stream failed:", message);
+          }
           // No bytes flowed yet -> a clean JSON fallback is still possible.
           if (!firstByteSent) {
             send({ error: "fallback" });
@@ -225,7 +234,11 @@ export async function POST(request: NextRequest): Promise<Response> {
             send({ done: true }); // partial reply beats a dead panel
           }
         } finally {
-          controller.close();
+          try {
+            controller.close();
+          } catch {
+            /* already closed by a cancel — nothing to do */
+          }
         }
       },
     });
