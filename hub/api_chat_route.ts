@@ -40,7 +40,7 @@ The hub (the website the user is on right now):
 - The STANDALONE BUILDS card holds downloadable Windows x64 and Linux x64 zips — the playable game itself, no Godot needed.
 - THE GODOT PROJECT card downloads the full source.
 - The gallery shows 170+ in-engine proof screenshots from 26 development passes.
-- The current build is verified by an automated suite of 838 checks.
+- The current build is verified by an automated suite of 847 checks.
 - The builds are UNSIGNED (indie exports): Windows SmartScreen and some browsers will show a warning — that is expected; the visitor should choose "keep" / "keep anyway". This is stated in the READ_ME inside the zips.
 
 POLICIES:

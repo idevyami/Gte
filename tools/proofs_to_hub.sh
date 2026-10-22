@@ -128,7 +128,7 @@ for n in names:
     im = Image.open(p).convert("RGB")
     if im.size != (1280, 720):
         im = im.resize((1280, 720), Image.LANCZOS)
-    im.save(os.path.join(dst, n + ".jpg"), quality=86, optimize=True)
+    im.save(os.path.join(dst, os.path.basename(n) + ".jpg"), quality=86, optimize=True)
     print("ok:", n, im.size)
 EOF
 echo "CONVERT DONE"
@@ -142,4 +142,11 @@ cp /home/z/entity000/screenshots/wb23/*.jpg "$DST"/
 cp /home/z/entity000/screenshots/wb24/*.jpg "$DST"/
 # WB-25: the same law — the pile stills are final JPEGs
 cp /home/z/entity000/screenshots/wb25/*.jpg "$DST"/
+# GP-1: the same law — the last-frame stills are final JPEGs
+for f in gp1_01_title gp1_03_death_card gp1_04_monument \
+         gp1_05_end_touched_nothing gp1_06_end_spent_deeply gp1_07_end_listened; do
+  cp "/home/z/entity000/screenshots/gp1/${f}.jpg" "$DST"/
+done
+# GP-1: the last-frame verdict strips are final JPEGs
+cp /home/z/entity000/screenshots/gp1_verdict_*.jpg "$DST"/
 ls "$DST" | wc -l

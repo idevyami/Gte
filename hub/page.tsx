@@ -1611,6 +1611,78 @@ const VISUAL_PROOFS: {
       "Both tiers, before and after (git-stash renders of the true pre-fix state). The pile: median 8px merged -> 25.8px counted, 3 of 5 -> 5 of 5 traced. The saint: peak 95 focal giant -> 63, one voice among the architecture. Honest open tier: the queue's middle pair still huddles in transit snapshots; the strike's slam deposits bodies at the ward edge through the line (transient, count-preserving); the saint still reads 'significantly taller' — she is a giant statue in her own chapel, thematically locked.",
     status: "FINAL",
   },
+  {
+    file: "gp1_01_title",
+    num: "173",
+    title: "THE ARRIVAL FRAME",
+    caption:
+      "THE LAST FRAME opened where no audit had ever looked: the frames the player arrives at and leaves on. The boot title as truly rendered — the city backdrop breathing under its ash, the designation and its census sub-line, the plate-framed menu, the full control map at the frame's foot. The audit reads the typographic hierarchy at 8/10 with every menu item and footer line traced; the control map gained one notch of presence (11px, lifted alpha) after the audit leaned in to read it.",
+    status: "FINAL",
+  },
+  {
+    file: "gp1_03_death_card",
+    num: "174",
+    title: "THE VERDICT GETS ITS GROUND",
+    caption:
+      "A true staged death — a real take_damage through the full flow: the card, the looming lens, the stain, the respawn. The death card's small designation used to hang as BARE TYPE over busy architecture — the audit read the martyr's roofline THROUGH 'ENTITY_000_818 · THE RECORD RESTORES WHAT IT LOSES'. The room card's own feathered plate now backs the center verdict the same way; the audit reads the card at 9/10 with both lines fully legible.",
+    status: "FINAL",
+  },
+  {
+    file: "gp1_04_monument",
+    num: "175",
+    title: "THE LIST GOES DOWN",
+    caption:
+      "The climax, clean. The monument read in the aftermath district — the SYSTEM's cold ledger on the census sheet: 'ENTITY_000_817 — FAILED. ENTITY_000_816 — FAILED. THE LIST GOES DOWN, NOT UP.' The baseline audit caught the room's AFTERMATH title card sitting ON this dialogue (a card still holding its fade after the death-respawn re-entry); the record now outranks the marquee — a card dissolves the moment a sheet rises. The moment reads at 9/10.",
+    status: "FINAL",
+  },
+  {
+    file: "gp1_05_end_touched_nothing",
+    num: "176",
+    title: "THE SETTLEMENT — TOUCHED NOTHING",
+    caption:
+      "The run's final frame, arrived at by the true path — the real monument dialogue finishing, the real stats of the run. The question in serif, the census line above it, the ledger of every number the city kept. The verdict 'YOU TOUCHED NOTHING. THE CITY REMEMBERS THAT TOO.' now holds its own row — it used to print 1.6px under the [F] prompt, two lines through each other. The audit transcribes every line exactly and reads the layout at 9/10.",
+    status: "FINAL",
+  },
+  {
+    file: "gp1_06_end_spent_deeply",
+    num: "177",
+    title: "THE SETTLEMENT — SPENT DEEPLY",
+    caption:
+      "The deep spender's settlement: consistency held at 38 through the run, 47 spent across nine edits, the seams' verdict in crimson — 'YOU SPENT DEEPLY. THE SEAMS SHOWED YOU THEIR SECRETS.' All three judgment variants staged and audited (touched-nothing, spent-deeply, all-four-fragments); each verdict 12px and near-full crimson on its own row, each transcribed exactly by the re-audit.",
+    status: "FINAL",
+  },
+  {
+    file: "gp1_07_end_listened",
+    num: "178",
+    title: "THE SETTLEMENT — LISTENED",
+    caption:
+      "The listener's settlement: all four fragments recovered, consistency held above the deep-spend line — 'YOU LISTENED. THAT WAS NEVER REQUIRED OF YOU.' The rarest verdict in the slice, and the one the whole design bends toward: the vessel that spent its run reading instead of editing. TIME IN THE CITY, DEATHS, DISSIPATED — every number on the ledger is one the city actually kept.",
+    status: "FINAL",
+  },
+  {
+    file: "gp1_verdict_death",
+    num: "179",
+    title: "THE RE-AUDIT'S VERDICT — THE CARD",
+    caption:
+      "The death card, before and after (git-stash renders of the true pre-fix state). BEFORE: the small designation as bare type, the architecture reading through it, the audit misreading the designation itself. AFTER: the feathered plate holds the ground under both lines — the verdict reads as a struck plate, not floating text.",
+    status: "FINAL",
+  },
+  {
+    file: "gp1_verdict_end",
+    num: "180",
+    title: "THE RE-AUDIT'S VERDICT — THE LAST FRAME",
+    caption:
+      "The settlement's bottom block, before and after. BEFORE: the crimson judgment printed 1.6px under the gray [F] prompt — two baselines through each other, the audit fusing them into one garbled line. AFTER: verdict, prompt and credit each on their own row with lawed separation (>=16px between verdict and prompt); every judgment variant transcribed exactly.",
+    status: "FINAL",
+  },
+  {
+    file: "gp1_verdict_monument",
+    num: "181",
+    title: "THE RE-AUDIT'S VERDICT — THE RECORD OUTRANKS THE MARQUEE",
+    caption:
+      "The climax, before and after. BEFORE: the room's AFTERMATH card still holding its fade sits directly on the census sheet — the audit read the title through the SYSTEM's list, clarity 6/10. AFTER: the card dissolves the moment the dialogue rises (a yield lawed in the suite), the list reads whole — 9/10.",
+    status: "FINAL",
+  },
 ];
 
 function ProofShot({ proof }: { proof: (typeof VISUAL_PROOFS)[number] }) {
@@ -2188,7 +2260,7 @@ export default function Home() {
               </span>
               <span className="hidden items-center gap-1.5 rounded-sm border border-[#2b2b2e] px-2 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-[#7fd8d8]/80 sm:inline-flex">
                 <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-[#7fd8d8]/70" />
-                BUILD 838 / VERTICAL SLICE
+                BUILD 847 / VERTICAL SLICE
               </span>
             </div>
             <nav aria-label="Page sections">
@@ -2878,7 +2950,7 @@ export default function Home() {
               index="06"
               kicker="VISUAL PROOFS"
               title="The reconstruction pass, on the record"
-              description="Real in-engine gameplay renders from the running game (1280×720 viewport). The visual reconstruction pass, then five world-building passes: THE LIVING CITY (far processions, measured strikes, ceremonies), THE CLOSEST WALLS (the foreground plane at 1.28x), THE GROUND YOU WALK ON (rendered climb ledges, per-district floorcraft, contact shadows), THE PERFORMERS (walk laws, wound cards, death as rotation, presence pools), THE WORLD RESPONDS (skirting stones, the ground answering fire, focal shafts, moths, vermin, ripples, posted law) — and THE RECORD IS A THING: the diegetic interface pass, where the HUD becomes a brass instrument, dialogue a hung parchment census record, system messages stamped citations, the OBSERVE readout a ruled ledger page with rows sealed under wax. Then the world kept deepening: THE AIR ITSELF (a positional sound stage on every element — flames that crackle, hearts that hum, bells that toll on their own seeded clocks), THE ARRIVAL (no space is born pre-lit — every room wakes near-first, flares and settles; revisits are quick because the city remembers), THE WORLD THINS (the core mechanic reaches the world's own renderers — flames lose conviction and miss beats, moths leave, the vessel stays real as the grade drains), THE THRESHOLD (the crossing between acts is a three-beat rite — the leaving, the inscribed rubric in the dark, the coming), THE VESSEL'S TRACE (every floor records the walker in its own material — ash holds, wet glistens, carpet presses lighter, the engine records nothing), THE OTHERS' PASSAGE (every creature writes the floor in the language of its body — the hollow's metronome echo, the believer's shuffle, the censor's erasure), THE ENDING'S RECORD (the floor keeps a bounded ledger of endings — organic sprawls, frozen last strides, where he fell), THE EXPERIENCE PASS (everything that already exists made truer — third rim bake, woven materials, tiled stone, the map's ink spline), THE FIST THAT LANDS (the motion experience pass — telegraphs read first, the roll is a decision, the chain speaks in arcs), THE THREE BEATS (every hit its own clock — the gather, the step-through, the dash's spent image), THE WALKING FLOCK (the weight pass — the body rides its stride, each walker out of step), THE CENSER'S EDGE (the readability pass — the fourth rim bake lifts the congregation's gold edge, the robe answers its censer in warm light, the body leans into its walk, the pool burns at every footfall), THE PRESS KEEPS ITS COUNT (the cluster pass — the honest audit found five converged bodies stacked at 0.0 px gap for seven straight seconds, reading as empty space; the jostle now holds a robe's width and shoulder room between every living body, the strike carries through the crowd, and the chapel fills with its own incense at the bodies' height so the architecture sits one step deeper), and THE FURNITURE YIELDS (the figure-vs-architecture grammar pass — the audit traced 1 of 5 bodies at the busiest wall and read the mass as 'twisted brass ornament'; the rim's closed gold ring broke into a shoulder arc, the fifth rim bake went top-lit so light catches the crown while the robe falls away dark, the hood keeps a warm glint where a face would catch the censer's light, the flame-holders' halos and brass sat down, and the altar glow lifted off the body band at a softer voice — the same wall now traces 5 of 5 at 7/10), and THE CORNER YIELDS (the corner pass — the ward's belief was computed from a chanters array that nothing ever fed, so the barrier silently collapsed on the room's first frame every visit since it shipped; the flock is wired now and the ward LIVES — a curtain of belief with soft wings and a breathing crown that the audit reads as 'a magical seal', while the painted procession hangs smaller and deeper in the room's air, the chandelier's wax dims and its glow spreads wide like the wheel it is, the arches sit one step deeper, the painted congregation exhales its rising chant-marks again, and the distant rows read as living people at 7/10 with the statues sorted out on their own), and THE PILE KEEPS ITS COUNT (the dead-end pass — the cornered press's settled line sat at 12-21px gaps because the windup planted walkers MID-OVERLAP and the packed queue transmitted its full walk down the chain into the backs ahead; the plant now waits for a robe's width of its own ground and the packed line creeps, so the corner's median standing gap is 25.8px and the audit traces 5 of 5 — while the 'chantry jamb's pale saint' the audits kept tracing turned out to be the backdrop's own painted namesake, tiled to giant scale and outshining even the believers' lit hoods; she keeps her silhouette, her pose and her altar, dimmed to the architecture's own voice), and THE PLAYER'S OWN HANDS (the playability pass — a virtual player walked the full golden path with real key events, title to ending, and the game broke six honest ways: the rotor sequence wrote into a read-only const tree so THE GAME WAS UNWINNABLE, the toll settlement charged its price and never opened, every door was a full heal, death restored a hurt save's hp forever with no healing anywhere, the boss fight could be walked around entirely, and the test suite's own saves haunted the next session's CONTINUE — all six eradicated, each under its own regression law, and the playthrough now completes unassisted with one honest death at the martyr). Every render is from the live game under a virtual display; every pass was VLM-audited before shipping. Procedural rigs remain in the build as a debug fallback (F9 in game)."
+              description="Real in-engine gameplay renders from the running game (1280×720 viewport). The visual reconstruction pass, then five world-building passes: THE LIVING CITY (far processions, measured strikes, ceremonies), THE CLOSEST WALLS (the foreground plane at 1.28x), THE GROUND YOU WALK ON (rendered climb ledges, per-district floorcraft, contact shadows), THE PERFORMERS (walk laws, wound cards, death as rotation, presence pools), THE WORLD RESPONDS (skirting stones, the ground answering fire, focal shafts, moths, vermin, ripples, posted law) — and THE RECORD IS A THING: the diegetic interface pass, where the HUD becomes a brass instrument, dialogue a hung parchment census record, system messages stamped citations, the OBSERVE readout a ruled ledger page with rows sealed under wax. Then the world kept deepening: THE AIR ITSELF (a positional sound stage on every element — flames that crackle, hearts that hum, bells that toll on their own seeded clocks), THE ARRIVAL (no space is born pre-lit — every room wakes near-first, flares and settles; revisits are quick because the city remembers), THE WORLD THINS (the core mechanic reaches the world's own renderers — flames lose conviction and miss beats, moths leave, the vessel stays real as the grade drains), THE THRESHOLD (the crossing between acts is a three-beat rite — the leaving, the inscribed rubric in the dark, the coming), THE VESSEL'S TRACE (every floor records the walker in its own material — ash holds, wet glistens, carpet presses lighter, the engine records nothing), THE OTHERS' PASSAGE (every creature writes the floor in the language of its body — the hollow's metronome echo, the believer's shuffle, the censor's erasure), THE ENDING'S RECORD (the floor keeps a bounded ledger of endings — organic sprawls, frozen last strides, where he fell), THE EXPERIENCE PASS (everything that already exists made truer — third rim bake, woven materials, tiled stone, the map's ink spline), THE FIST THAT LANDS (the motion experience pass — telegraphs read first, the roll is a decision, the chain speaks in arcs), THE THREE BEATS (every hit its own clock — the gather, the step-through, the dash's spent image), THE WALKING FLOCK (the weight pass — the body rides its stride, each walker out of step), THE CENSER'S EDGE (the readability pass — the fourth rim bake lifts the congregation's gold edge, the robe answers its censer in warm light, the body leans into its walk, the pool burns at every footfall), THE PRESS KEEPS ITS COUNT (the cluster pass — the honest audit found five converged bodies stacked at 0.0 px gap for seven straight seconds, reading as empty space; the jostle now holds a robe's width and shoulder room between every living body, the strike carries through the crowd, and the chapel fills with its own incense at the bodies' height so the architecture sits one step deeper), and THE FURNITURE YIELDS (the figure-vs-architecture grammar pass — the audit traced 1 of 5 bodies at the busiest wall and read the mass as 'twisted brass ornament'; the rim's closed gold ring broke into a shoulder arc, the fifth rim bake went top-lit so light catches the crown while the robe falls away dark, the hood keeps a warm glint where a face would catch the censer's light, the flame-holders' halos and brass sat down, and the altar glow lifted off the body band at a softer voice — the same wall now traces 5 of 5 at 7/10), and THE CORNER YIELDS (the corner pass — the ward's belief was computed from a chanters array that nothing ever fed, so the barrier silently collapsed on the room's first frame every visit since it shipped; the flock is wired now and the ward LIVES — a curtain of belief with soft wings and a breathing crown that the audit reads as 'a magical seal', while the painted procession hangs smaller and deeper in the room's air, the chandelier's wax dims and its glow spreads wide like the wheel it is, the arches sit one step deeper, the painted congregation exhales its rising chant-marks again, and the distant rows read as living people at 7/10 with the statues sorted out on their own), and THE PILE KEEPS ITS COUNT (the dead-end pass — the cornered press's settled line sat at 12-21px gaps because the windup planted walkers MID-OVERLAP and the packed queue transmitted its full walk down the chain into the backs ahead; the plant now waits for a robe's width of its own ground and the packed line creeps, so the corner's median standing gap is 25.8px and the audit traces 5 of 5 — while the 'chantry jamb's pale saint' the audits kept tracing turned out to be the backdrop's own painted namesake, tiled to giant scale and outshining even the believers' lit hoods; she keeps her silhouette, her pose and her altar, dimmed to the architecture's own voice), and THE PLAYER'S OWN HANDS (the playability pass — a virtual player walked the full golden path with real key events, title to ending, and the game broke six honest ways: the rotor sequence wrote into a read-only const tree so THE GAME WAS UNWINNABLE, the toll settlement charged its price and never opened, every door was a full heal, death restored a hurt save's hp forever with no healing anywhere, the boss fight could be walked around entirely, and the test suite's own saves haunted the next session's CONTINUE — all six eradicated, each under its own regression law, and the playthrough now completes unassisted with one honest death at the martyr), and THE LAST FRAME (the ending-surface pass — the frames the player arrives at and leaves on had never been audited: the settlement's crimson verdict was printing 1.6px under the [F] prompt, two lines through each other on the run's final beat; the death card's small line hung as bare type over the architecture with the roofline reading through it; and a room card still holding its fade would sit on top of a dialogue sheet — the AFTERMATH card printed through the monument's ending lines. The verdict, the prompt and the credit now hold their own rows, the death card rides the same feathered plate the room card always had, and the record outranks the marquee — a card dissolves the moment dialogue rises). Every render is from the live game under a virtual display; every pass was VLM-audited before shipping. Procedural rigs remain in the build as a debug fallback (F9 in game)."
             />
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {VISUAL_PROOFS.map((proof) => (

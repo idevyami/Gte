@@ -1206,6 +1206,11 @@ func start_dialogue(key: String) -> void:
                 return
         state = "dialogue"
         player.input_locked = true
+        # GP-1 — the record outranks the marquee: a room card still holding
+        # its fade (entry trigger hit early, quick interact after a respawn
+        # re-entry) dissolves now instead of sitting on the census sheet
+        if cinema != null and cinema.is_showing():
+                cinema.yield_to_dialogue()
         dialogue_box.open(key)
 
 func _on_dialogue_finished(key: String) -> void:

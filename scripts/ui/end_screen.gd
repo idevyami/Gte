@@ -57,6 +57,9 @@ func _draw() -> void:
                 var qw2 := E0.serif.get_string_size(q2, HORIZONTAL_ALIGNMENT_LEFT, -1, 34).x
                 draw_string(E0.serif, Vector2((vp.x - qw2) * 0.5, cy + 108.0), q2, HORIZONTAL_ALIGNMENT_LEFT, -1, 34, Color(E0.BONE.r, E0.BONE.g, E0.BONE.b, qa))
         # the ledger — every number real
+        # GP-1: the ledger starts at 0.60 and the footer block sits at the
+        # true bottom edge — the judgment used to land on the [F] prompt's
+        # own line (two baselines 1.6px apart, printed through each other)
         if E0.mono and anim_t > 2.2:
                 var rows := [
                         ["EDITS MADE", str(stats.get("edits", 0))],
@@ -70,7 +73,7 @@ func _draw() -> void:
                         ["DEATHS", str(stats.get("deaths", 0))],
                         ["TIME IN THE CITY", _fmt_time(int(stats.get("elapsed", 0)))],
                 ]
-                var y := vp.y * 0.62
+                var y := vp.y * 0.60
                 var lx := vp.x * 0.5 - 170.0
                 for row in rows:
                         var label: String = row[0]
@@ -87,17 +90,33 @@ func _draw() -> void:
                 elif GameState.fragments.size() >= 4:
                         judgment = "YOU LISTENED. THAT WAS NEVER REQUIRED OF YOU."
                 if not judgment.is_empty():
-                        draw_string(E0.mono, Vector2(lx, y + 12.0), judgment, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(E0.CRIMSON.r, E0.CRIMSON.g, E0.CRIMSON.b, 0.8))
+                        # GP-1: the verdict is the run's last word — 12px and
+                        # near-full crimson, on its OWN row above the prompt
+                        draw_string(E0.mono, Vector2(lx, y + 12.0), judgment, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(E0.CRIMSON.r, E0.CRIMSON.g, E0.CRIMSON.b, 0.9))
         if anim_t > 3.0 and E0.mono:
                 if fmod(anim_t, 1.2) < 0.75:
                         var foot := "[F] RETURN TO THE TITLE \u2014 THE RECORD STANDS"
                         var fw := E0.mono.get_string_size(foot, HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x
-                        draw_string(E0.mono, Vector2((vp.x - fw) * 0.5, vp.y - 40.0), foot, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, E0.DIM)
+                        draw_string(E0.mono, Vector2((vp.x - fw) * 0.5, vp.y - 34.0), foot, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, E0.DIM)
                 var credit := "A VERTICAL SLICE · END OF RECORD"
                 var cw := E0.mono.get_string_size(credit, HORIZONTAL_ALIGNMENT_LEFT, -1, 10).x
-                draw_string(E0.mono, Vector2((vp.x - cw) * 0.5, vp.y - 20.0), credit, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Color(E0.DIM.r, E0.DIM.g, E0.DIM.b, 0.5))
+                draw_string(E0.mono, Vector2((vp.x - cw) * 0.5, vp.y - 14.0), credit, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Color(E0.DIM.r, E0.DIM.g, E0.DIM.b, 0.5))
 
 func _fmt_time(seconds: int) -> String:
         var m := seconds / 60
         var s := seconds % 60
         return "%02d:%02d" % [m, s]
+
+func bottom_geometry(vp: Vector2) -> Dictionary:
+        ## GP-1 law source — the exact baselines _draw uses, so the suite can
+        ## prove the verdict, the [F] prompt and the credit never share a row.
+        var ledger_y := vp.y * 0.60
+        var ledger_end := ledger_y + 10.0 * 22.0
+        return {
+                "question2": vp.y * 0.34 + 108.0,
+                "ledger_first": ledger_y,
+                "ledger_end": ledger_end,
+                "judgment": ledger_end + 12.0,
+                "prompt": vp.y - 34.0,
+                "credit": vp.y - 14.0,
+        }

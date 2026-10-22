@@ -509,6 +509,17 @@ func _ending() -> void:
                 ok(GameState.has_fragment("FRAGMENT_04"), "fragment 04 recorded")
                 ok(GameState.fragments.size() >= 1, "memory index populated")
         ok(game.end_screen.visible, "the record ends on the question")
+        # --- GP-1 THE LAST FRAME: the verdict never shares a row ------------
+        # the judgment used to print 1.6px under the [F] prompt — two lines
+        # through each other on the run's final beat
+        var evp := game.end_screen.get_viewport_rect().size
+        var geo := game.end_screen.bottom_geometry(evp)
+        ok(geo["judgment"] <= geo["prompt"] - 16.0,
+                        "the verdict keeps its own row above the [F] prompt (%.0f vs %.0f)" % [geo["judgment"], geo["prompt"]])
+        ok(geo["prompt"] <= geo["credit"] - 12.0,
+                        "the prompt keeps its own row above the credit (%.0f vs %.0f)" % [geo["prompt"], geo["credit"]])
+        ok(geo["ledger_first"] >= geo["question2"] + 40.0,
+                        "the ledger never crowds the question (%.0f clear)" % (geo["ledger_first"] - geo["question2"]))
 
 # ------------------------------------------------------------------ options & comfort (P2)
 func _options_and_settings() -> void:
@@ -1525,6 +1536,38 @@ func _the_arrival() -> void:
         game.new_game()                      # fresh room memory
         await _room("act1")
         await _skip_dialogue_now()
+        # --- GP-1 THE CARD YIELDS TO THE RECORD ---------------------------
+        # a room card still holding its fade must dissolve the moment a
+        # dialogue sheet rises — act1's intro trigger sits two strides from
+        # the spawn, reachable while the card lives (the audit caught the
+        # AFTERMATH card sitting on the monument's ending dialogue)
+        game.cinema.room_card("I — THE VESSEL CHAMBER", 1)
+        await _frames(2)
+        ok(game.cinema.is_showing(), "the room card holds on entry")
+        game.start_dialogue("sys_intro")
+        ok(game.cinema._t >= game.cinema._hold, "the record outranks the marquee (card yields to dialogue)")
+        while game.dialogue_box.active:
+                game.dialogue_box.chars_shown = 99999
+                game.dialogue_box.advance()
+                await _frames(2)
+        # the card clears its kind at _hold + 1.0s of real time after the yield
+        await get_tree().create_timer(1.3, true, false, true).timeout
+        ok(not game.cinema.is_showing(), "the yielded card is gone within its fade tail")
+        # --- GP-1 THE VERDICT GETS ITS GROUND ------------------------------
+        # the death/record center card used to hang as bare type over busy
+        # architecture (the audit read the roofline through the small line);
+        # the room card's feathered plate now backs it
+        game.cinema.death_card()
+        await _frames(2)
+        ok(game.cinema.last_center_plate.size.x > 100.0 and game.cinema.last_center_plate.size.y > 60.0,
+                        "the center verdict rides a feathered plate")
+        var cvp := game.cinema.get_viewport_rect().size
+        var ccy := cvp.y * 0.42
+        ok(game.cinema.last_center_plate.has_point(Vector2(cvp.x * 0.5, ccy)) and game.cinema.last_center_plate.has_point(Vector2(cvp.x * 0.5, ccy + 32.0)),
+                        "the plate backs both the verdict line and its designation")
+        ok(game.cinema.is_showing(), "the death card itself keeps the frame")
+        while game.cinema.is_showing():
+                await _frames(2)
         ok(game.wake != null, "the room carries a wake conductor")
         ok(game.wake.full, "a first visit is a full wake")
         ok(absf(game.wake.span - Wake.SPAN_FULL) < 0.001, "the full wake spans its choreography")

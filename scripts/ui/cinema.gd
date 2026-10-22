@@ -14,6 +14,8 @@ var _letterbox := 0.0     # 0..1 animated bar height
 var _letterbox_to := 0.0
 var _flicker := 0.0
 var _done := false
+# GP-1 — the center card's plate, exposed so the suite can law its presence
+var last_center_plate := Rect2()
 
 func _ready() -> void:
         set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -60,6 +62,17 @@ func _show(kind: String, big: String, small: String, hold: float) -> void:
 
 func is_showing() -> bool:
         return _kind != "" and not _done
+
+func yield_to_dialogue() -> void:
+        ## GP-1 — THE RECORD OUTRANKS THE MARQUEE: when a dialogue sheet
+        ## rises (a trigger hit while the room card still holds, a quick
+        ## interact after a death-respawn re-entry), a living room or record
+        ## card dissolves NOW instead of sitting its fade tail on top of the
+        ## census sheet. Boss and death cards keep the frame — they are the
+        ## beat itself, and dialogue cannot open inside them.
+        if _kind == "room" or _kind == "record":
+                _t = maxf(_t, _hold)
+                _flicker = 0.0
 
 func _process(delta: float) -> void:
         if _kind.is_empty():
@@ -221,18 +234,37 @@ func _draw_phase(vp: Vector2, a: float) -> void:
 func _draw_center_card(vp: Vector2, a: float, accent: Color, text_col: Color) -> void:
         var cx := vp.x * 0.5
         var y := vp.y * 0.42
+        var tw := 0.0
         if E0.serif:
                 var size := 44
-                var tw := _spaced_width(E0.serif, _big, size, 5.0)
+                tw = _spaced_width(E0.serif, _big, size, 5.0)
                 while tw > vp.x - 200.0 and size > 28:
                         size -= 2
                         tw = _spaced_width(E0.serif, _big, size, 5.0)
+        var sw := 0.0
+        if E0.mono and not _small.is_empty():
+                sw = _spaced_width(E0.mono, _small, 12, 2.0)
+        # GP-1 — THE CARD GETS ITS GROUND: the death and record verdicts used
+        # to hang as bare type over busy architecture (the audit read the
+        # martyr's roofline THROUGH the small line); the room card's own
+        # feathered plate now backs the center card the same way
+        if tw > 0.0 or sw > 0.0:
+                var pw := maxf(tw, sw) + 120.0
+                var py := y - 40.0
+                var ph := 84.0
+                _plate(cx, py, pw, ph, a)
+                last_center_plate = Rect2(cx - pw * 0.5, py, pw, ph)
+        if E0.serif:
+                var size2 := 44
+                var tw2 := _spaced_width(E0.serif, _big, size2, 5.0)
+                while tw2 > vp.x - 200.0 and size2 > 28:
+                        size2 -= 2
+                        tw2 = _spaced_width(E0.serif, _big, size2, 5.0)
                 var glitch := _flicker * 5.0
                 if glitch > 0.05:
-                        _spaced_text(E0.serif, Vector2(cx - tw * 0.5 + glitch, y), _big, size, 5.0, Color(accent.r, accent.g, accent.b, a * 0.35))
-                _spaced_text(E0.serif, Vector2(cx - tw * 0.5, y), _big, size, 5.0, Color(text_col.r, text_col.g, text_col.b, a))
+                        _spaced_text(E0.serif, Vector2(cx - tw2 * 0.5 + glitch, y), _big, size2, 5.0, Color(accent.r, accent.g, accent.b, a * 0.35))
+                _spaced_text(E0.serif, Vector2(cx - tw2 * 0.5, y), _big, size2, 5.0, Color(text_col.r, text_col.g, text_col.b, a))
         if E0.mono and not _small.is_empty():
-                var sw := _spaced_width(E0.mono, _small, 12, 2.0)
                 _spaced_text(E0.mono, Vector2(cx - sw * 0.5, y + 32.0), _small, 12, 2.0, Color(E0.DIM.r, E0.DIM.g, E0.DIM.b, a * 0.9))
 
 # ------------------------------------------------------------------ helpers
